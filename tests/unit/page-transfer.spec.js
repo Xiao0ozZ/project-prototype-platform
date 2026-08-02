@@ -6,7 +6,12 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createExportPackage, importPage, inspectHtml } from '../../plugins/page-transfer-plugin.js';
+import {
+  buildVueSource,
+  createExportPackage,
+  importPage,
+  inspectHtml,
+} from '../../plugins/page-transfer-plugin.js';
 import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -108,9 +113,53 @@ afterEach(async () => {
 });
 
 describe('page transfer', () => {
+  it('imports an Options API template page without converting its component model', async () => {
+    const manifest = {
+      templateVersion: 1,
+      scriptMode: 'options-api',
+      pageKey: 'options-page',
+      pageTitle: 'Options 页面',
+      pageType: 'list',
+      pageHeaderMode: 'standard',
+      client: 'admin',
+      routePath: '/admin/options-page',
+      menuSection: 'workspace',
+      menuTitle: 'Options 页面',
+      menuIcon: 'Document',
+    };
+    const source = [
+      `<script type="application/json" id="prototype-page-manifest">${JSON.stringify(manifest)}</script>`,
+      '<!-- [AI-EDIT] PAGE_CONTENT_START -->',
+      '<section data-page-content><div data-business-content>Options 内容</div></section>',
+      '<!-- PAGE_CONTENT_END -->',
+      '<!-- [AI-EDIT] PAGE_OVERLAYS_START -->',
+      '<div data-page-overlay="dialog"><el-dialog v-model="visible">弹窗</el-dialog></div>',
+      '<!-- PAGE_OVERLAYS_END -->',
+      '<script>/* [AI-EDIT] PAGE_LOGIC_START */\nconst pageOptions = { data() { return { visible: false }; } };\n/* PAGE_LOGIC_END */</script>',
+    ].join('\n');
+    const { root, packageRoot } = await createPlatformFixture();
+
+    expect(inspectHtml(source)).toMatchObject({ valid: true, format: 'html-template' });
+    expect(buildVueSource(source, manifest)).toContain('export default pageOptions;');
+    await importPage({
+      projectRoot: root,
+      source,
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        routePath: 'options-page',
+        menuSection: 'workspace',
+        menuTitle: 'Options 页面',
+      },
+    });
+    expect(
+      await fs.readFile(path.join(packageRoot, 'views', 'admin', 'OptionsPageView.vue'), 'utf8'),
+    ).toContain('export default pageOptions;');
+  });
+
   it('imports a valid HTML template into the selected project package', async () => {
     const source = await fs.readFile(path.join(projectRoot, 'templates', 'html-prototype-page.html'), 'utf8');
-    expect(inspectHtml(source).valid).toBe(true);
+    expect(inspectHtml(source)).toMatchObject({ valid: true, warnings: [] });
     const { root, packageRoot } = await createPlatformFixture();
 
     const result = await importPage({
@@ -123,6 +172,7 @@ describe('page transfer', () => {
         menuSection: 'workspace',
         menuTitle: '导入页面',
         sourceFile: 'prototype.html',
+        fileName: '客户等级方案.html',
       },
     });
 
@@ -132,6 +182,61 @@ describe('page transfer', () => {
     expect(await fs.readFile(path.join(packageRoot, 'page-definitions.js'), 'utf8')).toContain(
       '"path":"imported-page"',
     );
+    expect(await fs.readFile(path.join(packageRoot, 'page-definitions.js'), 'utf8')).toContain(
+      '"fileName":"客户等级方案.html"',
+    );
+  });
+
+  it('keeps the HTML template AI contract and page identity synchronized', async () => {
+    const source = await fs.readFile(path.join(projectRoot, 'templates', 'html-prototype-page.html'), 'utf8');
+    const manifestSource = source.match(
+      /<script\b[^>]*\bid=["']prototype-page-manifest["'][^>]*>([\s\S]*?)<\/script>/u,
+    )?.[1];
+    if (!manifestSource) throw new Error('模板缺少 prototype-page-manifest。');
+    const manifest = JSON.parse(manifestSource.trim());
+    const htmlWithoutComments = source.replace(/<!--[\s\S]*?-->/gu, '');
+
+    expect(source).toContain('HTML 原型 AI 编写协议 v1.3');
+    expect(source).toContain('以本模板作为唯一的结构与实现基准');
+    expect(source).toContain('可将本模板复制为多个 HTML 文件组成多页面原型');
+    expect(source).toContain('<a href="./目标页面.html">');
+    expect(source).not.toMatch(/历史\s*HTML|旧\s*HTML|旧页面|legacy|迁移|转换生成|模板化副本/iu);
+    expect(source).not.toMatch(
+      /平台|导入器|正式导入|直接读取|独立预览|导入时|提取此节点|回导|直读|Vue\s*工程|data-preview/iu,
+    );
+    expect(source).toContain('不可破坏的模板契约');
+    expect(source).toContain('交付自检');
+    expect(manifest).toMatchObject({
+      templateVersion: 1,
+      scriptMode: 'composition-api',
+      menu: true,
+      pageKey: 'standard-list-page',
+      fileName: '资料管理.html',
+      rootClass: 'standard-list-page',
+      overlayRootClass: 'standard-list-dialog',
+    });
+    expect(manifest.rootClass).toBe(manifest.pageKey);
+    expect(manifest.menuTitle).toBe(manifest.pageTitle);
+    expect(manifest.routePath.split('/').filter(Boolean)[0]).toBe(manifest.client);
+    expect(source).toContain(`<title>${manifest.pageTitle}</title>`);
+    expect(source).toContain(`<h1>${manifest.pageTitle}</h1>`);
+    expect(source).toContain(`data-shell-page-title`);
+    expect(source).toContain(`href="./${manifest.fileName}"`);
+    expect(source).toContain('<!-- [AI-EDIT] SHELL_NAV_START:');
+    expect(source).toContain('<!-- SHELL_NAV_END -->');
+    expect(source).toContain(`class="${manifest.rootClass}"`);
+    expect(source).toContain(`data-page-root="${manifest.rootClass}"`);
+    expect(source).toContain(`data-page-key="${manifest.pageKey}"`);
+    expect(source).toContain(`.${manifest.rootClass} {`);
+    expect(source).toContain(`.${manifest.overlayRootClass} .el-dialog__body`);
+    expect(htmlWithoutComments.match(/<[^>]*\bdata-page-content\b[^>]*>/gu)).toHaveLength(1);
+    expect(htmlWithoutComments.match(/<[^>]*\bdata-business-content\b[^>]*>/gu)).toHaveLength(1);
+    expect(source.match(/<!-- \[AI-EDIT\] PAGE_CONTENT_START:/gu)).toHaveLength(1);
+    expect(source.match(/<!-- \[AI-EDIT\] PAGE_MANIFEST_START:/gu)).toHaveLength(1);
+    expect(source.match(/<!-- PAGE_MANIFEST_END -->/gu)).toHaveLength(1);
+    expect(source.match(/\/\* \[AI-EDIT\] PAGE_LOGIC_START:/gu)).toHaveLength(1);
+    expect(source).not.toMatch(/\bon(?:click|change|input|submit)\s*=/iu);
+    expect(source).not.toMatch(/<script[^>]+src=["'](?!https?:)/iu);
   });
 
   it('rejects a duplicate route in the same project client', async () => {
@@ -143,8 +248,12 @@ describe('page transfer', () => {
       routePath: 'imported-page',
       menuSection: 'workspace',
       menuTitle: '导入页面',
+      sourceFile: 'prototype.html',
     };
     await importPage({ projectRoot: root, source, target });
+    expect(
+      await fs.readFile(path.join(root, 'projects', 'sample-project', 'page-definitions.js'), 'utf8'),
+    ).toContain('"fileName":"prototype.html"');
     await expect(importPage({ projectRoot: root, source, target })).rejects.toThrow('目标页面已存在');
   });
 
@@ -221,6 +330,7 @@ describe('page transfer', () => {
       selectedPaths: ['/p/sample-project/admin/home'],
       packageName: '闭环测试',
     });
+    expect(exported.files).toEqual(['首页.html']);
     const exportedPath = path.join(root, exported.result?.html || exported.html);
     const exportedHtml = await fs.readFile(exportedPath, 'utf8');
     const inspection = inspectHtml(exportedHtml);
@@ -318,7 +428,7 @@ describe('page transfer', () => {
     });
 
     expect(exported.mode).toBe('multiple');
-    expect(exported.files).toEqual(['admin-home.html', 'admin-orders.html']);
+    expect(exported.files).toEqual(['首页.html', '订单.html']);
     const zipPath = path.join(root, exported.zip);
     expect((await fs.stat(zipPath)).size).toBeGreaterThan(0);
     const exportDirectory = zipPath.replace(/\.zip$/u, '');
@@ -386,13 +496,13 @@ describe('page transfer', () => {
       packageName: '同名页面链接测试',
     });
     const exportDirectory = path.join(root, exported.zip.replace(/^\//u, '').replace(/\.zip$/u, ''));
-    const homeHtml = await fs.readFile(path.join(exportDirectory, 'admin-home.html'), 'utf8');
-    const detailAHtml = await fs.readFile(path.join(exportDirectory, 'admin-detail-a.html'), 'utf8');
-    const detailBHtml = await fs.readFile(path.join(exportDirectory, 'admin-detail-b.html'), 'utf8');
+    const homeHtml = await fs.readFile(path.join(exportDirectory, '首页.html'), 'utf8');
+    const detailAHtml = await fs.readFile(path.join(exportDirectory, 'A 详情.html'), 'utf8');
+    const detailBHtml = await fs.readFile(path.join(exportDirectory, 'B 详情.html'), 'utf8');
 
-    expect(homeHtml).toContain('href="./admin-detail-a.html"');
-    expect(detailAHtml).toContain('href="./admin-detail-b.html"');
-    expect(detailBHtml).toContain('href="./admin-home.html"');
+    expect(homeHtml).toContain('href="./A 详情.html"');
+    expect(detailAHtml).toContain('href="./B 详情.html"');
+    expect(detailBHtml).toContain('href="./首页.html"');
   }, 30000);
 
   it('exports existing HTML prototypes as lightweight editable files with rewritten links', async () => {
@@ -440,14 +550,14 @@ describe('page transfer', () => {
       packageName: '轻量 HTML 测试',
     });
     const exportDirectory = path.join(root, exported.zip.replace(/^\//, '').replace(/\.zip$/u, ''));
-    const homeHtml = await fs.readFile(path.join(exportDirectory, 'admin-home.html'), 'utf8');
-    const detailHtml = await fs.readFile(path.join(exportDirectory, 'admin-detail.html'), 'utf8');
+    const homeHtml = await fs.readFile(path.join(exportDirectory, '首页.html'), 'utf8');
+    const detailHtml = await fs.readFile(path.join(exportDirectory, '详情.html'), 'utf8');
 
     expect(Buffer.byteLength(homeHtml)).toBeLessThan(100_000);
     expect(homeHtml).toContain('id="prototype-editable-template"');
     expect(homeHtml).toContain('id="prototype-page-manifest"');
-    expect(homeHtml).toContain('href="./admin-detail.html"');
-    expect(detailHtml).toContain('href="./admin-home.html"');
+    expect(homeHtml).toContain('href="./详情.html"');
+    expect(detailHtml).toContain('href="./首页.html"');
     expect(homeHtml).not.toContain('StandalonePrototypePage');
     expect(inspectHtml(homeHtml)).toMatchObject({ valid: true, format: 'html-template', roundTrip: true });
     expect(applyContentOnlyMode(homeHtml)).toContain('.prototype-sidebar');

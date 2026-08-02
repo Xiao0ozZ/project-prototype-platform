@@ -47,7 +47,6 @@
 │  ├─ services/               文档读取等前端数据服务
 │  ├─ styles/                 设计变量、全局样式与 Tailwind 入口
 │  └─ views/                  首页、登录、文档、工具和错误页等平台页面
-├─ 工程任务清单.md             工程范围、任务清单及维护记录
 ├─ COMPONENT_GUIDE.md          公共组件、Composables 和新增页面使用规范
 ├─ HTML_PROTOTYPE_CREATION_PROMPT.md 需求阶段可迁移 HTML 原型创建提示词
 ├─ MIGRATION_GUIDE.md          HTML 原型迁移到本工程的执行规范

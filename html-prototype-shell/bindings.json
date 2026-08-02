@@ -9,7 +9,8 @@
     "page": "企业端/branch_company_management.html",
     "document": "公务车/12_分公司管理.md",
     "anchor": "3. 列表字段",
-    "title": "企业端公务车 · 分公司管理"
+    "title": "企业端公务车 · 分公司管理",
+    "primary": true
   },
   {
     "page": "企业端/car_use_management.html",

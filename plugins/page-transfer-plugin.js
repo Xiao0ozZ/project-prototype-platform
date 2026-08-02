@@ -35,6 +35,7 @@ const allowedIcons = new Set([
   'Van',
   'Warning',
 ]);
+const supportedScriptModes = new Set(['composition-api', 'options-api', 'legacy-dom']);
 
 const MAX_HTML_LENGTH = 5 * 1024 * 1024;
 
@@ -188,6 +189,12 @@ function validatePageManifest(manifest, errors) {
   if (!manifest.pageTitle || !String(manifest.pageTitle).trim()) {
     errors.push('manifest 缺少 pageTitle。');
   }
+  if (manifest.scriptMode && !supportedScriptModes.has(manifest.scriptMode)) {
+    errors.push(`不支持的脚本模式：${manifest.scriptMode}。`);
+  }
+  if (manifest.scriptMode === 'legacy-dom') {
+    errors.push('legacy-dom 页面保留原生 DOM 脚本，不能自动导入为 Vue 页面。');
+  }
   if (!manifest.routePath || !/^\/[a-z][a-z0-9-]*\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest.routePath)) {
     errors.push('routePath 必须使用 /{client}/xxx 格式。');
   }
@@ -316,7 +323,7 @@ export function inspectHtml(source) {
   };
 }
 
-function convertLogicToVueScript(source) {
+function convertLogicToVueScript(source, scriptMode = 'composition-api') {
   let logic = source.trim();
   const vueImports = new Set();
   const elementImports = new Set();
@@ -361,7 +368,11 @@ function convertLogicToVueScript(source) {
   if (iconImports.size)
     imports.push(`import { ${[...iconImports].join(', ')} } from '@element-plus/icons-vue';`);
 
-  return `${imports.join('\n')}\n\n${logic}\n\nexport default {\n  setup: pageSetup,\n};`;
+  const exportStatement =
+    scriptMode === 'options-api'
+      ? 'export default pageOptions;'
+      : 'export default {\n  setup: pageSetup,\n};';
+  return `${imports.join('\n')}\n\n${logic}\n\n${exportStatement}`;
 }
 
 async function loadDefinitions(definitionsPath) {
@@ -420,8 +431,11 @@ export function buildVueSource(source, manifest) {
   );
   const logic = extractEditableBlock(source, '/* [AI-EDIT] PAGE_LOGIC_START', '/* PAGE_LOGIC_END */');
   const style = extractPageStyle(source);
+  const scriptMode = manifest.scriptMode || 'composition-api';
 
   if (!content || !logic) throw new Error('页面内容或页面逻辑为空，无法生成 Vue 页面。');
+  if (scriptMode === 'legacy-dom')
+    throw new Error('legacy-dom 页面不能自动转换为 Vue 页面，请保留为直接读取 HTML。');
 
   return [
     '<template>',
@@ -440,7 +454,7 @@ export function buildVueSource(source, manifest) {
     '',
     '<script>',
     `// 来源模板：${manifest.pageKey}`,
-    convertLogicToVueScript(logic)
+    convertLogicToVueScript(logic, scriptMode)
       .split('\n')
       .map((line) => line)
       .join('\n'),
@@ -1171,6 +1185,18 @@ export async function importPage({ projectRoot, source, target }) {
   const icon = target.menuIcon || manifest.menuIcon || originalPage?.icon || 'Document';
   const pageTitle = String(target.pageTitle || manifest.pageTitle).trim();
   const menuTitle = String(target.menuTitle || manifest.menuTitle || originalPage?.title || pageTitle).trim();
+  const fileName = normalizeHtmlFileName(
+    target.fileName ||
+      (mode === 'replace'
+        ? originalPage?.prototype?.fileName ||
+          originalPage?.prototype?.htmlFileName ||
+          originalPage?.prototype?.sourceFile
+        : '') ||
+      target.sourceFile ||
+      manifest.fileName ||
+      pageTitle,
+    `${client}-${routePath}.html`,
+  );
   const manifestClient = projectPackage.manifest.clients?.find((item) => item.id === client);
   if (
     mode === 'replace' &&
@@ -1213,7 +1239,9 @@ export async function importPage({ projectRoot, source, target }) {
     prototype: {
       ...(originalPage?.prototype || {}),
       ...(target.sourceFile ? { sourceFile: target.sourceFile } : {}),
+      fileName,
       templateVersion: manifest.templateVersion,
+      ...(manifest.scriptMode ? { scriptMode: manifest.scriptMode } : {}),
       ...(inspection.format === 'vue-sfc' ? { exportFormat: manifest.exportFormat } : {}),
       pageKey: manifest.pageKey,
       pageTitle: manifest.pageTitle,
@@ -1318,8 +1346,51 @@ function relativeModuleImport(fromDirectory, targetPath) {
   return relativePath.startsWith('.') ? relativePath : `./${relativePath}`;
 }
 
+function normalizeHtmlFileName(value, fallback = 'page.html') {
+  const rawValue = String(value || '')
+    .trim()
+    .replaceAll('\\', '/');
+  let fileName = rawValue.split('/').filter(Boolean).at(-1) || String(fallback || 'page.html');
+  fileName = fileName
+    .replace(/[<>:"/|?*]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  if (!fileName || fileName === '.' || fileName === '..') fileName = String(fallback || 'page.html');
+  fileName = Array.from(fileName, (character) => (character.charCodeAt(0) < 32 ? '-' : character)).join('');
+  if (!/\.html?$/i.test(fileName)) fileName = `${fileName}.html`;
+  return fileName;
+}
+
 function pageFileName(page) {
-  return `${page.client}-${page.path}.html`;
+  const fallback = `${page.client || 'page'}-${page.path || 'page'}.html`;
+  const candidate =
+    page.prototype?.fileName ||
+    page.prototype?.htmlFileName ||
+    page.htmlFileName ||
+    page.fileName ||
+    page.title ||
+    page.name ||
+    fallback;
+  return normalizeHtmlFileName(candidate, fallback);
+}
+
+function uniquePageFileNames(pages) {
+  const usedNames = new Set();
+  return pages.map((page) => {
+    const preferredName = pageFileName(page);
+    const extensionMatch = preferredName.match(/(\.html?)$/i);
+    const extension = extensionMatch?.[1] || '.html';
+    const baseName = preferredName.slice(0, -extension.length);
+    let fileName = preferredName;
+    let suffix = 2;
+    while (usedNames.has(fileName.toLowerCase())) {
+      const disambiguator = page.client || page.path || 'page';
+      fileName = normalizeHtmlFileName(`${baseName}-${disambiguator}-${suffix}${extension}`, preferredName);
+      suffix += 1;
+    }
+    usedNames.add(fileName.toLowerCase());
+    return { ...page, file: fileName };
+  });
 }
 
 function configuredPrototypeSources(packageRoot, manifest) {
@@ -1865,6 +1936,8 @@ function createRoundTripManifest(page, exportFormat = 'vue-sfc') {
   return {
     templateVersion: 1,
     exportFormat,
+    ...(page.prototype?.scriptMode ? { scriptMode: page.prototype.scriptMode } : {}),
+    fileName: page.file || pageFileName(page),
     pageKey: exportPageKey(page),
     pageTitle: page.title,
     pageType: page.prototype?.pageType || 'custom',
@@ -2093,11 +2166,7 @@ export async function createExportPackage({ projectRoot, projectId, selectedPath
   const workDir = path.join(projectRoot, '.page-transfer-work', exportId);
   await fsp.mkdir(exportsRoot, { recursive: true });
 
-  const singleFileName = `${safeName}-${exportId}.html`;
-  const selectedWithFiles = selected.map((page) => ({
-    ...page,
-    file: selected.length === 1 ? singleFileName : pageFileName(page),
-  }));
+  const selectedWithFiles = uniquePageFileNames(selected);
   const roundTripSources = new Map();
   const sourceRecords = new Map();
   const prototypeSourceIndex = await createPrototypeSourceIndex(projectPackage, selectedWithFiles);
@@ -2134,6 +2203,7 @@ export async function createExportPackage({ projectRoot, projectId, selectedPath
       menuIcon: page.icon || null,
       source: page.source || 'vue-page',
       file: page.file,
+      fileName: page.file,
     })),
     defaultPath: selectedWithFiles[0].fullPath,
   };

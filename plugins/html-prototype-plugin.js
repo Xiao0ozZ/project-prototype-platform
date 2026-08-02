@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
-  isPlatformExportHtml,
+  isHtmlPrototypeContentSource,
   isSupportedPlatformExportFormat,
   readPlatformExportManifest,
 } from './platform-export-format.js';
@@ -280,7 +280,7 @@ export async function scanHtmlPrototypePages(projectsRoot) {
         const relativePath = toWebPath(path.relative(prototypeSource.prototypeRoot, absolutePath));
         const source = await fs.readFile(absolutePath, 'utf8');
         const exportManifest = readPlatformExportManifest(source);
-        const isExportHtml = isPlatformExportHtml(source);
+        const isContentOnlyHtml = isHtmlPrototypeContentSource(source);
         const clientId = resolveClientId({
           prototype: item.manifest.prototype,
           sourceClientId: prototypeSource.clientId,
@@ -293,19 +293,19 @@ export async function scanHtmlPrototypePages(projectsRoot) {
         const sourcePath = prototypeSource.clientId
           ? relativePath
           : resolveSourceRelativePath(relativePath, clientId, clients);
-        const explicitPath = isExportHtml
+        const explicitPath = isContentOnlyHtml
           ? routePathFromPlatformExportManifest(exportManifest)
           : readMetaValue(source, 'prototype-path');
         const pagePath = createRoutePath(sourcePath, explicitPath);
         const sourceIdentity = `${clientId}/${prototypeSource.root}/${relativePath}`;
         const manifestPageKey =
-          isExportHtml && exportManifest?.pageKey ? normalizeSlug(exportManifest.pageKey) : '';
+          isContentOnlyHtml && exportManifest?.pageKey ? normalizeSlug(exportManifest.pageKey) : '';
         const pageName = manifestPageKey
           ? `html-${manifestPageKey}-${shortHash(sourceIdentity)}`
           : `html-${shortHash(sourceIdentity)}`;
         const sectionCandidates = [
           readMetaValue(source, 'prototype-section'),
-          isExportHtml ? String(exportManifest?.menuSection || '').trim() : '',
+          isContentOnlyHtml ? String(exportManifest?.menuSection || '').trim() : '',
           prototypeSource.section,
           String(item.manifest.prototype.section || '').trim(),
         ];
@@ -318,21 +318,21 @@ export async function scanHtmlPrototypePages(projectsRoot) {
         const page = {
           path: pagePath,
           name: pageName,
-          title: isExportHtml
+          title: isContentOnlyHtml
             ? exportManifest?.pageTitle || exportManifest?.menuTitle || readHtmlTitle(source, absolutePath)
             : readHtmlTitle(source, absolutePath),
           sourceType: 'html-direct',
           source: relativePath,
           sourceRoot: prototypeSource.clientId || '_',
-          renderMode: isExportHtml ? 'content-only' : 'full',
+          renderMode: isContentOnlyHtml ? 'content-only' : 'full',
           section,
           icon:
             readMetaValue(source, 'prototype-icon') ||
-            (isExportHtml ? exportManifest?.menuIcon : '') ||
+            (isContentOnlyHtml ? exportManifest?.menuIcon : '') ||
             prototypeSource.icon ||
             'Document',
           menu:
-            isExportHtml && typeof exportManifest?.menu === 'boolean'
+            isContentOnlyHtml && typeof exportManifest?.menu === 'boolean'
               ? exportManifest.menu
               : readMetaValue(source, 'prototype-menu') !== 'false',
         };
@@ -442,7 +442,7 @@ const CONTENT_ONLY_STYLE = `
 </style>`;
 
 export function applyContentOnlyMode(source) {
-  if (!isPlatformExportHtml(source) || /id=["']platform-html-content-only["']/i.test(source)) return source;
+  if (!isHtmlPrototypeContentSource(source) || /id=["']platform-html-content-only["']/i.test(source)) return source;
   if (/<\/head>/i.test(source)) return source.replace(/<\/head>/i, `${CONTENT_ONLY_STYLE}</head>`);
   return `${CONTENT_ONLY_STYLE}${source}`;
 }

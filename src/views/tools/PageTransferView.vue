@@ -204,6 +204,15 @@
                     <el-option v-for="icon in allowedIcons" :key="icon" :label="icon" :value="icon" />
                   </el-select>
                 </el-form-item>
+                <el-form-item label="HTML 文件名" class="form-grid__wide">
+                  <el-input
+                    v-model="importForm.fileName"
+                    placeholder="默认保留上传文件名，例如 dashboard.html"
+                    maxlength="160"
+                    show-word-limit
+                  />
+                  <span class="field-hint">导出时将使用这个文件名；不填写扩展名会自动补上 .html。</span>
+                </el-form-item>
               </el-form>
               <div class="manifest-preview">
                 <span>原型页面</span><strong>{{ inspection.manifest.pageTitle }}</strong> <span>页面类型</span
@@ -325,7 +334,7 @@
             <el-input
               v-model="packageName"
               class="package-name"
-              placeholder="演示包名称，例如 公务车功能演示"
+              placeholder="多页 ZIP 文件夹名称（单页按页面名导出）"
             />
             <el-button
               type="primary"
@@ -402,6 +411,7 @@ const importForm = reactive({
   menuSection: '',
   menuTitle: '',
   menuIcon: 'Document',
+  fileName: '',
 });
 const allowedIcons = [
   'Calendar',
@@ -528,6 +538,13 @@ watch(replacePagePath, (pagePath) => {
   importForm.menuSection = page.section || importSections.value[0]?.id || '';
   importForm.menuTitle = page.title || '';
   importForm.menuIcon = page.icon || 'Document';
+  if (!importForm.fileName.trim() || importForm.fileName === sourceFile.value?.name) {
+    importForm.fileName =
+      page.prototype?.fileName ||
+      page.prototype?.htmlFileName ||
+      page.prototype?.sourceFile ||
+      (page.title ? `${page.title}.html` : `${page.path}.html`);
+  }
 });
 
 watch(importMode, (mode) => {
@@ -539,6 +556,7 @@ async function handleFileChange(event) {
   if (!file) return;
   sourceFile.value = file;
   sourceHtml.value = await file.text();
+  importForm.fileName = file.name;
   inspection.value = null;
   importResult.value = null;
   importError.value = '';
@@ -574,6 +592,9 @@ async function inspectSource() {
         : importSections.value[0]?.id || '';
       importForm.menuTitle = manifest.menuTitle || manifest.pageTitle || '';
       importForm.menuIcon = manifest.menuIcon || 'Document';
+      if (!importForm.fileName.trim()) {
+        importForm.fileName = manifest.fileName || sourceFile.value?.name || '';
+      }
     }
   } catch (error) {
     importError.value = error.message;
@@ -584,6 +605,10 @@ async function inspectSource() {
 }
 
 async function importSource() {
+  if (!importForm.fileName.trim()) {
+    importError.value = '请填写 HTML 文件名。';
+    return;
+  }
   if (importMode.value === 'replace' && !replacePagePath.value) {
     importError.value = '请选择要替换的原页面。';
     return;
@@ -623,6 +648,7 @@ async function importSource() {
           replacePagePath: replacePagePath.value,
           projectId: selectedProjectId.value,
           sourceFile: sourceFile.value?.name || null,
+          fileName: importForm.fileName.trim(),
         },
       }),
     });
@@ -1020,6 +1046,13 @@ function reloadProject() {
 }
 .form-grid__wide {
   grid-column: 1 / -1;
+}
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--app-color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 .manifest-preview {
   display: grid;

@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 const PAGE_PATH_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ENTRY_KINDS = new Set(['client', 'docs', 'mobile']);
+const HTML_EXTENSIONS = new Set(['.html', '.htm']);
 const PUBLIC_DIRECTORIES = new Set(['.platform', 'assets', 'data', 'mobile']);
 const PUBLIC_EXTENSIONS = new Set([
   '.avif',
@@ -125,6 +126,54 @@ async function fileExists(filePath, type = 'file') {
     .catch(() => false);
 }
 
+function prototypeRootsForClient(manifest, projectRoot, clientId) {
+  const configuredClients = manifest.prototype?.clients;
+  const entries = Array.isArray(configuredClients)
+    ? configuredClients.map((item) => [item?.clientId || item?.id, item])
+    : configuredClients && typeof configuredClients === 'object'
+      ? Object.entries(configuredClients)
+      : [];
+
+  if (entries.length) {
+    return entries
+      .filter(([configuredClientId, item]) => {
+        return (
+          item?.enabled !== false &&
+          String(item?.clientId || configuredClientId || '').trim() === clientId &&
+          String(item?.root || '').trim()
+        );
+      })
+      .map(([, item]) => path.resolve(projectRoot, item.root));
+  }
+
+  if (!manifest.prototype?.enabled || !manifest.prototype?.root) return [];
+  const configuredClientId = String(manifest.prototype.client || '').trim();
+  if (configuredClientId && configuredClientId !== clientId) return [];
+  return [path.resolve(projectRoot, manifest.prototype.root)];
+}
+
+async function hasExternalPrototypePage(manifest, projectRoot, clientId, expectedPath) {
+  const expected = String(expectedPath || '').trim().toLowerCase();
+  if (!expected || !manifest.prototype?.enabled) return false;
+
+  async function containsHtmlRoute(root) {
+    const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      const target = path.join(root, entry.name);
+      if (entry.isDirectory() && (await containsHtmlRoute(target))) return true;
+      if (!entry.isFile() || !HTML_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
+      const routeName = path.basename(entry.name, path.extname(entry.name)).toLowerCase();
+      if (routeName === expected) return true;
+    }
+    return false;
+  }
+
+  for (const root of prototypeRootsForClient(manifest, projectRoot, clientId)) {
+    if (await containsHtmlRoute(root)) return true;
+  }
+  return false;
+}
+
 async function validateProjectResources(manifest, projectRoot) {
   const errors = [];
   for (const [label, resourcePath] of [
@@ -231,7 +280,11 @@ export async function validateProjectDefinitions(manifest, projectRoot, definiti
         errors.push(`页面文件不存在：${page.view}。`);
       }
     }
-    if (client.defaultPage && !pagePaths.has(client.defaultPage)) {
+    if (
+      client.defaultPage &&
+      !pagePaths.has(client.defaultPage) &&
+      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.defaultPage))
+    ) {
       errors.push(`客户端 ${client.id} 的 defaultPage 未登记：${client.defaultPage}。`);
     }
     if (manifest.features?.pageTransfer) {

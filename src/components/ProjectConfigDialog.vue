@@ -136,7 +136,13 @@
                 </div>
                 <div class="client-config-card__actions">
                   <el-checkbox v-model="client.entryEnabled">在项目首页展示</el-checkbox>
-                  <el-button v-if="client.isNew" link type="danger" @click="removeClient(client)">
+                  <el-button
+                    link
+                    type="danger"
+                    :disabled="form.clients.length <= 1"
+                    :title="form.clients.length <= 1 ? '项目至少需要保留一个客户端' : '移除客户端配置'"
+                    @click="removeClient(client)"
+                  >
                     移除
                   </el-button>
                 </div>
@@ -315,7 +321,7 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Upload } from '@element-plus/icons-vue';
 
 import { getProjectAssetUrl } from '../services/project-assets';
@@ -597,8 +603,21 @@ function addClient() {
   activeConfigTab.value = 'clients';
 }
 
-function removeClient(client) {
-  if (!client.isNew) return;
+async function removeClient(client) {
+  if (form.clients.length <= 1) {
+    ElMessage.warning('项目至少需要保留一个客户端。');
+    return;
+  }
+
+  if (!client.isNew) {
+    const confirmed = await ElMessageBox.confirm(
+      `移除“${client.name || client.id}”后，它将不再作为项目客户端入口显示；对应页面文件和页面定义不会被删除。`,
+      '确认移除客户端？',
+      { confirmButtonText: '确认移除', cancelButtonText: '取消', type: 'warning' },
+    ).catch(() => false);
+    if (!confirmed) return;
+  }
+
   const index = form.clients.indexOf(client);
   if (index >= 0) form.clients.splice(index, 1);
   syncPrototypeClientMap();

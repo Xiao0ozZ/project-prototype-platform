@@ -36,3 +36,16 @@ export function isPlatformExportHtml(source) {
     extractEmbeddedScript(source, 'prototype-editable-template') !== null,
   );
 }
+
+/**
+ * 历史页面转换器生成的 HTML 也遵循当前模板的页面清单约定，但不包含
+ * “导出格式”和可编辑源码块。它们仍然可以安全地放进工程外壳中只展示内容区。
+ */
+export function isTemplatePrototypeHtml(source) {
+  const manifest = readPlatformExportManifest(source);
+  return Boolean(manifest?.templateVersion === 1);
+}
+
+export function isHtmlPrototypeContentSource(source) {
+  return isPlatformExportHtml(source) || isTemplatePrototypeHtml(source);
+}

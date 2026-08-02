@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { scanProjectPackages } from '../../plugins/project-packages-plugin.js';
-import { scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
+import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
 
 const temporaryRoots = [];
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -110,7 +110,8 @@ describe('project package scanner', () => {
         id: 'sample-project',
         name: '示例项目',
         pageDefinitions: 'page-definitions.js',
-        clients: [{ id: 'admin', name: '管理端', defaultPage: 'home' }],
+        clients: [{ id: 'admin', name: '管理端', defaultPage: 'dashboard' }],
+        entries: [{ id: 'admin', kind: 'client', clientId: 'admin', name: '管理端' }],
         prototype: { enabled: true, root: prototypeRoot },
       }),
       'utf8',
@@ -125,6 +126,9 @@ describe('project package scanner', () => {
       source: 'admin/dashboard.html',
       section: 'workspace',
     });
+    const packageScan = await scanProjectPackages(projectsRoot);
+    expect(packageScan.invalidProjects).toEqual([]);
+    expect(packageScan.projects.map((project) => project.id)).toEqual(['sample-project']);
   });
 
   it('scans a separate HTML source folder for each client', async () => {
@@ -195,5 +199,53 @@ describe('project package scanner', () => {
       icon: 'DataBoard',
       menu: false,
     });
+  });
+
+  it('treats templateized legacy HTML as content-only shell pages', async () => {
+    const { projectsRoot, packageRoot } = await createProjectFixture();
+    const prototypeRoot = path.join(path.dirname(projectsRoot), 'templateized-html');
+    await fs.mkdir(prototypeRoot, { recursive: true });
+    const source = `<!doctype html>
+<html><head><title>旧页面标题</title></head><body>
+  <aside class="prototype-sidebar">旧页面菜单</aside>
+  <header class="prototype-topbar">旧页面顶栏</header>
+  <main class="prototype-main"><h1>旧页面内容</h1></main>
+  <script id="prototype-page-manifest" type="application/json">${JSON.stringify({
+    templateVersion: 1,
+    pageKey: 'legacy-dashboard',
+    pageTitle: '模板化仪表板',
+    menuTitle: '模板化菜单',
+    menuSection: 'workspace',
+    menuIcon: 'DataBoard',
+    menu: true,
+    client: 'admin',
+    routePath: '/admin/legacy-dashboard',
+  })}</script>
+</body></html>`;
+    await fs.writeFile(path.join(prototypeRoot, 'legacy-dashboard.html'), source, 'utf8');
+    await fs.writeFile(
+      path.join(packageRoot, 'project.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: 'sample-project',
+        name: '示例项目',
+        pageDefinitions: 'page-definitions.js',
+        clients: [{ id: 'admin', name: '管理端', defaultPage: 'home' }],
+        prototype: { enabled: true, root: prototypeRoot },
+      }),
+      'utf8',
+    );
+
+    const result = await scanHtmlPrototypePages(projectsRoot);
+    expect(result.projects['sample-project'].admin[0]).toMatchObject({
+      path: 'legacy-dashboard',
+      title: '模板化仪表板',
+      sourceType: 'html-direct',
+      renderMode: 'content-only',
+      section: 'workspace',
+      icon: 'DataBoard',
+      menu: true,
+    });
+    expect(applyContentOnlyMode(source)).toContain('id="platform-html-content-only"');
   });
 });

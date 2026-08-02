@@ -119,6 +119,7 @@
 
       <nav
         v-if="(!embedded || outlineVisible) && (headings.length || associatedPages.length)"
+        ref="outlineRef"
         class="docs-outline"
         :aria-label="t('docs.outline')"
       >
@@ -158,6 +159,7 @@
           v-for="heading in headings"
           :key="heading.id"
           type="button"
+          :data-heading-id="heading.id"
           :class="[`outline-level-${heading.level}`, { 'is-active': activeHeadingId === heading.id }]"
           :aria-current="activeHeadingId === heading.id ? 'location' : undefined"
           @click="scrollToHeading(heading.id)"
@@ -261,6 +263,7 @@ const desktopTreeRef = ref(null);
 const mobileTreeRef = ref(null);
 const readerScrollRef = ref(null);
 const articleRef = ref(null);
+const outlineRef = ref(null);
 const activeHeadingId = ref('');
 const mobileDirectoryVisible = ref(false);
 const relatedPagesExpanded = ref(false);
@@ -274,6 +277,8 @@ let activeRenderId = 0;
 let stopDocumentsChanged = () => {};
 let anchorHighlightFrame = 0;
 let anchorHighlightTimer = 0;
+let outlineScrollFrame = 0;
+let pendingOutlineHeadingId = '';
 let mermaidApi;
 
 function sortTree(nodes) {
@@ -562,7 +567,9 @@ function updateActiveHeading() {
   headingElements.forEach((heading) => {
     if (heading.getBoundingClientRect().top <= readingLine) currentHeading = heading;
   });
+  if (activeHeadingId.value === currentHeading.id) return;
   activeHeadingId.value = currentHeading.id;
+  scheduleActiveOutlineVisibility(currentHeading.id);
 }
 
 function handleArticleClick(event) {
@@ -598,9 +605,26 @@ function scrollToDocumentAnchor(anchor) {
 
 function scrollToHeading(headingId) {
   activeHeadingId.value = headingId;
+  scheduleActiveOutlineVisibility(headingId);
   articleRef.value
     ?.querySelector(`#${CSS.escape(headingId)}`)
     ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function scheduleActiveOutlineVisibility(headingId) {
+  pendingOutlineHeadingId = headingId;
+  if (outlineScrollFrame) return;
+
+  outlineScrollFrame = window.requestAnimationFrame(() => {
+    outlineScrollFrame = 0;
+    const currentHeadingId = pendingOutlineHeadingId;
+    pendingOutlineHeadingId = '';
+    if (!currentHeadingId || !outlineRef.value) return;
+
+    outlineRef.value
+      .querySelector(`[data-heading-id="${CSS.escape(currentHeadingId)}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
 }
 
 function clearDocumentSearch() {
@@ -694,6 +718,9 @@ onBeforeUnmount(() => {
   activeRenderId += 1;
   window.cancelAnimationFrame(anchorHighlightFrame);
   window.clearTimeout(anchorHighlightTimer);
+  window.cancelAnimationFrame(outlineScrollFrame);
+  outlineScrollFrame = 0;
+  pendingOutlineHeadingId = '';
 });
 </script>
 
