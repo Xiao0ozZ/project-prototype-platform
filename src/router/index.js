@@ -1,184 +1,145 @@
-import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
-import ProjectUnavailableView from '../views/system/ProjectUnavailableView.vue';
-import ClientLoginView from '../views/auth/ClientLoginView.vue';
-import MobilePrototypeView from '../views/mobile/MobilePrototypeView.vue';
-import ProjectClientLayout from '../layouts/ProjectClientLayout.vue';
-import { createProjectPageRoutes, getProject, installedProjects } from '../config/project-packages';
+// 可插拔项目包关联关系
+import { installedProjects } from '../config/project-packages';
 import { projectConfig } from '../config/project.config';
-import { applyProjectTheme } from '../config/theme';
-
-function createInstalledProjectRoutes() {
-  return installedProjects.flatMap((project) => {
-    const routes = [
-      {
-        path: `/p/${project.id}`,
-        name: `${project.id}-home`,
-        meta: { projectId: project.id },
-        redirect: { name: 'home', query: { project: project.id } },
-      },
-    ];
-
-    for (const client of project.clients) {
-      routes.push(
-        {
-          path: `/p/${project.id}/${client.id}/login`,
-          name: `${project.id}-${client.id}-login`,
-          component: ClientLoginView,
-          props: { projectId: project.id, clientId: client.id },
-          meta: { title: `${client.name}登录`, projectId: project.id, clientId: client.id },
-        },
-        {
-          path: `/p/${project.id}/${client.id}`,
-          component: ProjectClientLayout,
-          props: { projectId: project.id, clientId: client.id },
-          redirect: `/p/${project.id}/${client.id}/login`,
-          children: createProjectPageRoutes(project, client),
-        },
-      );
-    }
-
-    if (project.mobile?.enabled) {
-      routes.push({
-        path: `/p/${project.id}/mobile`,
-        name: `${project.id}-mobile`,
-        component: MobilePrototypeView,
-        props: { projectId: project.id },
-        meta: { title: '移动端原型', projectId: project.id },
-      });
-    }
-    if (project.docs?.enabled) {
-      routes.push({
-        path: `/p/${project.id}/docs`,
-        name: `${project.id}-docs`,
-        component: () => import('../views/docs/DocsCenterView.vue'),
-        props: { projectId: project.id },
-        meta: { title: '文档中心', projectId: project.id },
-      });
-    }
-    return routes;
-  });
-}
-
-function createLegacyProjectRedirects() {
-  const project = installedProjects.find((item) => item.compatibility?.legacyRoutes);
-  if (!project) return [];
-  const redirects = project.clients.map((client) => ({
-    path: `/${client.id}/:legacyPath(.*)*`,
-    meta: { projectId: project.id },
-    redirect: (to) => {
-      const rawPath = Array.isArray(to.params.legacyPath)
-        ? to.params.legacyPath.join('/')
-        : String(to.params.legacyPath || '');
-      return {
-        path: `/p/${project.id}/${client.id}/${rawPath || 'login'}`,
-        query: to.query,
-        hash: to.hash,
-      };
-    },
-  }));
-  if (project.mobile?.enabled) {
-    redirects.push({
-      path: '/mobile',
-      meta: { projectId: project.id },
-      redirect: `/p/${project.id}/mobile`,
-    });
-  }
-  if (project.docs?.enabled) {
-    redirects.push({
-      path: '/docs',
-      meta: { projectId: project.id },
-      redirect: (to) => ({ path: `/p/${project.id}/docs`, query: to.query, hash: to.hash }),
-    });
-  }
-  return redirects;
-}
 
 const routes = [
+  // 核心独立新首页
   {
     path: '/',
-    name: 'home',
+    name: 'clean-home',
+    component: () => import('../views/HomeViewClean.vue'),
+    meta: { title: '项目展示中心', transition: 'platform' },
+  },
+
+  // 连续 A 至 K 独立皮肤/排版架构方案路由 (方案 A 确定为苹果液体玻璃)
+  {
+    path: '/variant-a',
+    name: 'variant-a',
+    component: () => import('../views/home-variants/HomeViewAppleGlass.vue'),
+    meta: { title: '方案 A：苹果液体玻璃', transition: 'platform' },
+  },
+  {
+    path: '/variant-b',
+    name: 'variant-b',
+    component: () => import('../views/home-variants/HomeViewStageHub.vue'),
+    meta: { title: '方案 B：全屏展台舞台', transition: 'platform' },
+  },
+  {
+    path: '/variant-c',
+    name: 'variant-c',
+    component: () => import('../views/home-variants/HomeViewSplitAccordion.vue'),
+    meta: { title: '方案 C：全屏双分屏手风琴', transition: 'platform' },
+  },
+  {
+    path: '/variant-d',
+    name: 'variant-d',
+    component: () => import('../views/home-variants/HomeViewAlabasterGallery.vue'),
+    meta: { title: '方案 D：羊脂白艺术画廊', transition: 'platform' },
+  },
+  {
+    path: '/variant-e',
+    name: 'variant-e',
+    component: () => import('../views/home-variants/HomeViewOrbitalCompass.vue'),
+    meta: { title: '方案 E：3D 环形星轨罗盘', transition: 'platform' },
+  },
+  {
+    path: '/variant-f',
+    name: 'variant-f',
+    component: () => import('../views/home-variants/HomeViewParallaxTheater.vue'),
+    meta: { title: '方案 F：3D 视差胶囊巨幕', transition: 'platform' },
+  },
+  {
+    path: '/variant-g',
+    name: 'variant-g',
+    component: () => import('../views/home-variants/HomeViewInterstellarWarp.vue'),
+    meta: { title: '方案 G：星际穿越', transition: 'platform' },
+  },
+  {
+    path: '/variant-h',
+    name: 'variant-h',
+    component: () => import('../views/home-variants/HomeViewBlackHoleGravity.vue'),
+    meta: { title: '方案 H：黑洞引力场', transition: 'platform' },
+  },
+  {
+    path: '/variant-i',
+    name: 'variant-i',
+    component: () => import('../views/home-variants/HomeViewQuantumCube.vue'),
+    meta: { title: '方案 I：3D 量子赛博魔方', transition: 'platform' },
+  },
+  {
+    path: '/variant-j',
+    name: 'variant-j',
+    component: () => import('../views/home-variants/HomeViewYinYangOrbit.vue'),
+    meta: { title: '方案 J：太极双轨矩阵', transition: 'platform' },
+  },
+  {
+    path: '/variant-k',
+    name: 'variant-k',
+    component: () => import('../views/home-variants/HomeViewCyberCockpit.vue'),
+    meta: { title: '方案 K：3D 赛博驾驶舱', transition: 'platform' },
+  },
+  {
+    path: '/home-legacy',
+    name: 'home-legacy',
     component: () => import('../views/HomeView.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
+    meta: { title: '旧版平台主页', transition: 'platform' },
   },
-  {
-    path: '/home-v5-preview',
-    name: 'home-v5-preview',
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: '首页候选稿', transition: 'platform' },
-  },
-  {
-    path: '/tools/console',
-    name: 'tools-console',
-    component: () => import('../views/tools/ConsoleView.vue'),
-    meta: { title: '控制台', transition: 'platform', theme: 'platform' },
-  },
-  {
-    path: '/components',
-    name: 'design-system',
-    component: () => import('../views/DesignSystemView.vue'),
-    meta: { title: '组件规范', transition: 'platform', theme: 'platform' },
-  },
-  {
-    path: '/tools/page-transfer',
-    name: 'page-transfer',
-    component: () => import('../views/tools/PageTransferView.vue'),
-    meta: { title: '页面导入导出', transition: 'platform', theme: 'platform' },
-  },
+
+  // 研发与工具链管理页面
   {
     path: '/tools/projects',
-    name: 'project-packages-status',
+    name: 'project-packages',
     component: () => import('../views/tools/ProjectPackagesView.vue'),
-    meta: { title: '项目包状态', transition: 'platform', theme: 'platform' },
+    meta: { title: '项目包状态', transition: 'platform' },
   },
   {
     path: '/tools/project-routes',
     name: 'project-routes',
     component: () => import('../views/tools/ProjectRoutesView.vue'),
-    meta: { title: '路由菜单管理', transition: 'platform', theme: 'platform' },
-  },
-  ...createInstalledProjectRoutes(),
-  ...createLegacyProjectRedirects(),
-  {
-    path: '/p/:projectId/:pathMatch(.*)*',
-    name: 'project-unavailable',
-    component: ProjectUnavailableView,
-    props: (route) => ({ projectId: route.params.projectId }),
-    meta: { title: '项目不可用' },
+    meta: { title: '路由与页面映射', transition: 'platform' },
   },
   {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: () => import('../views/system/NotFoundView.vue'),
-    meta: { title: '页面不存在' },
+    path: '/tools/page-transfer',
+    name: 'page-transfer',
+    component: () => import('../views/tools/PageTransferView.vue'),
+    meta: { title: '页面导入与导出', transition: 'platform' },
+  },
+  {
+    path: '/components',
+    name: 'component-catalog',
+    component: () => import('../views/DesignSystemView.vue'),
+    meta: { title: '组件规范目录', transition: 'platform' },
   },
 ];
 
-const isExportRuntime = typeof window !== 'undefined' && Boolean(window.__PROJECT_EXPORT__);
+// 动态追加各包模块路由
+installedProjects.forEach((project) => {
+  if (Array.isArray(project.routes)) {
+    project.routes.forEach((routeItem) => {
+      routes.push({
+        path: routeItem.path,
+        name: routeItem.name || `project-${project.id}-${routeItem.path.replace(/\//g, '-')}`,
+        component: routeItem.component,
+        meta: {
+          title: routeItem.meta?.title || project.name,
+          projectId: project.id,
+          transition: 'project',
+          ...(routeItem.meta || {}),
+        },
+      });
+    });
+  }
+});
+
 const router = createRouter({
-  history: isExportRuntime ? createWebHashHistory() : createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes,
 });
 
-function isHiddenProject(projectId) {
-  return getProject(projectId)?.homepage?.visible === false;
-}
-
-router.beforeEach((to) => {
-  const projectId = String(to.meta.projectId || to.params.projectId || '');
-  if (isHiddenProject(projectId)) return { name: 'home' };
-
-  const requestedProjectId = typeof to.query.project === 'string' ? to.query.project : '';
-  if (to.name === 'home' && isHiddenProject(requestedProjectId)) return { name: 'home' };
-
-  return true;
-});
-
 router.afterEach((to) => {
-  const queryProjectId = typeof to.query.project === 'string' ? to.query.project : '';
-  const project = getProject(to.meta.projectId || queryProjectId);
-  applyProjectTheme(to.meta.theme === 'platform' ? null : project);
-  document.title = `${to.meta.title || projectConfig.platformTitle} - ${project?.name || projectConfig.name}`;
+  document.title = to.meta.title ? `${to.meta.title} - ${projectConfig.name}` : projectConfig.name;
 });
 
 export default router;
