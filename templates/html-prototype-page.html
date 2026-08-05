@@ -41,7 +41,8 @@
       HTML、Vue 与交互规则
       - data-business-content 内部可整体替换为列表、表单、详情、看板、控制台、地图或自定义布局，不保留无关示例结构。
       - 页面状态、计算属性、方法和模拟数据只能写在 PAGE_LOGIC 中；使用 Vue 3 Composition API，不污染 window。
-      - 多页面之间使用标准相对链接，例如 <a href="./目标页面.html">；禁止使用 window.location 实现页面跳转。
+      - SHELL_NAV 默认只作为视觉导航示例，不得添加指向不存在文件的链接或虚构跳转路径。
+      - 只有确认目标 HTML 文件真实存在且确实需要跳转时，才使用标准相对链接，例如 <a href="./目标页面.html">；禁止使用 window.location 实现页面跳转。
       - 禁止 onclick 等内联事件、直接操作 DOM、jQuery、未声明依赖和重复初始化 Vue。
       - Element Plus 及自定义组件必须显式闭合；表单控件使用可见标签或 aria-label，图标按钮同时提供 Tooltip 和 aria-label。
       - 紧凑工具操作可使用图标按钮；查看、编辑、删除、审核、停用等业务操作使用清晰文字，不只依赖图标或颜色。
@@ -68,10 +69,10 @@
     <!-- PROTOTYPE_BASE_STYLE_START -->
     <style>
       :root {
-        --app-color-primary: #2563eb;
-        --app-color-primary-hover: #1d4ed8;
-        --app-color-primary-active: #1e40af;
-        --app-color-primary-shadow: rgb(37 99 235 / 18%);
+        --app-color-primary: #409eff;
+        --app-color-primary-hover: #79bbff;
+        --app-color-primary-active: #337ecc;
+        --app-color-primary-shadow: rgb(64 158 255 / 18%);
         --app-color-success: #16a34a;
         --app-color-warning: #f59e0b;
         --app-color-danger: #dc2626;
@@ -109,6 +110,12 @@
         --app-table-row-height: 48px;
         --app-panel-header-height: 52px;
         --el-color-primary: var(--app-color-primary);
+        --el-color-primary-light-3: #79bbff;
+        --el-color-primary-light-5: #a0cfff;
+        --el-color-primary-light-7: #c6e2ff;
+        --el-color-primary-light-8: #d9ecff;
+        --el-color-primary-light-9: #ecf5ff;
+        --el-color-primary-dark-2: #337ecc;
         --el-font-family: var(--app-font-family-sans);
       }
 
@@ -153,25 +160,27 @@
       .prototype-sidebar {
         flex: 0 0 256px;
         width: 256px;
-        padding: 18px 12px;
-        overflow-y: auto;
+        min-height: 0;
+        overflow: hidden;
         color: rgb(255 255 255 / 86%);
         background: var(--app-color-primary);
       }
 
       .prototype-brand {
+        flex: 0 0 64px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        height: 36px;
-        padding: 0 12px;
-        margin-bottom: 24px;
-        border: 0;
+        height: 64px;
+        padding: 0 24px;
+        margin: 0;
+        border-bottom: 1px solid rgb(255 255 255 / 10%);
         border-radius: 0;
         background: transparent;
-        font-size: 17px;
+        font-size: 20px;
         font-weight: 700;
+        letter-spacing: 0.01em;
       }
 
       .prototype-brand > span {
@@ -191,24 +200,82 @@
         white-space: nowrap;
       }
 
+      .prototype-menu {
+        flex: 1;
+        min-height: 0;
+        padding: 24px 12px;
+        overflow-y: auto;
+        scrollbar-color: rgb(255 255 255 / 26%) transparent;
+        scrollbar-width: thin;
+      }
+
+      .prototype-menu::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .prototype-menu::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .prototype-menu::-webkit-scrollbar-thumb {
+        background: rgb(255 255 255 / 26%);
+        border-radius: 999px;
+      }
+
       .prototype-menu-group {
-        margin: 20px 12px 8px;
+        position: relative;
+        margin: 0 12px 8px;
+        font-weight: 600;
         font-size: 12px;
-        color: rgb(255 255 255 / 56%);
+        line-height: 18px;
+        letter-spacing: 0.02em;
+        color: rgb(255 255 255 / 48%);
+      }
+
+      .prototype-menu-item + .prototype-menu-group {
+        padding-top: 24px;
+        margin-top: 12px;
+      }
+
+      .prototype-menu-item + .prototype-menu-group::before {
+        position: absolute;
+        top: 0;
+        right: -12px;
+        left: -12px;
+        height: 1px;
+        content: '';
+        background: rgb(255 255 255 / 10%);
       }
 
       .prototype-menu-item {
         display: flex;
+        min-height: 40px;
         gap: 10px;
         align-items: center;
-        height: 40px;
-        padding: 0 12px;
+        padding: 10px 12px;
         margin-bottom: 4px;
-        border-radius: 6px;
-        color: inherit;
+        border-radius: 8px;
+        color: rgb(255 255 255 / 72%);
+        line-height: 20px;
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 500;
         text-decoration: none;
+        transition: background-color 160ms ease, color 160ms ease;
+      }
+
+      .prototype-menu-icon {
+        flex: 0 0 20px;
+        width: 20px;
+        height: 20px;
+        color: rgb(255 255 255 / 72%);
+        font-size: 20px;
+      }
+
+      .prototype-menu-item > span:last-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .prototype-menu-item:hover {
@@ -219,6 +286,22 @@
       .prototype-menu-item.is-active {
         color: #fff;
         background: rgb(255 255 255 / 17%);
+      }
+
+      .prototype-menu-item:hover .prototype-menu-icon,
+      .prototype-menu-item.is-active .prototype-menu-icon {
+        color: #fff;
+      }
+
+      .prototype-menu-item:focus-visible {
+        outline: 2px solid rgb(255 255 255 / 84%);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .prototype-menu-item {
+          transition: none;
+        }
       }
 
       .prototype-workspace {
@@ -444,19 +527,28 @@
           <span data-shell-project-name>业务管理中心</span>
           <small data-shell-client-name>管理端</small>
         </div>
-        <!-- [AI-EDIT] SHELL_NAV_START: 按实际文件更新导航名称、相对链接和当前页状态。 -->
-        <div class="prototype-menu-group">核心工作区</div>
-        <a class="prototype-menu-item" href="./首页.html">工作台首页</a>
-        <div class="prototype-menu-group">业务管理</div>
-        <a
-          class="prototype-menu-item is-active"
-          data-shell-page-title
-          href="./资料管理.html"
-          aria-current="page"
-          >资料管理</a
-        >
-        <a class="prototype-menu-item" href="./业务配置.html">业务配置</a>
-        <!-- SHELL_NAV_END -->
+        <nav class="prototype-menu" data-prototype-shell="navigation" aria-label="页面导航">
+          <!-- [AI-EDIT] SHELL_NAV_START: 默认只更新菜单文案和当前项状态；确认目标文件存在后再使用链接。 -->
+          <div class="prototype-menu-group">核心工作区</div>
+          <div class="prototype-menu-item" aria-disabled="true">
+            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Platform" /></el-icon>
+            <span>工作台首页</span>
+          </div>
+          <div class="prototype-menu-group">业务管理</div>
+          <div
+            class="prototype-menu-item is-active"
+            data-shell-page-title
+            aria-disabled="true"
+          >
+            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Document" /></el-icon>
+            <span>资料管理</span>
+          </div>
+          <div class="prototype-menu-item" aria-disabled="true">
+            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Setting" /></el-icon>
+            <span>业务配置</span>
+          </div>
+          <!-- SHELL_NAV_END -->
+        </nav>
       </aside>
 
       <div class="prototype-workspace">
@@ -799,6 +891,9 @@
         }
 
         return {
+          Platform: ElementPlusIconsVue.Platform,
+          Document: ElementPlusIconsVue.Document,
+          Setting: ElementPlusIconsVue.Setting,
           Search: ElementPlusIconsVue.Search,
           Refresh: ElementPlusIconsVue.Refresh,
           Plus: ElementPlusIconsVue.Plus,

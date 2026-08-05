@@ -14,6 +14,7 @@ function createInstalledProjectRoutes() {
       {
         path: `/p/${project.id}`,
         name: `${project.id}-home`,
+        meta: { projectId: project.id },
         redirect: { name: 'home', query: { project: project.id } },
       },
     ];
@@ -64,6 +65,7 @@ function createLegacyProjectRedirects() {
   if (!project) return [];
   const redirects = project.clients.map((client) => ({
     path: `/${client.id}/:legacyPath(.*)*`,
+    meta: { projectId: project.id },
     redirect: (to) => {
       const rawPath = Array.isArray(to.params.legacyPath)
         ? to.params.legacyPath.join('/')
@@ -75,10 +77,17 @@ function createLegacyProjectRedirects() {
       };
     },
   }));
-  if (project.mobile?.enabled) redirects.push({ path: '/mobile', redirect: `/p/${project.id}/mobile` });
+  if (project.mobile?.enabled) {
+    redirects.push({
+      path: '/mobile',
+      meta: { projectId: project.id },
+      redirect: `/p/${project.id}/mobile`,
+    });
+  }
   if (project.docs?.enabled) {
     redirects.push({
       path: '/docs',
+      meta: { projectId: project.id },
       redirect: (to) => ({ path: `/p/${project.id}/docs`, query: to.query, hash: to.hash }),
     });
   }
@@ -149,6 +158,20 @@ const isExportRuntime = typeof window !== 'undefined' && Boolean(window.__PROJEC
 const router = createRouter({
   history: isExportRuntime ? createWebHashHistory() : createWebHistory(import.meta.env.BASE_URL),
   routes,
+});
+
+function isHiddenProject(projectId) {
+  return getProject(projectId)?.homepage?.visible === false;
+}
+
+router.beforeEach((to) => {
+  const projectId = String(to.meta.projectId || to.params.projectId || '');
+  if (isHiddenProject(projectId)) return { name: 'home' };
+
+  const requestedProjectId = typeof to.query.project === 'string' ? to.query.project : '';
+  if (to.name === 'home' && isHiddenProject(requestedProjectId)) return { name: 'home' };
+
+  return true;
 });
 
 router.afterEach((to) => {

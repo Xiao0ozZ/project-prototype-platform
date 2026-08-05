@@ -7,10 +7,10 @@ export default {
     admin: 'Admin',
   },
   home: {
-    title: 'Project Documents & Prototype Platform',
+    title: 'ViewSpec',
     description:
       'A shared platform for RIMO operations, enterprise, and mobile prototypes and product documents, supporting reviews, demonstrations, and development collaboration.',
-    platformLabel: 'Documents & Prototypes',
+    platformLabel: 'ViewSpec',
     languageLabel: 'Select language',
     entryLabel: 'Prototype portals',
     clientEntryLabel: 'Business client portals',

@@ -14,7 +14,7 @@ const props = defineProps({
   layoutMode: { type: String, default: 'split' },
 });
 
-const emit = defineEmits(['close', 'open-window', 'ready', 'update:layoutMode']);
+const emit = defineEmits(['close', 'open-window', 'ready', 'update:layout-mode']);
 const router = useRouter();
 const outlineVisible = ref(false);
 const activeDocumentPath = ref(props.documentPath);
@@ -250,7 +250,7 @@ function openDocumentWindow() {
 }
 
 function setLayoutMode(mode) {
-  emit('update:layoutMode', mode);
+  emit('update:layout-mode', mode);
 }
 
 function updateDocumentSearch() {
@@ -440,6 +440,7 @@ function moveSearchMatch(step) {
 }
 
 .prd-review-pane--overlay {
+  grid-column: 1 / -1;
   position: absolute;
   z-index: 20;
   inset: 0 0 0 auto;

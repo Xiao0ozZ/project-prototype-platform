@@ -360,7 +360,13 @@ a {
 }
 
 .locale-switch {
+  flex: 0 0 96px;
+  min-width: 96px;
   width: 96px;
+}
+
+.locale-switch .el-select__wrapper {
+  width: 100%;
 }
 
 .user-pill {
@@ -627,6 +633,15 @@ body:has(.platform-page) {
   outline-offset: 2px;
 }
 
+/* Element Plus controls already expose focus state on their wrapper. Keep the
+   inner native fields from drawing a second focus outline on top of it. */
+.el-input__inner:focus-visible,
+.el-select__input:focus-visible,
+.el-textarea__inner:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 .platform-page :where(button, [role='button'], .el-button):not(:disabled):active {
   transform: scale(0.98);
   transition-duration: var(--platform-motion-fast) !important;
@@ -763,6 +778,8 @@ body:has(.platform-page) {
   }
 
   .topbar-actions .locale-switch {
+    flex-basis: 78px;
+    min-width: 78px;
     width: 78px;
   }
 

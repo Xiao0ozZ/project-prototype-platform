@@ -842,7 +842,7 @@ export function projectPackagesPlugin({ projectsRoot }) {
         const projectEntryChange = absolutePath === root || /^[a-z][a-z0-9-]*$/i.test(relativePath);
         const bindingChange = /^([a-z][a-z0-9-]*)\/\.platform\/prd-bindings\.json$/i.exec(relativePath);
         const manifestChange =
-          /^([a-z][a-z0-9-]*)\/(?:project\.json|page-definitions\.js|\.platform\/page-prd-links\.json)$/i.test(
+          /^([a-z][a-z0-9-]*)\/(?:project\.json|page-definitions\.js|\.platform\/(?:page-prd-links|route-order)\.json)$/i.test(
             relativePath,
           );
         const viewChange = /^([a-z][a-z0-9-]*)\/views\/.+\.vue$/i.test(relativePath);

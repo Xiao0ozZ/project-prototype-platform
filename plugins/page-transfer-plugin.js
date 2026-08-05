@@ -648,6 +648,24 @@ function replaceSectionDefinitions(source, clientId, updates) {
   }, source);
 }
 
+function reorderSectionDefinitions(source, clientId, sections) {
+  const range = findClientArrayRange(source, clientId, 'sections');
+  const itemsById = new Map(
+    splitTopLevelArrayItems(source, range).map((item) => [readDefinitionProperty(item.source, 'id'), item.source]),
+  );
+  const content = sections
+    .map((section) => {
+      const current = itemsById.get(section.id);
+      return current
+        ? replaceDefinitionStringProperty(current, 'title', section.title).trim()
+        : sectionDefinitionLineFromSection(section).trim();
+    })
+    .map((item) => `      ${item}`)
+    .join('\n');
+  const replacement = content ? `\n${content}\n    ` : '\n    ';
+  return `${source.slice(0, range.start + 1)}${replacement}${source.slice(range.end)}`;
+}
+
 function sectionDefinitionLineFromSection(section) {
   return `      ${JSON.stringify({ id: section.id, title: section.title })},`;
 }
@@ -691,7 +709,7 @@ function syncSectionDefinitions(source, clientId, currentSections, targetSection
     .forEach((section) => {
       result = insertSectionDefinition(result, clientId, section);
     });
-  return result;
+  return reorderSectionDefinitions(result, clientId, targetSections);
 }
 
 function insertPageDefinition(source, clientId, page) {
@@ -832,10 +850,127 @@ async function writeDefinitions(definitionsPath, source) {
   await fsp.writeFile(definitionsPath, source, 'utf8');
 }
 
+function routeOrderConfigPath(projectPackage) {
+  return path.join(projectPackage.packageRoot, '.platform', 'route-order.json');
+}
+
+async function readRouteOrderConfig(projectPackage) {
+  try {
+    const content = await fsp.readFile(routeOrderConfigPath(projectPackage), 'utf8');
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw new Error(`路由顺序配置读取失败：${error.message}`);
+  }
+}
+
+async function writeRouteOrderConfig(projectPackage, clientId, clientConfig) {
+  const current = await readRouteOrderConfig(projectPackage);
+  const clients = {
+    ...(current.clients || {}),
+    [clientId]: clientConfig,
+  };
+  const config = {
+    ...current,
+    schemaVersion: 1,
+    clients,
+  };
+  const configPath = routeOrderConfigPath(projectPackage);
+  await fsp.mkdir(path.dirname(configPath), { recursive: true });
+  await fsp.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  return config;
+}
+
+function pageOrderKey(page) {
+  return page?.name || page?.path || '';
+}
+
+function orderClientRouteData(sections, pages, clientConfig = {}) {
+  const configuredSectionOrder = Array.isArray(clientConfig.sectionOrder)
+    ? clientConfig.sectionOrder.map((id) => String(id))
+    : [];
+  const originalSections = sections.map((section, index) => ({ section, index }));
+  const sectionRanks = new Map(configuredSectionOrder.map((id, index) => [id, index]));
+  const orderedSections = originalSections
+    .sort((left, right) => {
+      const leftRank = sectionRanks.has(left.section.id)
+        ? sectionRanks.get(left.section.id)
+        : Number.MAX_SAFE_INTEGER;
+      const rightRank = sectionRanks.has(right.section.id)
+        ? sectionRanks.get(right.section.id)
+        : Number.MAX_SAFE_INTEGER;
+      return leftRank - rightRank || left.index - right.index;
+    })
+    .map(({ section }) => section);
+  const orderedSectionRanks = new Map(orderedSections.map((section, index) => [section.id, index]));
+  const pageOrders = clientConfig.pageOrder || {};
+  const originalPages = pages.map((page, index) => ({ page, index }));
+  const orderedPages = originalPages
+    .sort((left, right) => {
+      const leftSectionRank = orderedSectionRanks.has(left.page.section)
+        ? orderedSectionRanks.get(left.page.section)
+        : Number.MAX_SAFE_INTEGER;
+      const rightSectionRank = orderedSectionRanks.has(right.page.section)
+        ? orderedSectionRanks.get(right.page.section)
+        : Number.MAX_SAFE_INTEGER;
+      if (leftSectionRank !== rightSectionRank) return leftSectionRank - rightSectionRank;
+
+      const pageOrder = Array.isArray(pageOrders[left.page.section])
+        ? pageOrders[left.page.section]
+        : [];
+      const leftPageRank = pageOrder.indexOf(pageOrderKey(left.page));
+      const rightPageRank = pageOrder.indexOf(pageOrderKey(right.page));
+      const normalizedLeftRank = leftPageRank < 0 ? Number.MAX_SAFE_INTEGER : leftPageRank;
+      const normalizedRightRank = rightPageRank < 0 ? Number.MAX_SAFE_INTEGER : rightPageRank;
+      return normalizedLeftRank - normalizedRightRank || left.index - right.index;
+    })
+    .map(({ page }) => page);
+  return { sections: orderedSections, pages: orderedPages };
+}
+
+function normalizeRouteOrder({ sections, pages, sectionOrder, pageOrder }) {
+  const validSectionIds = sections.map((section) => section.id);
+  const requestedSections = Array.isArray(sectionOrder)
+    ? sectionOrder.map((id) => String(id)).filter((id) => validSectionIds.includes(id))
+    : [];
+  const normalizedSectionOrder = [...new Set([...requestedSections, ...validSectionIds])];
+  const pageOrderBySection = {};
+
+  for (const section of sections) {
+    const validPageNames = pages
+      .filter((page) => page.section === section.id)
+      .map(pageOrderKey)
+      .filter(Boolean);
+    const requestedPages = Array.isArray(pageOrder?.[section.id])
+      ? pageOrder[section.id].map((name) => String(name)).filter((name) => validPageNames.includes(name))
+      : [];
+    pageOrderBySection[section.id] = [
+      ...new Set([...requestedPages, ...validPageNames]),
+    ];
+  }
+
+  return {
+    sectionOrder: normalizedSectionOrder,
+    pageOrder: pageOrderBySection,
+  };
+}
+
+async function htmlPagesForProject(projectRoot, projectId) {
+  const htmlPrototypeState = await scanHtmlPrototypePages(path.join(projectRoot, 'projects'));
+  return htmlPrototypeState.projects[projectId] || {};
+}
+
+function clientRouteData(projectPackage, htmlPages, clientId, routeOrder) {
+  const definition = projectPackage.definitions[clientId];
+  const pages = [...(definition?.pages || []), ...(htmlPages[clientId] || [])];
+  return orderClientRouteData(definition?.sections || [], pages, routeOrder?.clients?.[clientId]);
+}
+
 export async function listProjectRoutes({ projectRoot, projectId }) {
   const projectPackage = await loadProjectPackage(projectRoot, projectId);
-  const htmlPrototypeState = await scanHtmlPrototypePages(projectRoot);
-  const htmlPages = htmlPrototypeState.projects[projectId] || {};
+  const htmlPages = await htmlPagesForProject(projectRoot, projectId);
+  const routeOrder = await readRouteOrderConfig(projectPackage);
   return {
     project: {
       id: projectPackage.projectId,
@@ -844,13 +979,16 @@ export async function listProjectRoutes({ projectRoot, projectId }) {
     },
     clients: (projectPackage.manifest.clients || [])
       .filter((client) => projectPackage.definitions[client.id])
-      .map((client) => ({
-        id: client.id,
-        name: client.name,
-        basePath: projectPackage.definitions[client.id].basePath || `/${client.id}`,
-        sections: projectPackage.definitions[client.id].sections || [],
-        pages: [...(projectPackage.definitions[client.id].pages || []), ...(htmlPages[client.id] || [])],
-      })),
+      .map((client) => {
+        const ordered = clientRouteData(projectPackage, htmlPages, client.id, routeOrder);
+        return {
+          id: client.id,
+          name: client.name,
+          basePath: projectPackage.definitions[client.id].basePath || `/${client.id}`,
+          sections: ordered.sections,
+          pages: ordered.pages,
+        };
+      }),
     backups: await listPageBackups(projectPackage),
     sectionBackups: await listSectionBackups(projectPackage),
   };
@@ -861,6 +999,8 @@ export async function updateProjectSections({ projectRoot, target }) {
   const client = String(target.client || '').trim();
   const clientDefinition = projectPackage.definitions[client];
   if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
+  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId);
+  const allPages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
   const updates = Array.isArray(target.sections)
     ? target.sections.map((section) => ({
         id: String(section?.id || '').trim(),
@@ -884,22 +1024,31 @@ export async function updateProjectSections({ projectRoot, target }) {
   }));
   const updateIds = new Set(updates.map((section) => section.id));
   const removedSections = originalSections.filter((section) => !updateIds.has(section.id));
-  const usedRemovedSection = clientDefinition.pages.find((page) =>
+  const usedRemovedSection = allPages.find((page) =>
     removedSections.some((section) => section.id === page.section),
   );
   if (usedRemovedSection) {
     throw new Error(`分组“${usedRemovedSection.section}”仍有页面使用，请先调整页面所属分组后再删除。`);
   }
-  if (
-    updates.length === originalSections.length &&
-    updates.every(
-      (section) => section.title === originalSections.find((item) => item.id === section.id)?.title,
-    )
-  ) {
+  const sectionsChanged =
+    updates.length !== originalSections.length ||
+    updates.some((section, index) => {
+      const original = originalSections[index];
+      return !original || section.id !== original.id || section.title !== original.title;
+    });
+  if (!sectionsChanged) {
     throw new Error('菜单分组没有发生变化。');
   }
   const sourceDefinitions = await fsp.readFile(projectPackage.definitionsPath, 'utf8');
   const updatedDefinitions = syncSectionDefinitions(sourceDefinitions, client, originalSections, updates);
+  const routeOrder = await readRouteOrderConfig(projectPackage);
+  const currentClientOrder = routeOrder.clients?.[client] || {};
+  const normalizedOrder = normalizeRouteOrder({
+    sections: updates,
+    pages: allPages,
+    sectionOrder: updates.map((section) => section.id),
+    pageOrder: currentClientOrder.pageOrder,
+  });
   const backup = await createSectionBackup(projectPackage, {
     schemaVersion: 1,
     type: 'edited',
@@ -910,8 +1059,38 @@ export async function updateProjectSections({ projectRoot, target }) {
     original: originalSections,
     replacement: updates,
   });
-  await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
-  return { backupId: backup.id, sections: updates, requiresReload: true };
+  try {
+    await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
+    await writeRouteOrderConfig(projectPackage, client, normalizedOrder);
+  } catch (error) {
+    await writeDefinitions(projectPackage.definitionsPath, sourceDefinitions).catch(() => {});
+    throw error;
+  }
+  return { backupId: backup.id, sections: updates, order: normalizedOrder, requiresReload: true };
+}
+
+export async function updateProjectRouteOrder({ projectRoot, target }) {
+  const projectPackage = await loadProjectPackage(projectRoot, target.projectId);
+  const client = String(target.client || '').trim();
+  const clientDefinition = projectPackage.definitions[client];
+  if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
+
+  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId);
+  const pages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
+  const currentConfig = await readRouteOrderConfig(projectPackage);
+  const currentClientOrder = currentConfig.clients?.[client] || {};
+  const normalizedOrder = normalizeRouteOrder({
+    sections: clientDefinition.sections || [],
+    pages,
+    sectionOrder: target.sectionOrder || currentClientOrder.sectionOrder,
+    pageOrder: target.pageOrder || currentClientOrder.pageOrder,
+  });
+  await writeRouteOrderConfig(projectPackage, client, normalizedOrder);
+  return {
+    client,
+    order: normalizedOrder,
+    requiresReload: true,
+  };
 }
 
 export async function restoreProjectSections({ projectRoot, target }) {
@@ -938,10 +1117,22 @@ export async function restoreProjectSections({ projectRoot, target }) {
     currentSections,
     metadata.original,
   );
-  await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
+  const routeOrder = await readRouteOrderConfig(projectPackage);
+  const currentClientOrder = routeOrder.clients?.[metadata.client] || {};
+  const restoredOrder = {
+    ...currentClientOrder,
+    sectionOrder: metadata.original.map((section) => section.id),
+  };
+  try {
+    await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
+    await writeRouteOrderConfig(projectPackage, metadata.client, restoredOrder);
+  } catch (error) {
+    await writeDefinitions(projectPackage.definitionsPath, sourceDefinitions).catch(() => {});
+    throw error;
+  }
   metadata.restoredAt = new Date().toISOString();
   await fsp.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
-  return { sections: metadata.original, requiresReload: true };
+  return { sections: metadata.original, order: restoredOrder, requiresReload: true };
 }
 
 export async function createProjectRoute({ projectRoot, target }) {
@@ -2440,6 +2631,18 @@ export function pageTransferPlugin({
         try {
           const body = await readJsonBody(req);
           const result = await updateProjectSections({ projectRoot, target: body });
+          sendJson(res, 200, { ok: true, result });
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: error.message });
+        }
+      });
+
+      server.middlewares.use('/__page-transfer/route/order', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        if (!requireLocalRequest(req, res)) return;
+        try {
+          const body = await readJsonBody(req);
+          const result = await updateProjectRouteOrder({ projectRoot, target: body });
           sendJson(res, 200, { ok: true, result });
         } catch (error) {
           sendJson(res, 400, { ok: false, error: error.message });

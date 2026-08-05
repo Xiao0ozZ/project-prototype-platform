@@ -7,9 +7,9 @@ export default {
     admin: 'Admin',
   },
   home: {
-    title: '项目资料与原型平台',
+    title: '项目原型与资料协作平台',
     description: '集中展示营运端、企业端与移动端业务原型及产品文档，用于需求评审、方案演示与开发协作。',
-    platformLabel: '项目资料与原型平台',
+    platformLabel: '项目原型与资料协作平台',
     languageLabel: '选择语言',
     entryLabel: '原型端入口',
     clientEntryLabel: '业务客户端入口',

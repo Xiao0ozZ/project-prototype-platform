@@ -2,7 +2,7 @@
   <el-dialog
     v-model="dialogVisible"
     :title="dialogTitle"
-    width="980px"
+    width="1180px"
     destroy-on-close
     :close-on-click-modal="false"
     class="project-dialog apple-tool-dialog"
@@ -740,12 +740,34 @@ async function submitForm() {
 
 <style scoped>
 .project-form {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
   padding: 0;
 }
 .project-config-tabs {
-  height: min(68vh, 680px);
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+:global(.project-dialog.el-dialog) {
+  width: min(1180px, calc(100vw - 48px)) !important;
+  height: min(820px, calc(100svh - 48px));
+  max-width: none;
+  max-height: calc(100svh - 48px);
+  margin: 24px auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 :global(.project-dialog .el-dialog__body) {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
   max-height: none;
   overflow: hidden;
   padding: 0;
@@ -1090,9 +1112,16 @@ async function submitForm() {
 }
 
 :global(.project-dialog .el-dialog__header) {
-  min-height: 88px;
-  padding: 18px 64px 18px 28px;
+  min-height: 76px;
+  flex: 0 0 auto;
+  padding: 15px 60px 14px 24px;
   background: linear-gradient(180deg, #fff 0%, #fbfbfd 100%);
+}
+
+:global(.project-dialog .el-dialog__footer) {
+  flex: 0 0 auto;
+  min-height: 60px;
+  padding: 10px 18px;
 }
 
 :global(.project-dialog .el-dialog__body) {
@@ -1100,17 +1129,18 @@ async function submitForm() {
 }
 
 :global(.project-dialog .project-config-tabs > .el-tabs__header.is-left) {
-  width: 224px;
-  padding: 22px 14px;
+  width: 204px;
+  flex: 0 0 204px;
+  padding: 16px 12px;
   border-right: 1px solid rgb(0 0 0 / 7%);
   background: #f7f7f9;
 }
 
 :global(.project-dialog .project-config-tabs .el-tabs__item.is-left) {
-  height: 66px;
-  margin-bottom: 8px;
+  height: 58px;
+  margin-bottom: 6px;
   padding: 0 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   color: #6e6e73;
   transition:
     color 160ms ease,
@@ -1188,22 +1218,26 @@ async function submitForm() {
 }
 
 :global(.project-dialog .project-config-tabs > .el-tabs__content) {
-  padding: 30px 32px 38px;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px 26px 30px;
   background: #fff;
 }
 
 .config-tab-intro {
   display: grid;
   gap: 5px;
-  margin-bottom: 24px;
-  padding-bottom: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
   border-bottom: 1px solid rgb(0 0 0 / 7%);
 }
 
 .config-tab-intro h2 {
   margin: 0;
   color: #1d1d1f;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 680;
   letter-spacing: -0.03em;
   line-height: 1.25;
@@ -1300,14 +1334,14 @@ async function submitForm() {
 
 .client-config-card,
 .resource-entry-card {
-  padding: 20px;
+  padding: 16px 18px;
   border: 1px solid rgb(0 0 0 / 8%);
   border-radius: 16px;
   background: #fbfbfc;
   box-shadow: 0 2px 8px rgb(15 23 42 / 3%);
 }
 .prototype-source-card {
-  padding: 20px;
+  padding: 16px 18px;
   border: 1px solid rgb(0 0 0 / 8%);
   border-radius: 16px;
   background: #fbfbfc;
@@ -1371,7 +1405,7 @@ async function submitForm() {
 }
 
 :global(.project-dialog .el-divider) {
-  margin: 28px 0 16px;
+  margin: 22px 0 14px;
   border-top-color: rgb(0 0 0 / 7%);
 }
 
@@ -1415,9 +1449,16 @@ async function submitForm() {
 }
 
 @media (max-width: 760px) {
+  :global(.project-dialog.el-dialog) {
+    width: calc(100vw - 20px) !important;
+    height: calc(100svh - 20px);
+    max-height: none;
+    margin: 10px auto;
+  }
+
   :global(.project-dialog .el-dialog__header) {
-    min-height: 78px;
-    padding: 16px 52px 16px 18px;
+    min-height: 72px;
+    padding: 14px 52px 13px 18px;
   }
 
   .project-dialog-heading__icon {
@@ -1435,7 +1476,11 @@ async function submitForm() {
   }
 
   :global(.project-dialog .project-config-tabs > .el-tabs__content) {
-    padding: 22px 18px 28px;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 18px 16px 24px;
   }
 
   :global(.project-dialog .config-tab-pane--basic) {

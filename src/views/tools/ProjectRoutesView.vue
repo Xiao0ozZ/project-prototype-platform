@@ -1,18 +1,20 @@
 <template>
   <main class="routes-page platform-page">
-    <header class="routes-header">
-      <RouterLink to="/tools/projects" class="back-link">
-        <el-icon><ArrowLeft /></el-icon>
-        返回项目包状态
-      </RouterLink>
-      <div class="routes-title">
-        <div class="tool-title-icon">
-          <el-icon><Menu /></el-icon>
-        </div>
-        <div>
-          <p class="eyebrow">PROJECT ROUTES</p>
-          <h1>路由菜单管理</h1>
-          <p class="subtitle">管理每个项目客户端的页面路由和菜单登记；删除或替换前会保留可恢复备份。</p>
+    <header class="routes-header tool-hero">
+      <div class="tool-hero__main">
+        <RouterLink to="/tools/projects" class="back-link">
+          <el-icon><ArrowLeft /></el-icon>
+          返回项目包状态
+        </RouterLink>
+        <div class="tool-title-row">
+          <div class="tool-title-icon">
+            <el-icon><Menu /></el-icon>
+          </div>
+          <div class="tool-title-copy">
+            <p class="eyebrow">PROJECT ROUTES</p>
+            <h1>路由菜单管理</h1>
+            <p class="subtitle">管理每个项目客户端的页面路由和菜单登记；删除或替换前会保留可恢复备份。</p>
+          </div>
         </div>
       </div>
       <div class="header-actions">
@@ -91,6 +93,15 @@
                 <el-icon><Edit /></el-icon>
                 编辑分组
               </el-button>
+              <el-button
+                :type="isRouteOrderDirty(client) ? 'primary' : 'default'"
+                :loading="orderSavingClientId === client.id"
+                :disabled="!isRouteOrderDirty(client)"
+                @click="saveRouteOrder(client)"
+              >
+                <el-icon><Menu /></el-icon>
+                保存菜单顺序
+              </el-button>
               <el-button type="primary" @click="openCreateRoute(client)">
                 <el-icon><Plus /></el-icon>
                 新增路由
@@ -98,75 +109,193 @@
             </div>
           </div>
 
-          <el-table :data="client.pages" border class="route-table" empty-text="当前客户端暂无页面路由">
-            <el-table-column prop="title" label="路由名称" min-width="180" />
-            <el-table-column label="路由" min-width="220">
-              <template #default="{ row }">{{ client.basePath }}/{{ row.path }}</template>
-            </el-table-column>
-            <el-table-column label="菜单分组" width="150">
-              <template #default="{ row }">{{ sectionTitle(client, row.section) }}</template>
-            </el-table-column>
-            <el-table-column prop="view" label="页面文件" min-width="280" />
-            <el-table-column label="PRD 文件" min-width="250">
-              <template #default="{ row }">
-                <div v-if="pagePrdLinkFor(client.id, row.name)" class="route-prd-cell">
-                  <el-tag size="small" type="success">已关联</el-tag>
-                  <span :title="pagePrdLinkFor(client.id, row.name)">
-                    {{ pagePrdLinkTitle(pagePrdLinkFor(client.id, row.name)) }}
+          <div class="route-order-hint">
+            <span><b>01</b> 分组顺序对应客户端菜单顺序</span>
+            <span><b>01</b> 组内序号对应分组内菜单顺序</span>
+            <span>调整后点击“保存菜单顺序”</span>
+          </div>
+
+          <div v-if="routeGroups(client).length" class="route-groups">
+            <article
+              v-for="(group, groupIndex) in routeGroups(client)"
+              :key="`${client.id}-${group.id}`"
+              class="route-group-card"
+              :class="{ 'is-collapsed': isGroupCollapsed(client, group) }"
+            >
+              <header class="route-group-header">
+                <button
+                  type="button"
+                  class="route-group-toggle"
+                  :aria-expanded="!isGroupCollapsed(client, group)"
+                  :aria-label="`${isGroupCollapsed(client, group) ? '展开' : '收起'}${group.title}`"
+                  @click="toggleGroup(client, group)"
+                >
+                  <span class="route-group-heading">
+                    <span class="route-order-badge">{{ formatOrder(groupIndex) }}</span>
+                    <span class="route-group-heading__copy">
+                      <span class="route-group-title-line">
+                        <strong>{{ group.title }}</strong>
+                        <el-tag size="small" type="info">{{ group.pages.length }} 个路由</el-tag>
+                      </span>
+                      <span v-if="group.isUngrouped" class="route-group-note"
+                        >这些页面当前没有匹配到已登记的菜单分组</span
+                      >
+                      <span v-else class="route-group-note">{{ group.id }}</span>
+                    </span>
                   </span>
+                  <el-icon
+                    class="route-group-toggle__icon"
+                    :class="{ 'is-expanded': !isGroupCollapsed(client, group) }"
+                    aria-hidden="true"
+                  >
+                    <ArrowRight />
+                  </el-icon>
+                </button>
+                <div
+                  v-if="!group.isUngrouped"
+                  class="order-button-group"
+                  aria-label="调整分组顺序"
+                  @click.stop
+                >
+                  <el-button
+                    circle
+                    text
+                    size="small"
+                    :disabled="group.sectionIndex === 0"
+                    title="上移分组"
+                    @click="moveSection(client, group.sectionIndex, -1)"
+                  >
+                    <el-icon><ArrowUp /></el-icon>
+                  </el-button>
+                  <el-button
+                    circle
+                    text
+                    size="small"
+                    :disabled="group.sectionIndex === client.sections.length - 1"
+                    title="下移分组"
+                    @click="moveSection(client, group.sectionIndex, 1)"
+                  >
+                    <el-icon><ArrowDown /></el-icon>
+                  </el-button>
                 </div>
-                <el-tag v-else size="small" type="info">未关联</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="来源" width="120">
-              <template #default="{ row }">
-                <el-tag
+              </header>
+
+              <div v-if="!isGroupCollapsed(client, group)" class="route-group-content">
+                <el-table
+                  :data="group.pages"
+                  row-key="name"
+                  border
                   size="small"
-                  :type="row.source === 'html-direct' || row.source === 'html-template' ? 'success' : 'info'"
+                  class="group-route-table"
+                  empty-text="当前分组暂无路由"
                 >
-                  {{
-                    row.source === 'html-direct'
-                      ? 'HTML 直读'
-                      : row.source === 'html-template'
-                        ? 'HTML 导入'
-                        : '工程页面'
-                  }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="230" fixed="right">
-              <template #default="{ row }">
-                <el-button
-                  v-if="row.source !== 'html-direct'"
-                  link
-                  type="primary"
-                  @click="openEditRoute(client, row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  link
-                  type="primary"
-                  :disabled="!canEditPagePrd"
-                  :title="canEditPagePrd ? '配置整页 PRD 文件' : '生产构建只能查看页面关联'"
-                  @click="openPagePrdLink(client, row)"
-                >
-                  {{ pagePrdLinkFor(client.id, row.name) ? '编辑 PRD' : '关联 PRD' }}
-                </el-button>
-                <el-button
-                  v-if="row.source !== 'html-direct'"
-                  link
-                  type="danger"
-                  @click="deleteRoute(client, row)"
-                >
-                  删除
-                </el-button>
-                <span v-if="row.source === 'html-direct'" class="route-source-note"
-                  >由 HTML 原型目录管理</span
-                >
-              </template>
-            </el-table-column>
-          </el-table>
+                  <el-table-column label="顺序" width="54" align="center">
+                    <template #default="{ $index }">
+                      <span class="route-order-badge route-order-badge--small">{{ formatOrder($index) }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="菜单名称">
+                    <template #default="{ row }">
+                      <div class="route-table-title">
+                        <strong>{{ row.title }}</strong>
+                        <el-tag
+                          size="small"
+                          :type="row.source === 'html-direct' || row.source === 'html-template' ? 'success' : 'info'"
+                        >
+                          {{
+                            row.source === 'html-direct'
+                              ? 'HTML 直读'
+                              : row.source === 'html-template'
+                                ? 'HTML 导入'
+                                : '工程页面'
+                          }}
+                        </el-tag>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="路由">
+                    <template #default="{ row }">
+                      <code class="route-table-path">{{ client.basePath }}/{{ row.path }}</code>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="页面信息">
+                    <template #default="{ row }">
+                      <div class="route-table-info">
+                        <span class="route-table-source" :title="row.view || row.source">
+                          {{ row.view || row.source || '未记录页面来源' }}
+                        </span>
+                        <div v-if="pagePrdLinkFor(client.id, row.name)" class="route-table-prd">
+                          <el-tag size="small" type="success">PRD 已关联</el-tag>
+                          <span :title="pagePrdLinkFor(client.id, row.name)">
+                            {{ pagePrdLinkTitle(pagePrdLinkFor(client.id, row.name)) }}
+                          </span>
+                        </div>
+                        <el-tag v-else size="small" type="info">PRD 未关联</el-tag>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" align="right">
+                    <template #default="{ row, $index }">
+                      <div class="route-table-actions">
+                        <div class="order-button-group" aria-label="调整路由顺序">
+                          <el-button
+                            circle
+                            text
+                            size="small"
+                            :disabled="group.isUngrouped || $index === 0"
+                            title="上移路由"
+                            @click="movePage(client, group.id, $index, -1)"
+                          >
+                            <el-icon><ArrowUp /></el-icon>
+                          </el-button>
+                          <el-button
+                            circle
+                            text
+                            size="small"
+                            :disabled="group.isUngrouped || $index === group.pages.length - 1"
+                            title="下移路由"
+                            @click="movePage(client, group.id, $index, 1)"
+                          >
+                            <el-icon><ArrowDown /></el-icon>
+                          </el-button>
+                        </div>
+                        <el-button
+                          v-if="row.source !== 'html-direct'"
+                          link
+                          size="small"
+                          type="primary"
+                          @click="openEditRoute(client, row)"
+                        >
+                          编辑
+                        </el-button>
+                        <el-button
+                          link
+                          size="small"
+                          type="primary"
+                          :disabled="!canEditPagePrd"
+                          :title="canEditPagePrd ? '配置整页 PRD 文件' : '生产构建只能查看页面关联'"
+                          @click="openPagePrdLink(client, row)"
+                        >
+                          {{ pagePrdLinkFor(client.id, row.name) ? '编辑 PRD' : '关联 PRD' }}
+                        </el-button>
+                        <el-button
+                          v-if="row.source !== 'html-direct'"
+                          link
+                          size="small"
+                          type="danger"
+                          @click="deleteRoute(client, row)"
+                        >
+                          删除
+                        </el-button>
+                        <span v-if="row.source === 'html-direct'" class="route-source-note">HTML 目录管理</span>
+                      </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </article>
+          </div>
+          <el-empty v-else description="当前客户端暂无页面路由" :image-size="88" />
         </el-tab-pane>
       </el-tabs>
     </section>
@@ -406,6 +535,31 @@
       </div>
       <div class="section-editor-list">
         <div v-for="(section, index) in sectionDraft" :key="section.id" class="section-editor-row">
+          <div class="section-editor-order">
+            <span class="route-order-badge route-order-badge--small">{{ formatOrder(index) }}</span>
+            <div class="order-button-group" aria-label="调整分组顺序">
+              <el-button
+                circle
+                text
+                size="small"
+                :disabled="index === 0"
+                title="上移分组"
+                @click="moveSectionDraft(index, -1)"
+              >
+                <el-icon><ArrowUp /></el-icon>
+              </el-button>
+              <el-button
+                circle
+                text
+                size="small"
+                :disabled="index === sectionDraft.length - 1"
+                title="下移分组"
+                @click="moveSectionDraft(index, 1)"
+              >
+                <el-icon><ArrowDown /></el-icon>
+              </el-button>
+            </div>
+          </div>
           <el-input v-model="section.id" :disabled="!section.isNew" placeholder="分组 ID" />
           <el-input v-model="section.title" placeholder="请输入分组名称" />
           <el-button link type="danger" @click="removeSection(index)">删除</el-button>
@@ -428,7 +582,17 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { ArrowLeft, ArrowRight, Document, Edit, Menu, Plus, Refresh } from '@element-plus/icons-vue';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Document,
+  Edit,
+  Menu,
+  Plus,
+  Refresh,
+} from '@element-plus/icons-vue';
 
 import { getProject, installedProjects } from '../../config/project-packages';
 import { loadDocumentManifest } from '../../services/prd-documents';
@@ -446,6 +610,9 @@ const sectionDialogVisible = ref(false);
 const sectionSaving = ref(false);
 const sectionClientId = ref('');
 const sectionDraft = ref([]);
+const routeOrderSnapshots = ref({});
+const orderSavingClientId = ref('');
+const collapsedGroupKeys = ref({});
 const pagePrdLinks = ref({});
 const pagePrdLinkOverrides = ref({});
 const prdLinkDialogVisible = ref(false);
@@ -558,6 +725,10 @@ async function loadRoutes() {
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || '路由读取失败。');
     routeData.value = payload;
+    collapsedGroupKeys.value = {};
+    routeOrderSnapshots.value = Object.fromEntries(
+      payload.clients.map((client) => [client.id, routeOrderSignature(client)]),
+    );
     pagePrdLinkOverrides.value = externalLinks;
     pagePrdLinks.value = mergePagePrdLinks(selectedProject.value?.pagePrdLinks, externalLinks);
     if (!routeData.value.clients.some((client) => client.id === activeClientId.value)) {
@@ -626,8 +797,114 @@ async function savePagePrdLink() {
   }
 }
 
-function sectionTitle(client, sectionId) {
-  return client.sections.find((section) => section.id === sectionId)?.title || sectionId || '-';
+function formatOrder(index) {
+  return String(index + 1).padStart(2, '0');
+}
+
+function routeGroups(client) {
+  const sectionIds = new Set((client.sections || []).map((section) => section.id));
+  const groups = (client.sections || []).map((section, sectionIndex) => ({
+    id: section.id,
+    title: section.title,
+    sectionIndex,
+    isUngrouped: false,
+    pages: (client.pages || []).filter((page) => page.section === section.id),
+  }));
+  const ungroupedPages = (client.pages || []).filter((page) => !sectionIds.has(page.section));
+  if (ungroupedPages.length) {
+    groups.push({
+      id: '__ungrouped__',
+      title: '未分组',
+      sectionIndex: -1,
+      isUngrouped: true,
+      pages: ungroupedPages,
+    });
+  }
+  return groups;
+}
+
+function groupKey(client, group) {
+  return `${client.id}:${group.id}`;
+}
+
+function isGroupCollapsed(client, group) {
+  return collapsedGroupKeys.value[groupKey(client, group)] !== false;
+}
+
+function toggleGroup(client, group) {
+  const key = groupKey(client, group);
+  collapsedGroupKeys.value = {
+    ...collapsedGroupKeys.value,
+    [key]: !isGroupCollapsed(client, group),
+  };
+}
+
+function routeOrderSignature(client) {
+  return JSON.stringify({
+    sections: (client.sections || []).map((section) => section.id),
+    pages: Object.fromEntries(
+      routeGroups(client)
+        .filter((group) => !group.isUngrouped)
+        .map((group) => [group.id, group.pages.map((page) => page.name)]),
+    ),
+  });
+}
+
+function isRouteOrderDirty(client) {
+  return routeOrderSignature(client) !== routeOrderSnapshots.value[client.id];
+}
+
+function moveSection(client, index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= client.sections.length) return;
+  const [section] = client.sections.splice(index, 1);
+  client.sections.splice(targetIndex, 0, section);
+}
+
+function movePage(client, sectionId, index, direction) {
+  if (sectionId === '__ungrouped__') return;
+  const groupPages = client.pages.filter((page) => page.section === sectionId);
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= groupPages.length) return;
+  const currentPageIndex = client.pages.indexOf(groupPages[index]);
+  const targetPageIndex = client.pages.indexOf(groupPages[targetIndex]);
+  [client.pages[currentPageIndex], client.pages[targetPageIndex]] = [
+    client.pages[targetPageIndex],
+    client.pages[currentPageIndex],
+  ];
+}
+
+async function saveRouteOrder(client) {
+  if (!isRouteOrderDirty(client)) return;
+  orderSavingClientId.value = client.id;
+  try {
+    const pageOrder = Object.fromEntries(
+      routeGroups(client)
+        .filter((group) => !group.isUngrouped)
+        .map((group) => [group.id, group.pages.map((page) => page.name)]),
+    );
+    const response = await fetch('/__page-transfer/route/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: selectedProjectId.value,
+        client: client.id,
+        sectionOrder: client.sections.map((section) => section.id),
+        pageOrder,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.error || '菜单顺序保存失败。');
+    routeOrderSnapshots.value = {
+      ...routeOrderSnapshots.value,
+      [client.id]: routeOrderSignature(client),
+    };
+    ElMessage.success('菜单顺序已保存，重新载入页面后仍会保持当前顺序。');
+  } catch (orderError) {
+    ElMessage.error(orderError.message || '菜单顺序保存失败。');
+  } finally {
+    orderSavingClientId.value = '';
+  }
 }
 
 function formatDate(value) {
@@ -676,6 +953,13 @@ function openSectionManager(client) {
     isNew: false,
   }));
   sectionDialogVisible.value = true;
+}
+
+function moveSectionDraft(index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= sectionDraft.value.length) return;
+  const [section] = sectionDraft.value.splice(index, 1);
+  sectionDraft.value.splice(targetIndex, 0, section);
 }
 
 function addSection() {
@@ -880,22 +1164,27 @@ async function restoreSectionBackup(backup) {
   color: var(--app-color-text-primary);
 }
 .routes-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
   margin-bottom: 28px;
 }
-.routes-title {
+.tool-hero__main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.tool-title-row {
   display: flex;
   min-width: 0;
   align-items: flex-start;
   gap: 14px;
 }
-.routes-title > div:last-child {
+.tool-title-copy {
   min-width: 0;
+  flex: 1 1 auto;
 }
-.routes-title .tool-title-icon {
+.tool-title-icon {
   display: inline-flex;
   width: 46px;
   height: 46px;
@@ -916,6 +1205,9 @@ async function restoreSectionBackup(backup) {
   color: var(--app-color-text-secondary);
   font-size: 13px;
   transition: color 160ms ease;
+}
+.routes-header .back-link {
+  margin-bottom: 14px;
 }
 .back-link:hover {
   color: var(--app-color-primary);
@@ -1075,7 +1367,7 @@ async function restoreSectionBackup(backup) {
   box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
 }
 .client-toolbar {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .client-actions {
   display: flex;
@@ -1086,26 +1378,226 @@ async function restoreSectionBackup(backup) {
   display: grid;
   gap: 2px;
 }
-.route-table {
-  width: 100%;
-}
-.route-prd-cell {
-  display: inline-flex;
-  min-width: 0;
+.route-order-hint {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  max-width: 100%;
+  gap: 6px 14px;
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border: 0.5px solid rgb(var(--app-color-primary-rgb) / 16%);
+  border-radius: 9px;
+  background: rgb(var(--app-color-primary-rgb) / 5%);
+  color: var(--app-color-text-muted);
+  font-size: 11px;
 }
-.route-prd-cell span {
+.route-order-hint b {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  margin-right: 4px;
+  border-radius: 6px;
+  background: rgb(var(--app-color-primary-rgb) / 12%);
+  color: var(--app-color-primary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.route-groups {
+  display: grid;
+  gap: 6px;
+}
+.route-group-card {
   overflow: hidden;
+  border: 0.5px solid rgb(0 0 0 / 9%);
+  border-radius: 10px;
+  background: var(--platform-color-surface);
+  box-shadow: 0 5px 16px rgb(0 0 0 / 3%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.route-group-card:focus-within,
+.route-group-card:hover {
+  border-color: rgb(var(--app-color-primary-rgb) / 24%);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 5%);
+}
+.route-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 0.5px solid rgb(0 0 0 / 7%);
+  background: linear-gradient(90deg, rgb(var(--app-color-primary-rgb) / 5%), transparent 62%);
+}
+.route-group-toggle {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.route-group-toggle:focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.route-group-toggle__icon {
+  flex: 0 0 auto;
+  color: var(--app-color-text-muted);
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+.route-group-toggle:hover .route-group-toggle__icon,
+.route-group-toggle__icon.is-expanded {
+  color: var(--app-color-primary);
+}
+.route-group-toggle__icon.is-expanded {
+  transform: rotate(90deg);
+}
+.route-group-heading,
+.route-group-title-line,
+.section-editor-order,
+.order-button-group {
+  display: flex;
+  align-items: center;
+}
+.route-group-heading {
+  min-width: 0;
+  gap: 8px;
+}
+.route-group-heading__copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.route-group-title-line,
+.route-name-line {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.route-group-title-line strong {
+  font-size: 14px;
+  letter-spacing: -0.015em;
+}
+.route-group-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-color-text-muted);
+  font-family: var(--app-font-family-mono);
+  font-size: 10px;
+}
+.route-order-badge {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgb(var(--app-color-primary-rgb) / 12%);
+  color: var(--app-color-primary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.route-order-badge--small {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+.order-button-group {
+  flex: 0 0 auto;
+  gap: 2px;
+}
+.order-button-group :deep(.el-button) {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border-radius: 8px;
+  color: var(--app-color-text-muted);
+}
+.order-button-group :deep(.el-button:not(.is-disabled):hover) {
+  color: var(--app-color-primary);
+  background: rgb(var(--app-color-primary-rgb) / 9%);
+}
+.route-table-title,
+.route-table-info,
+.route-table-prd,
+.route-table-actions {
+  display: flex;
+  align-items: center;
+}
+.route-table-title {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.route-table-title strong {
+  color: var(--app-color-text-primary);
+  font-size: 12px;
+}
+.route-table-info {
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 3px;
+}
+.route-table-path,
+.route-table-source,
+.route-table-prd > span {
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+.route-table-path {
   color: var(--app-color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: var(--app-font-family-mono);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.route-table-source {
+  color: var(--app-color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.route-table-prd {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.route-table-prd > span {
+  min-width: 0;
+  color: var(--app-color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.route-table-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px;
+  row-gap: 0;
 }
 .route-source-note {
   color: var(--app-color-text-muted);
-  font-size: 12px;
-  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.route-group-content {
+  width: 100%;
+}
+.route-group-card.is-collapsed .route-group-header {
+  border-bottom-color: transparent;
 }
 .routes-panel :deep(.el-table) {
   overflow: hidden;
@@ -1123,6 +1615,37 @@ async function restoreSectionBackup(backup) {
 }
 .routes-panel :deep(.el-table tr:hover > td.el-table__cell) {
   background: #f2f2f7;
+}
+.group-route-table {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.group-route-table :deep(.el-table__header),
+.group-route-table :deep(.el-table__body) {
+  width: 100% !important;
+  table-layout: fixed;
+}
+.group-route-table :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
+.group-route-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  background: #fafafd;
+  color: var(--app-color-text-muted);
+  font-size: 12px;
+}
+.group-route-table :deep(.el-table__body-wrapper td.el-table__cell),
+.group-route-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.group-route-table :deep(.cell) {
+  padding-right: 6px;
+  padding-left: 6px;
+}
+.group-route-table :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: rgb(var(--app-color-primary-rgb) / 3%);
 }
 .dialog-help {
   margin: 0 0 16px;
@@ -1215,7 +1738,7 @@ async function restoreSectionBackup(backup) {
 }
 .section-editor-row {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr) auto;
+  grid-template-columns: auto 160px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -1229,6 +1752,9 @@ async function restoreSectionBackup(backup) {
 .section-editor-row:focus-within {
   border-color: rgb(var(--app-color-primary-rgb) / 28%);
   background: #fbfdff;
+}
+.section-editor-order {
+  gap: 8px;
 }
 .apple-dialog-footer {
   display: flex;
@@ -1286,13 +1812,13 @@ async function restoreSectionBackup(backup) {
 }
 @media (max-width: 1080px) {
   .routes-header {
-    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
+    flex-wrap: wrap;
   }
   .header-actions {
-    grid-column: 1 / -1;
+    width: 100%;
     justify-content: flex-start;
-    padding-left: 34px;
+    padding-left: 60px;
   }
 }
 @media (max-width: 920px) {
@@ -1315,8 +1841,9 @@ async function restoreSectionBackup(backup) {
     width: calc(100% - 32px);
   }
   .routes-header {
-    grid-template-columns: 1fr;
     align-items: start;
+    flex-direction: column;
+    gap: 14px;
   }
   .routes-overview {
     flex-direction: column;
@@ -1332,6 +1859,8 @@ async function restoreSectionBackup(backup) {
     padding: 0 12px;
   }
   .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
     padding-left: 0;
   }
@@ -1340,6 +1869,12 @@ async function restoreSectionBackup(backup) {
   }
   .section-editor-row {
     grid-template-columns: 1fr;
+  }
+  .section-editor-order {
+    justify-content: space-between;
+  }
+  .route-group-header {
+    align-items: flex-start;
   }
   .section-editor-heading {
     flex-direction: column;

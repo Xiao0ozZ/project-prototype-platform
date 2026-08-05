@@ -1,18 +1,20 @@
 <template>
   <main class="packages-page platform-page">
-    <header class="packages-header">
-      <RouterLink to="/" class="packages-back">
-        <el-icon><ArrowLeft /></el-icon>
-        返回首页
-      </RouterLink>
-      <div class="packages-title">
-        <div class="tool-title-icon">
-          <el-icon><FolderOpened /></el-icon>
-        </div>
-        <div>
-          <p class="eyebrow">PROJECT LIBRARY</p>
-          <h1>项目包状态</h1>
-          <p>管理本地项目资料、首页入口和项目能力；新增项目会从模板生成初始化包。</p>
+    <header class="packages-header tool-hero">
+      <div class="tool-hero__main">
+        <RouterLink to="/" class="packages-back back-link">
+          <el-icon><ArrowLeft /></el-icon>
+          返回首页
+        </RouterLink>
+        <div class="tool-title-row">
+          <div class="tool-title-icon">
+            <el-icon><FolderOpened /></el-icon>
+          </div>
+          <div class="tool-title-copy">
+            <p class="eyebrow">PROJECT LIBRARY</p>
+            <h1>项目包状态</h1>
+            <p class="subtitle">管理本地项目资料、首页入口和项目能力；新增项目会从模板生成初始化包。</p>
+          </div>
         </div>
       </div>
       <div class="packages-header__actions">
@@ -192,26 +194,27 @@ onBeforeUnmount(() => stopWatching());
   padding: 40px 0 64px;
 }
 .packages-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
   margin-bottom: 28px;
 }
-.packages-header h1,
-.packages-header p {
-  margin: 0;
+.tool-hero__main {
+  min-width: 0;
+  flex: 1 1 auto;
 }
-.packages-title {
+.tool-title-row {
   display: flex;
   min-width: 0;
   align-items: flex-start;
   gap: 14px;
 }
-.packages-title > div:last-child {
+.tool-title-copy {
   min-width: 0;
+  flex: 1 1 auto;
 }
-.packages-title .tool-title-icon {
+.tool-title-icon {
   display: inline-flex;
   width: 46px;
   height: 46px;
@@ -224,7 +227,7 @@ onBeforeUnmount(() => stopWatching());
   color: var(--app-color-primary);
   font-size: 22px;
 }
-.packages-title .eyebrow {
+.eyebrow {
   margin: 0 0 8px;
   color: var(--app-color-primary);
   font-size: 11px;
@@ -232,36 +235,39 @@ onBeforeUnmount(() => stopWatching());
   letter-spacing: 0.16em;
 }
 .packages-header h1 {
+  margin: 0;
   font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.2;
 }
-.packages-header p {
-  margin-top: 10px;
+.packages-header .subtitle {
+  margin: 10px 0 0;
   color: var(--app-color-text-muted);
   font-size: 15px;
   line-height: 1.6;
 }
-.packages-title p:not(.eyebrow) {
-  margin: 10px 0 0;
-}
 .packages-header__actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
 .packages-back {
+  margin-bottom: 14px;
+}
+.back-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  width: fit-content;
   padding: 6px 0;
   color: var(--app-color-text-secondary);
   font-size: 13px;
   transition: color 160ms ease;
 }
-.packages-back:hover {
+.back-link:hover {
   color: var(--app-color-primary);
 }
 .packages-feedback {
@@ -393,13 +399,13 @@ onBeforeUnmount(() => stopWatching());
 }
 @media (max-width: 1080px) {
   .packages-header {
-    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
+    flex-wrap: wrap;
   }
   .packages-header__actions {
-    grid-column: 1 / -1;
+    width: 100%;
     justify-content: flex-start;
-    padding-left: 34px;
+    padding-left: 60px;
   }
 }
 @media (max-width: 920px) {
@@ -422,17 +428,15 @@ onBeforeUnmount(() => stopWatching());
     width: calc(100% - 32px);
   }
   .packages-header {
-    grid-template-columns: 1fr auto;
     align-items: start;
+    flex-direction: column;
+    gap: 14px;
   }
   .packages-header__actions {
-    grid-column: 1 / -1;
+    width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
     padding-left: 0;
-  }
-  .packages-header > div:not(.packages-header__actions) {
-    grid-column: 1 / -1;
-    grid-row: 1;
   }
   .packages-overview {
     flex-direction: column;

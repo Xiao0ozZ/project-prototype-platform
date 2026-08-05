@@ -1,4 +1,4 @@
 export const projectConfig = Object.freeze({
-  name: '项目资料与原型平台',
-  platformTitle: '项目资料与原型平台',
+  name: '项目原型与资料协作平台',
+  platformTitle: '项目原型与资料协作平台',
 });

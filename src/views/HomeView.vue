@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { getProject, getProjectEntryPath, installedProjects } from '../config/project-packages';
+import { projectConfig } from '../config/project.config';
 import { applyProjectTheme } from '../config/theme';
 
 const route = useRoute();
@@ -29,17 +30,17 @@ const selectableProjects = computed(() =>
 const selectedProjectId = computed({
   get() {
     const queryProject = typeof route.query.project === 'string' ? route.query.project : '';
-    if (getProject(queryProject)?.id) return getProject(queryProject).id;
+    if (selectableProjects.value.some((project) => project.id === queryProject)) return queryProject;
 
     try {
       const rememberedProject = window.localStorage.getItem(selectedProjectStorageKey) || '';
-      return getProject(rememberedProject)?.id || '';
+      return selectableProjects.value.some((project) => project.id === rememberedProject) ? rememberedProject : '';
     } catch {
       return '';
     }
   },
   set(projectId) {
-    const normalizedProjectId = getProject(projectId)?.id || '';
+    const normalizedProjectId = selectableProjects.value.some((project) => project.id === projectId) ? projectId : '';
     try {
       if (normalizedProjectId) {
         window.localStorage.setItem(selectedProjectStorageKey, normalizedProjectId);
@@ -123,7 +124,7 @@ const activityItems = [
   },
 ];
 
-const projectTitle = computed(() => selectedProject.value?.name || '项目资料与原型平台');
+const projectTitle = computed(() => selectedProject.value?.name || projectConfig.name);
 const projectVersion = computed(() => selectedProject.value?.version || '1.0.0');
 const hasSelectedProject = computed(() => Boolean(selectedProject.value));
 
@@ -194,7 +195,7 @@ onBeforeUnmount(() => {
             to="/"
             class="candidate-brand font-headline-md text-headline-md font-bold tracking-tight text-on-surface"
           >
-            原型管理系统
+            {{ projectConfig.name }}
           </RouterLink>
           <div class="candidate-primary-nav hidden h-full items-center gap-6 pt-1 md:flex">
             <div ref="projectMenuRef" class="candidate-project-picker relative flex h-full items-center">
@@ -506,7 +507,7 @@ onBeforeUnmount(() => {
           组件规范
         </RouterLink>
         <span class="font-label-sm text-label-sm text-on-surface-variant"
-          >© 2026 原型管理系统。保留所有权利。</span
+          >© 2026 {{ projectConfig.name }}。保留所有权利。</span
         >
       </div>
     </footer>
