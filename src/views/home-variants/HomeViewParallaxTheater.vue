@@ -249,16 +249,8 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-400">
           <RouterLink to="/components" class="hover:text-purple-300 transition-colors">组件规范</RouterLink>
-          <RouterLink to="/tools/project-routes" class="hover:text-purple-300 transition-colors">路由管理</RouterLink>
-          <RouterLink to="/tools/projects" class="hover:text-purple-300 transition-colors">项目包</RouterLink>
-          <button
-            type="button"
-            class="text-slate-400 hover:text-white transition-colors"
-            title="快捷键 Ctrl+Shift+M"
-            @click="toggleConsole"
-          >
-            {{ showConsole ? '开发者模式: 开' : '开发者模式' }}
-          </button>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="hover:text-purple-300 transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="hover:text-purple-300 transition-colors">控制台</RouterLink>
         </div>
       </div>
     </header>
@@ -278,11 +270,11 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 3D 视差卡片平铺画卷 Carousel Glass Stage -->
-      <div v-if="clientEntries.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div v-if="clientEntries.length" class="flex flex-wrap justify-center gap-8 w-full max-w-7xl mx-auto">
         <div
           v-for="(entry, idx) in clientEntries"
           :key="entry.id"
-          class="group relative rounded-[36px] bg-[#0E122B]/90 backdrop-blur-2xl p-8 border border-white/10 hover:border-purple-500/60 shadow-2xl hover:shadow-[0_0_50px_rgba(192,132,252,0.3)] transition-all duration-500 hover:-translate-y-3 flex flex-col justify-between overflow-hidden"
+          class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-[380px] group relative rounded-[36px] bg-[#0E122B]/90 backdrop-blur-2xl p-8 border border-white/10 hover:border-purple-500/60 shadow-2xl hover:shadow-[0_0_50px_rgba(192,132,252,0.3)] transition-all duration-500 hover:-translate-y-3 flex flex-col justify-between overflow-hidden"
         >
           <!-- Parallax Light Stroke -->
           <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-purple-500/10 blur-2xl group-hover:bg-purple-500/25 transition-all"></div>

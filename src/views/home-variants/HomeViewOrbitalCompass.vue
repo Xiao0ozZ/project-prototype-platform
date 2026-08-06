@@ -275,16 +275,8 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-400">
           <RouterLink to="/components" class="hover:text-cyan-300 transition-colors">组件规范</RouterLink>
-          <RouterLink to="/tools/project-routes" class="hover:text-cyan-300 transition-colors">路由管理</RouterLink>
-          <RouterLink to="/tools/projects" class="hover:text-cyan-300 transition-colors">项目包</RouterLink>
-          <button
-            type="button"
-            class="text-slate-400 hover:text-white transition-colors"
-            title="快捷键 Ctrl+Shift+M"
-            @click="toggleConsole"
-          >
-            {{ showConsole ? '开发者模式: 开' : '开发者模式' }}
-          </button>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="hover:text-cyan-300 transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="hover:text-cyan-300 transition-colors">控制台</RouterLink>
         </div>
       </div>
     </header>

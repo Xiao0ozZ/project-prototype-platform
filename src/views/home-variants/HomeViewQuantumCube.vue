@@ -189,14 +189,27 @@ function openPageTransfer() {
   router.push({ path: '/tools/page-transfer', query: { project: selectedProjectId.value } });
 }
 
+function handleConsoleShortcut(event) {
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm') {
+    event.preventDefault();
+    toggleConsole();
+  }
+
+  if (event.key === 'Escape') {
+    showProjectMenu.value = false;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('pointermove', handlePointerMove);
   window.addEventListener('pointerup', handlePointerUp);
+  window.addEventListener('keydown', handleConsoleShortcut);
   document.addEventListener('pointerdown', handleOutsideProjectMenu);
 });
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', handlePointerMove);
   window.removeEventListener('pointerup', handlePointerUp);
+  window.removeEventListener('keydown', handleConsoleShortcut);
   document.removeEventListener('pointerdown', handleOutsideProjectMenu);
 });
 </script>
@@ -292,16 +305,8 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold">
           <RouterLink to="/components" class="text-slate-300 hover:text-cyan-400 transition-colors">组件规范</RouterLink>
-          <RouterLink to="/tools/project-routes" class="text-slate-300 hover:text-cyan-400 transition-colors">路由管理</RouterLink>
-          <RouterLink to="/tools/projects" class="text-slate-300 hover:text-cyan-400 transition-colors">项目包</RouterLink>
-          <button
-            type="button"
-            class="text-cyan-400/70 hover:text-cyan-300 transition-colors"
-            title="快捷键 Ctrl+Shift+M"
-            @click="toggleConsole"
-          >
-            {{ showConsole ? '开发者模式: 开' : '开发者模式' }}
-          </button>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-300 hover:text-cyan-400 transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-300 hover:text-cyan-400 transition-colors">控制台</RouterLink>
         </div>
       </div>
     </header>

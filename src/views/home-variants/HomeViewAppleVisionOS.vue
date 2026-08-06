@@ -3,19 +3,23 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowDown,
+  Box,
   Check,
   Compass,
+  Document,
   FolderOpened,
   Iphone,
   Lightning,
   MagicStick,
   Monitor,
   OfficeBuilding,
+  Pointer,
   Position,
   Right,
   Setting,
   Switch,
   VideoPlay,
+  View,
 } from '@element-plus/icons-vue';
 
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
@@ -83,7 +87,7 @@ watch(
 );
 
 // ==========================================================================
-// Web Audio API Apple VisionOS 空间音效 (极简、通透、高保真)
+// Web Audio API Apple VisionOS 空间计算保真音效 Engine
 // ==========================================================================
 let audioCtx = null;
 
@@ -100,29 +104,46 @@ function getAudioContext() {
   return audioCtx;
 }
 
-function playSpaceshipAudio(type) {
+function playSpatialSound(type) {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    if (type === 'projectWarp') {
+    if (type === 'pinchSelect') {
+      // VisionOS 捏合手势点击音效：清脆轻快音管响声
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
+
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } else if (type === 'spatialWarp') {
+      // VisionOS 空间应用加载音效：高保真升频共鸣
       const sub = ctx.createOscillator();
       const sweep = ctx.createOscillator();
       const gain = ctx.createGain();
 
       sub.type = 'sawtooth';
-      sub.frequency.setValueAtTime(60, ctx.currentTime);
-      sub.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + 0.35);
-      sub.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.85);
+      sub.frequency.setValueAtTime(80, ctx.currentTime);
+      sub.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.4);
+      sub.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.9);
 
       sweep.type = 'sine';
-      sweep.frequency.setValueAtTime(240, ctx.currentTime);
-      sweep.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.25);
-      sweep.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.85);
+      sweep.frequency.setValueAtTime(300, ctx.currentTime);
+      sweep.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.3);
 
       gain.gain.setValueAtTime(0.01, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.38, ctx.currentTime + 0.25);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.85);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
 
       sub.connect(gain);
       sweep.connect(gain);
@@ -130,46 +151,17 @@ function playSpaceshipAudio(type) {
 
       sub.start();
       sweep.start();
-      sub.stop(ctx.currentTime + 0.85);
-      sweep.stop(ctx.currentTime + 0.85);
-    } else if (type === 'clientFlythrough') {
-      const engine1 = ctx.createOscillator();
-      const engine2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      engine1.type = 'sawtooth';
-      engine1.frequency.setValueAtTime(95, ctx.currentTime);
-      engine1.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.45);
-
-      engine2.type = 'triangle';
-      engine2.frequency.setValueAtTime(190, ctx.currentTime);
-      engine2.frequency.exponentialRampToValueAtTime(2600, ctx.currentTime + 0.45);
-
-      gain.gain.setValueAtTime(0.01, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.42, ctx.currentTime + 0.35);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-
-      engine1.connect(gain);
-      engine2.connect(gain);
-      gain.connect(ctx.destination);
-
-      engine1.start();
-      engine2.start();
-      engine1.stop(ctx.currentTime + 0.8);
-      engine2.stop(ctx.currentTime + 0.8);
+      sub.stop(ctx.currentTime + 0.9);
+      sweep.stop(ctx.currentTime + 0.9);
     }
   } catch {
     // Audio fail-safe
   }
 }
 
-// 3D 鼠标倾斜与星尘粒子逻辑 (Mouse 3D Tilt & Stardust Particle Physics)
+// 3D 鼠标倾斜与空间眼动追焦 Cursor Physics
 const mouseX = ref(0);
 const mouseY = ref(0);
-
-// ==========================================================================
-// Apple VisionOS 空间全息 3D 自定义鼠标指针 (Apple Vision Spatial Cursor)
-// ==========================================================================
 const cursorRawX = ref(-100);
 const cursorRawY = ref(-100);
 const cursorSmoothedX = ref(-100);
@@ -177,16 +169,11 @@ const cursorSmoothedY = ref(-100);
 const isCursorHovering = ref(false);
 const isCursorVisible = ref(false);
 
-// 脑洞大招 1: 选择项目 -> 跨星系穿越至新项目领域
-const isProjectWarping = ref(false);
-const projectWarpName = ref('');
-
-// 脑洞大招 2: 点击客户端 -> 宇宙飞船全速冲入客户端虫洞
-const isClientFlythrough = ref(false);
-const flythroughTarget = ref(null);
+const isSpatialLaunching = ref(false);
+const spatialLaunchTarget = ref(null);
 
 function handleMouseMove(e) {
-  if (isClientFlythrough.value) return;
+  if (isSpatialLaunching.value) return;
   const { clientX, clientY } = e;
   cursorRawX.value = clientX;
   cursorRawY.value = clientY;
@@ -203,8 +190,8 @@ function handleMouseMove(e) {
   mouseX.value = (clientX / window.innerWidth - 0.5) * 16;
   mouseY.value = (clientY / window.innerHeight - 0.5) * 16;
 
-  // 释放 Apple 极简晶蓝星尘微粒
-  if (ctx && Math.random() < 0.6) {
+  // 释放 Apple VisionOS 空间微粒
+  if (ctx && Math.random() < 0.5) {
     particles.push({
       x: clientX,
       y: clientY,
@@ -212,7 +199,7 @@ function handleMouseMove(e) {
       vy: (Math.random() - 0.5) * 2 - 1,
       size: Math.random() * 2.5 + 1,
       alpha: 0.95,
-      color: ['#007AFF', '#38bdf8', '#ffffff', '#e2e8f0'][Math.floor(Math.random() * 4)],
+      color: ['#007AFF', '#38bdf8', '#ffffff', '#e2e8f0', '#a855f7'][Math.floor(Math.random() * 5)],
     });
   }
 }
@@ -221,7 +208,7 @@ function handleMouseLeave() {
   isCursorVisible.value = false;
 }
 
-// 3D 星际穿越流光 Canvas 引擎 (Apple VisionOS 空间钛空银与深蓝光束)
+// Canvas 3D 空间计算网格与晶蓝星流 Engine
 let animationFrameId = null;
 let ctx = null;
 let stars = [];
@@ -234,25 +221,23 @@ function initCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  stars = Array.from({ length: 180 }, () => ({
+  stars = Array.from({ length: 150 }, () => ({
     x: Math.random() * canvas.width - canvas.width / 2,
     y: Math.random() * canvas.height - canvas.height / 2,
     z: Math.random() * canvas.width,
-    color: ['#ffffff', '#007AFF', '#38bdf8', '#e2e8f0', '#94a3b8'][Math.floor(Math.random() * 5)],
+    color: ['#ffffff', '#007AFF', '#38bdf8', '#e2e8f0', '#a855f7'][Math.floor(Math.random() * 5)],
   }));
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    cursorSmoothedX.value += (cursorRawX.value - cursorSmoothedX.value) * 0.24;
-    cursorSmoothedY.value += (cursorRawY.value - cursorSmoothedY.value) * 0.24;
+    cursorSmoothedX.value += (cursorRawX.value - cursorSmoothedX.value) * 0.25;
+    cursorSmoothedY.value += (cursorRawY.value - cursorSmoothedY.value) * 0.25;
 
-    const isWarp = isClientFlythrough.value;
-    const isProjWarp = isProjectWarping.value;
+    const isWarp = isSpatialLaunching.value;
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
-
-    const starSpeed = isWarp ? 65 : isProjWarp ? 45 : 4.5;
+    const starSpeed = isWarp ? 50 : 3.8;
 
     for (let i = 0; i < stars.length; i++) {
       const star = stars[i];
@@ -268,10 +253,10 @@ function initCanvas() {
       const py = star.y * k + cy;
 
       if (px >= 0 && px <= canvas.width && py >= 0 && py <= canvas.height) {
-        const size = (1 - star.z / canvas.width) * (isWarp ? 8.5 : isProjWarp ? 6.5 : 3.2) + 0.5;
-        const alpha = (1 - star.z / canvas.width) * 0.88;
+        const size = (1 - star.z / canvas.width) * (isWarp ? 7.5 : 3.0) + 0.5;
+        const alpha = (1 - star.z / canvas.width) * 0.85;
 
-        const prevK = 250 / (star.z + (isWarp ? 60 : isProjWarp ? 35 : 10));
+        const prevK = 250 / (star.z + (isWarp ? 45 : 8));
         const ppx = star.x * prevK + cx;
         const ppy = star.y * prevK + cy;
 
@@ -280,7 +265,7 @@ function initCanvas() {
         ctx.strokeStyle = star.color;
         ctx.lineWidth = size;
         ctx.lineCap = 'round';
-        ctx.shadowBlur = isWarp ? 18 : isProjWarp ? 12 : 5;
+        ctx.shadowBlur = isWarp ? 16 : 4;
         ctx.shadowColor = star.color;
         ctx.beginPath();
         ctx.moveTo(ppx, ppy);
@@ -292,8 +277,8 @@ function initCanvas() {
 
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
-      p.x += isWarp ? p.vx * 6 : p.vx;
-      p.y += isWarp ? p.vy * 6 : p.vy;
+      p.x += isWarp ? p.vx * 5 : p.vx;
+      p.y += isWarp ? p.vy * 5 : p.vy;
       p.alpha -= isWarp ? 0.05 : 0.025;
 
       if (p.alpha <= 0) {
@@ -304,7 +289,7 @@ function initCanvas() {
       ctx.save();
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = p.color || '#007AFF';
-      ctx.shadowBlur = isWarp ? 18 : 8;
+      ctx.shadowBlur = isWarp ? 16 : 6;
       ctx.shadowColor = p.color || '#007AFF';
       ctx.beginPath();
       ctx.arc(p.x, p.y, isWarp ? p.size * 2 : p.size, 0, Math.PI * 2);
@@ -325,65 +310,24 @@ function handleResize() {
   }
 }
 
-function chooseProject(projectId, event) {
+function chooseProject(projectId) {
   selectedProjectId.value = projectId;
   showProjectMenu.value = false;
 
-  playSpaceshipAudio('projectWarp');
-
-  const pName = selectedProject.value?.name || '新星系项目包';
-  projectWarpName.value = pName;
-  isProjectWarping.value = true;
-
-  const clickX = event?.clientX || window.innerWidth / 2;
-  const clickY = event?.clientY || window.innerHeight / 3;
-
-  for (let i = 0; i < 150; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 12 + 3;
-    particles.push({
-      x: clickX,
-      y: clickY,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: Math.random() * 4 + 1.5,
-      alpha: 1.4,
-      color: ['#ffffff', '#007AFF', '#38bdf8', '#e2e8f0'][Math.floor(Math.random() * 4)],
-    });
-  }
-
-  setTimeout(() => {
-    isProjectWarping.value = false;
-  }, 900);
+  playSpatialSound('pinchSelect');
 }
 
-function launchWarpJump(entry, event) {
-  if (isClientFlythrough.value) return;
+function launchSpatialApp(entry) {
+  if (isSpatialLaunching.value) return;
 
-  playSpaceshipAudio('clientFlythrough');
+  playSpatialSound('spatialWarp');
 
-  isClientFlythrough.value = true;
-  flythroughTarget.value = entry;
-
-  const clickX = event?.clientX || window.innerWidth / 2;
-  const clickY = event?.clientY || window.innerHeight / 2;
-  for (let i = 0; i < 120; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 15 + 4;
-    particles.push({
-      x: clickX,
-      y: clickY,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: Math.random() * 4 + 2,
-      alpha: 1.5,
-      color: ['#007AFF', '#ffffff', '#38bdf8'][Math.floor(Math.random() * 3)],
-    });
-  }
+  isSpatialLaunching.value = true;
+  spatialLaunchTarget.value = entry;
 
   setTimeout(() => {
     router.push(entry.to);
-  }, 800);
+  }, 750);
 }
 
 const clientEntries = computed(() =>
@@ -393,16 +337,14 @@ const clientEntries = computed(() =>
     .map((entry) => ({
       ...entry,
       to: getProjectEntryPath(selectedProject.value, entry),
-      glowBorder: 'border-white/10 hover:border-white/30 hover:shadow-[0_0_40px_rgba(0,122,255,0.2)]',
-      btnGlow: 'bg-[#007AFF] hover:bg-[#0062cc] text-white font-extrabold shadow-lg shadow-[#007AFF]/25',
       displayDescription:
         entry.kind === 'mobile'
-          ? '星际跃迁触控视区，手机壳实时交互、高保真组件与全流程视图'
+          ? 'VisionOS 空间触控视区，手机壳实时交互、高保真组件与全流程视图'
           : entry.clientId === 'enterprise'
-            ? '星际指挥控制大盘、车辆全轨迹决策监控与企业极速管控中枢'
+            ? 'VisionOS 空间指挥控制大盘、车辆全轨迹决策监控与企业极速管控中枢'
             : entry.clientId === 'operation'
               ? '实时运力调度引擎、算法智能分配与高并发协同工作台'
-              : entry.description || '星际原型系统',
+              : entry.description || 'VisionOS 原型系统',
     })),
 );
 
@@ -476,8 +418,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="interstellar-warp-page min-h-screen bg-[#05070D] text-slate-100 font-sans selection:bg-[#007AFF] selection:text-white relative overflow-hidden flex flex-col justify-between select-none">
-    <!-- 0. Apple Vision Spatial 3D 自定义鼠标指针 -->
+  <div class="apple-visionos-page min-h-screen bg-[#04060C] text-slate-100 font-sans selection:bg-[#007AFF] selection:text-white relative overflow-hidden flex flex-col justify-between select-none">
+    <!-- 0. Apple VisionOS Eye-Tracking & Pinch Custom Cursor Pointer -->
     <div
       v-if="isCursorVisible"
       class="fixed pointer-events-none z-[100] w-2.5 h-2.5 rounded-full bg-[#007AFF] shadow-[0_0_12px_#007AFF] -translate-x-1/2 -translate-y-1/2 transition-transform duration-75"
@@ -486,110 +428,68 @@ onBeforeUnmount(() => {
 
     <div
       v-if="isCursorVisible"
-      class="fixed pointer-events-none z-[99] rounded-full border border-white/50 bg-white/5 backdrop-blur-xs transition-all duration-200 ease-out -translate-x-1/2 -translate-y-1/2 flex items-center justify-center shadow-lg"
+      class="fixed pointer-events-none z-[99] rounded-full border border-white/50 bg-white/10 backdrop-blur-xs transition-all duration-200 ease-out -translate-x-1/2 -translate-y-1/2 flex items-center justify-center shadow-xl"
       :class="[
         isCursorHovering
-          ? 'w-14 h-14 border-white bg-white/15 shadow-[0_0_30px_rgba(0,122,255,0.6)] scale-110'
-          : 'w-9 h-9 border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)]',
+          ? 'w-14 h-14 border-white bg-white/20 shadow-[0_0_35px_rgba(0,122,255,0.7)] scale-110'
+          : 'w-10 h-10 border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.25)]',
       ]"
       :style="{ left: `${cursorSmoothedX}px`, top: `${cursorSmoothedY}px` }"
     >
-      <div class="w-1.5 h-1.5 rounded-full bg-white/80"></div>
+      <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
     </div>
 
-    <!-- 1. 实时星际跃迁光束与 Apple 极简晶蓝星尘 Canvas 视景 -->
+    <!-- 1. 实时 Canvas 空间计算粒粒子与极致氛围晕 -->
     <canvas ref="canvasRef" class="fixed inset-0 pointer-events-none z-0"></canvas>
 
-    <!-- 背景 Apple VisionOS 极致氛围光晕 Backdrop Glows -->
+    <!-- 背景 Apple VisionOS 空间感 Ambient Glows -->
     <div class="fixed inset-0 pointer-events-none z-0">
-      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1250px] h-[540px] bg-gradient-to-b from-[#007AFF]/12 via-[#5856D6]/08 to-transparent blur-[160px] rounded-full"></div>
+      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1300px] h-[550px] bg-gradient-to-b from-[#007AFF]/15 via-[#5856D6]/10 to-transparent blur-[160px] rounded-full"></div>
+      <div class="absolute bottom-0 right-0 w-[600px] h-[600px] bg-[#a855f7]/08 blur-[180px] rounded-full"></div>
     </div>
 
-    <!-- 脑洞大招 1: 选择项目 -> 跨星系穿越至新项目领域 HUD 遮罩 -->
-    <Transition name="sector-warp">
+    <!-- VisionOS 空间应用启动全息遮罩 Overlay -->
+    <Transition name="spatial-launch">
       <div
-        v-if="isProjectWarping"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-[#020308]/96 backdrop-blur-2xl pointer-events-none"
+        v-if="isSpatialLaunching"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/96 backdrop-blur-3xl pointer-events-none"
       >
-        <div class="relative flex flex-col items-center">
-          <div class="w-80 h-80 rounded-full border-4 border-[#007AFF] animate-ping flex items-center justify-center shadow-[0_0_100px_rgba(0,122,255,0.9)]">
-            <div class="w-56 h-56 rounded-full border-2 border-dashed border-white/80 animate-spin flex items-center justify-center">
-              <el-icon class="text-6xl text-white animate-pulse"><MagicStick /></el-icon>
-            </div>
-          </div>
-          
-          <div class="mt-8 text-center space-y-2">
-            <div class="text-xs font-mono text-[#38bdf8] tracking-widest uppercase animate-pulse">
-              SYSTEM / SWITCHING PROJECT
-            </div>
-            <div class="text-5xl font-black text-white tracking-tight drop-shadow-[0_0_40px_rgba(255,255,255,0.9)]">
-              【 {{ projectWarpName }} 】
-            </div>
-            <div class="text-xs font-mono text-slate-400 tracking-wider">
-              LOADING PROJECT WORKSPACE...
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- 脑洞大招 2: 点击客户端 -> 宇宙飞船全速冲入客户端虫洞 飞船驾驶舱 HUD 视区 -->
-    <Transition name="flythrough-overlay">
-      <div
-        v-if="isClientFlythrough"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-[#020308]/96 backdrop-blur-xl pointer-events-none"
-      >
-        <div class="absolute inset-0 border-[24px] border-[#020308]/90 rounded-[60px] pointer-events-none flex flex-col justify-between p-8 shadow-[inset_0_0_140px_rgba(0,0,0,0.95)]">
-          <div class="flex justify-between text-xs font-mono text-white tracking-widest">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[#007AFF] animate-ping"></span>
-              PRODUCT EXPERIENCE ENGINE: CLIENT TRANSITION // READY
-            </span>
-            <span class="text-[#38bdf8]">CLIENT ACCESS: ACTIVE</span>
-          </div>
-          
-          <div class="flex justify-between items-end px-12 pb-4">
-            <div class="w-20 h-48 bg-gradient-to-t from-[#007AFF] via-[#38bdf8] to-transparent blur-md rounded-full animate-pulse"></div>
-            <div class="w-20 h-48 bg-gradient-to-t from-[#007AFF] via-[#38bdf8] to-transparent blur-md rounded-full animate-pulse"></div>
-          </div>
-        </div>
-
         <div class="relative flex flex-col items-center text-center">
-          <div class="w-72 h-72 rounded-full border-2 border-dashed border-white animate-spin flex items-center justify-center shadow-[0_0_120px_rgba(255,255,255,0.8)]">
-            <div class="w-52 h-52 rounded-full border-2 border-[#007AFF]/90 animate-ping flex items-center justify-center">
-              <el-icon class="text-6xl text-[#007AFF] animate-bounce"><Position /></el-icon>
+          <div class="w-72 h-72 rounded-full border-2 border-white/80 animate-ping flex items-center justify-center shadow-[0_0_100px_rgba(0,122,255,0.8)]">
+            <div class="w-52 h-52 rounded-full border-2 border-[#007AFF] animate-spin flex items-center justify-center">
+              <el-icon class="text-6xl text-white animate-pulse"><View /></el-icon>
             </div>
           </div>
 
           <div class="mt-8 space-y-2">
             <div class="text-xs font-mono text-[#38bdf8] tracking-widest uppercase animate-pulse">
-              SYSTEM / OPENING CLIENT
+              >>> APPLE VISIONOS SPATIAL EXPERIENCE LAUNCHING <<<
             </div>
-            <div class="text-4xl font-black text-white tracking-tight drop-shadow-[0_0_35px_rgba(255,255,255,1)]">
-              {{ flythroughTarget?.name }}
+            <div class="text-5xl font-extrabold text-white tracking-tight drop-shadow-[0_0_40px_rgba(255,255,255,0.9)]">
+              {{ spatialLaunchTarget?.name }}
             </div>
             <div class="text-xs font-mono text-slate-400 tracking-wider">
-              LOADING PROTOTYPE · 3... 2... 1...
+              MOUNTING SPATIAL WINDOW · INITIALIZING 3D ENVIRONMENT...
             </div>
           </div>
         </div>
       </div>
     </Transition>
 
-    <!-- 2. Apple VisionOS 胶囊 Header (Apple Vision Glass Pill Bar) -->
+    <!-- 2. Apple VisionOS Capsule Floating Header Bar -->
     <header class="relative z-40 pt-6 px-8">
       <div class="mx-auto max-w-7xl h-16 rounded-full bg-[#0d111d]/75 backdrop-blur-3xl border border-white/10 px-6 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
         <!-- Logo -->
         <div class="flex items-center gap-6">
           <RouterLink to="/" class="flex items-center gap-3 group">
             <div class="w-9 h-9 rounded-full bg-white/10 p-[1px] border border-white/20 shadow-lg group-hover:rotate-180 transition-transform duration-700">
-              <div class="w-full h-full rounded-full bg-[#05070D] flex items-center justify-center text-[#007AFF] font-black">
-                <el-icon><MagicStick /></el-icon>
+              <div class="w-full h-full rounded-full bg-[#04060C] flex items-center justify-center text-[#007AFF] font-black">
+                <el-icon><View /></el-icon>
               </div>
             </div>
             <div>
-              <div class="text-[9px] font-mono text-[#38bdf8] tracking-widest uppercase">PRODUCT EXPERIENCE HUB</div>
-              <div class="text-sm font-black text-white group-hover:text-[#38bdf8] transition-colors">
+              <div class="text-[9px] font-mono text-[#38bdf8] tracking-widest uppercase">VISIONOS SPATIAL COMPUTING</div>
+              <div class="text-sm font-extrabold text-white group-hover:text-[#38bdf8] transition-colors">
                 {{ projectConfig.name }}
               </div>
             </div>
@@ -601,7 +501,7 @@ onBeforeUnmount(() => {
           <div ref="projectMenuRef" class="relative">
             <button
               type="button"
-              class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-200 border border-white/10 transition-all hover:border-white/25 active:scale-95 shadow-sm"
+              class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 border border-white/10 transition-all hover:border-white/25 active:scale-95 shadow-sm"
               @click="showProjectMenu = !showProjectMenu"
             >
               <span class="w-2 h-2 rounded-full bg-[#007AFF] shadow-[0_0_10px_#007AFF] animate-ping"></span>
@@ -623,14 +523,14 @@ onBeforeUnmount(() => {
                 class="absolute left-0 mt-3 w-72 rounded-3xl bg-[#0d1222]/98 backdrop-blur-3xl p-2.5 shadow-2xl border border-white/15 z-50 text-xs"
               >
                 <div class="px-3 py-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                  <span>PROJECT PACKAGES</span>
+                  <span>VISIONOS PACKAGES</span>
                   <el-icon><Lightning /></el-icon>
                 </div>
                 <button
                   type="button"
                   class="flex w-full items-center justify-between rounded-2xl px-3.5 py-2.5 text-left transition-colors hover:bg-white/10 active:scale-95"
                   :class="!hasSelectedProject ? 'bg-white/15 text-white font-bold border border-white/20' : 'text-slate-300'"
-                  @click="chooseProject('', $event)"
+                  @click="chooseProject('')"
                 >
                   <span>未选择项目</span>
                   <el-icon v-if="!hasSelectedProject" class="text-[#007AFF]"><Check /></el-icon>
@@ -643,7 +543,7 @@ onBeforeUnmount(() => {
                     type="button"
                     class="group/item flex w-full items-center justify-between rounded-2xl px-3.5 py-2.5 text-left transition-all hover:bg-white/10 active:scale-95 relative overflow-hidden"
                     :class="project.id === selectedProjectId ? 'bg-white/15 text-white font-bold border border-white/20' : 'text-slate-200'"
-                    @click="chooseProject(project.id, $event)"
+                    @click="chooseProject(project.id)"
                   >
                     <div>
                       <div class="font-bold text-white tracking-wide group-hover/item:text-[#38bdf8] transition-colors">{{ project.name }}</div>
@@ -665,23 +565,21 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <!-- 3. Apple Vision 3D 悬浮舞台 (Apple Vision Spatial Stage) -->
+    <!-- 3. Apple VisionOS 3D 空间计算窗口舞台 (3D Spatial Computing Window Array) -->
     <main
       class="relative z-10 mx-auto max-w-7xl w-full px-8 py-12 flex-1 flex flex-col justify-center space-y-12 transition-all duration-500 ease-out"
       :style="{
-        transform: isClientFlythrough
+        transform: isSpatialLaunching
           ? 'perspective(120px) translateZ(1600px) scale(4) rotateX(15deg)'
-          : isProjectWarping
-            ? 'scale(0.85) filter(blur(6px))'
-            : `perspective(1000px) rotateY(${mouseX * 0.3}deg) rotateX(${-mouseY * 0.3}deg)`,
-        opacity: isClientFlythrough || isProjectWarping ? '0.1' : '1',
+          : `perspective(1000px) rotateY(${mouseX * 0.35}deg) rotateX(${-mouseY * 0.35}deg)`,
+        opacity: isSpatialLaunching ? '0.1' : '1',
       }"
     >
-      <!-- 迎宾标题 -->
+      <!-- Hero 迎宾区域 -->
       <div class="text-center space-y-4 max-w-3xl mx-auto">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 text-[#38bdf8] text-xs font-mono font-bold border border-white/10 backdrop-blur-xl shadow-lg animate-pulse">
           <span class="w-2 h-2 rounded-full bg-[#007AFF] animate-ping"></span>
-          <span>PRODUCT EXPERIENCE CENTER · 方案 G [星际穿越 🚀]</span>
+          <span>APPLE VISIONOS SPATIAL COMPUTING EXPERIENCE [方案 V 👓]</span>
         </div>
 
         <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight text-white leading-tight drop-shadow-[0_0_35px_rgba(255,255,255,0.4)]">
@@ -689,7 +587,7 @@ onBeforeUnmount(() => {
         </h1>
 
         <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
-          {{ hasSelectedProject ? (selectedProject?.description || '进入项目包，查看对应的业务原型、产品文档与功能入口。') : '请先选择一个项目包，再进入对应的业务客户端。' }}
+          {{ hasSelectedProject ? (selectedProject?.description || '体验 Apple VisionOS 空间计算黑玻璃高保真原型，支持眼动追焦与捏合手势流转。') : '请在上方选择目标项目包，开启 VisionOS 空间视效。' }}
         </p>
 
         <div v-if="showConsole" class="pt-2 flex items-center justify-center gap-3">
@@ -712,28 +610,31 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 客户端 3D 浮空倾斜大卡片 -->
+      <!-- VisionOS 3D 空间黑玻璃窗口 Card Grid -->
       <div v-if="clientEntries.length" class="flex flex-wrap justify-center gap-8 w-full max-w-7xl mx-auto">
         <div
           v-for="entry in clientEntries"
           :key="entry.id"
-          class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-[380px] group relative rounded-[32px] bg-[#0e1322]/70 backdrop-blur-3xl p-8 border border-white/10 hover:border-white/25 hover:bg-[#12182a]/80 hover:shadow-[0_0_40px_rgba(56,189,248,0.15)] transition-all duration-500 hover:-translate-y-3 flex flex-col justify-between overflow-hidden shadow-2xl cursor-pointer"
-          @click="launchWarpJump(entry, $event)"
+          class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-[380px] group relative rounded-[36px] bg-[#0c111e]/75 backdrop-blur-3xl p-8 border border-white/12 hover:border-white/30 hover:bg-[#111728]/85 hover:shadow-[0_20px_60px_rgba(0,122,255,0.2)] transition-all duration-500 hover:-translate-y-3 flex flex-col justify-between overflow-hidden shadow-2xl cursor-pointer"
+          @click="launchSpatialApp(entry)"
         >
-          <!-- Specular Light Sweep -->
-          <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-all pointer-events-none"></div>
+          <!-- Apple VisionOS 空间窗口控制条 (Spatial Window Titlebar Pill) -->
+          <div class="flex items-center justify-between pb-6 mb-4 border-b border-white/10">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+            </div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              VISIONOS WINDOW
+            </span>
+          </div>
 
           <div>
-            <div class="flex items-center justify-between mb-6">
-              <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-2xl text-white shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-                <el-icon v-if="entry.kind === 'mobile'"><Iphone /></el-icon>
-                <el-icon v-else-if="entry.clientId === 'enterprise'"><OfficeBuilding /></el-icon>
-                <el-icon v-else><Monitor /></el-icon>
-              </div>
-
-              <span class="px-3 py-1 rounded-full text-[10px] font-mono font-bold border border-white/15 bg-white/5 text-slate-300 tracking-widest uppercase">
-                CLIENT EXPERIENCE
-              </span>
+            <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-2xl text-white shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 mb-6">
+              <el-icon v-if="entry.kind === 'mobile'"><Iphone /></el-icon>
+              <el-icon v-else-if="entry.clientId === 'enterprise'"><OfficeBuilding /></el-icon>
+              <el-icon v-else><Monitor /></el-icon>
             </div>
 
             <h2 class="text-2xl font-bold text-white group-hover:text-[#38bdf8] transition-colors mb-2">
@@ -747,10 +648,10 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="mt-8 w-full py-4 px-6 rounded-2xl text-xs font-extrabold text-white bg-[#007AFF] hover:bg-[#0062cc] shadow-lg shadow-[#007AFF]/25 flex items-center justify-center gap-2 transition-all active:scale-95"
-            @click.stop="launchWarpJump(entry, $event)"
+            @click.stop="launchSpatialApp(entry)"
           >
-            <el-icon class="text-base animate-pulse"><Position /></el-icon>
-            <span>进入客户端</span>
+            <el-icon class="text-base animate-pulse"><Pointer /></el-icon>
+            <span>捏合手势开启窗口</span>
             <el-icon class="text-sm group-hover:translate-x-1.5 transition-transform"><Right /></el-icon>
           </button>
         </div>
@@ -759,43 +660,33 @@ onBeforeUnmount(() => {
       <!-- 空状态 -->
       <div v-else class="rounded-3xl border border-white/10 bg-[#0d1222]/80 backdrop-blur-3xl p-12 text-center max-w-lg mx-auto shadow-2xl">
         <el-icon class="text-4xl text-[#007AFF] mb-3 animate-pulse"><FolderOpened /></el-icon>
-        <div class="text-sm font-bold text-white">未找到可用客户端</div>
-        <div class="text-xs text-slate-400 mt-1">请先选择一个包含客户端入口的项目包。</div>
+        <div class="text-sm font-bold text-white">未找到可用空间客户端</div>
+        <div class="text-xs text-slate-400 mt-1">请在顶部下拉选择包含客户端的原型包。</div>
       </div>
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-20 py-5 border-t border-white/10 bg-[#05070D]/90 text-xs font-mono text-slate-500 text-center tracking-widest">
-      PRODUCT EXPERIENCE CENTER · {{ projectConfig.name }}
+    <footer class="relative z-20 py-5 border-t border-white/10 bg-[#04060C]/90 text-xs font-mono text-slate-500 text-center tracking-widest">
+      APPLE VISIONOS SPATIAL COMPUTING SYSTEM · {{ projectConfig.name }}
     </footer>
   </div>
 </template>
 
 <style scoped>
-.interstellar-warp-page,
-.interstellar-warp-page * {
+.apple-visionos-page,
+.apple-visionos-page * {
   cursor: none !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
-.sector-warp-enter-active,
-.sector-warp-leave-active {
+.spatial-launch-enter-active,
+.spatial-launch-leave-active {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sector-warp-enter-from,
-.sector-warp-leave-to {
+.spatial-launch-enter-from,
+.spatial-launch-leave-to {
   opacity: 0;
   transform: scale(1.15);
-}
-
-.flythrough-overlay-enter-active,
-.flythrough-overlay-leave-active {
-  transition: all 0.35s ease;
-}
-
-.flythrough-overlay-enter-from,
-.flythrough-overlay-leave-to {
-  opacity: 0;
 }
 </style>

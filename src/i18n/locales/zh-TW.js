@@ -7,9 +7,9 @@ export default {
     admin: 'Admin',
   },
   home: {
-    title: '项目原型与资料协作平台',
+    title: '產品功能體驗中心',
     description: '集中展示營運端、企業端與行動端業務原型及產品文件，用於需求評審、方案展示與開發協作。',
-    platformLabel: '项目原型与资料协作平台',
+    platformLabel: '產品功能體驗中心',
     languageLabel: '選擇語言',
     entryLabel: '原型端入口',
     clientEntryLabel: '業務客戶端入口',

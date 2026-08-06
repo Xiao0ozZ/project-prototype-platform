@@ -254,21 +254,10 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="flex items-center gap-3 text-xs">
-          <button
-            type="button"
-            class="px-3 py-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-            @click="showDocsTray = !showDocsTray"
-          >
-            需求文档 ({{ documentEntries.length }})
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-            @click="showToolsTray = !showToolsTray"
-          >
-            工程工具
-          </button>
+        <div class="flex items-center gap-4 text-xs font-semibold">
+          <RouterLink to="/components" class="text-slate-300 hover:text-indigo-300 transition-colors">组件规范</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-300 hover:text-indigo-300 transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-300 hover:text-indigo-300 transition-colors">控制台</RouterLink>
         </div>
       </div>
     </header>

@@ -234,16 +234,8 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-600">
           <RouterLink to="/components" class="hover:text-slate-900 transition-colors">组件规范</RouterLink>
-          <RouterLink to="/tools/project-routes" class="hover:text-slate-900 transition-colors">路由管理</RouterLink>
-          <RouterLink to="/tools/projects" class="hover:text-slate-900 transition-colors">项目包</RouterLink>
-          <button
-            type="button"
-            class="text-slate-400 hover:text-slate-700 transition-colors ml-2"
-            title="快捷键 Ctrl+Shift+M"
-            @click="toggleConsole"
-          >
-            {{ showConsole ? '开发者模式: 开' : '开发者模式' }}
-          </button>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="hover:text-slate-900 transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="hover:text-slate-900 transition-colors">控制台</RouterLink>
         </div>
       </div>
     </header>
@@ -369,14 +361,14 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- 工具 -->
-        <section class="space-y-4">
+        <section v-if="showConsole" class="space-y-4">
           <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">工程工具</h2>
           <div class="space-y-3">
             <RouterLink
-              to="/tools/project-routes"
+              to="/tools/projects"
               class="flex items-center justify-between p-4.5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-lg transition-all text-xs font-bold text-slate-800 group shadow-sm"
             >
-              <span>路由菜单管理</span>
+              <span>项目管理</span>
               <el-icon class="text-slate-400 group-hover:text-slate-900"><Right /></el-icon>
             </RouterLink>
 

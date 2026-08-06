@@ -7,10 +7,10 @@ export default {
     admin: 'Admin',
   },
   home: {
-    title: 'ViewSpec',
+    title: 'Product Feature Experience Center',
     description:
       'A shared platform for RIMO operations, enterprise, and mobile prototypes and product documents, supporting reviews, demonstrations, and development collaboration.',
-    platformLabel: 'ViewSpec',
+    platformLabel: 'Product Feature Experience Center',
     languageLabel: 'Select language',
     entryLabel: 'Prototype portals',
     clientEntryLabel: 'Business client portals',

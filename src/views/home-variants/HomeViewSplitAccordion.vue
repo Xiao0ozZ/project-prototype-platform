@@ -195,14 +195,11 @@ onBeforeUnmount(() => {
             </div>
           </RouterLink>
 
-          <button
-            type="button"
-            class="text-xs text-slate-400 hover:text-white transition-colors"
-            title="快捷键 Ctrl+Shift+M"
-            @click="toggleConsole"
-          >
-            {{ showConsole ? '开发者模式: 开' : '开发者模式' }}
-          </button>
+        <div class="flex items-center gap-4 text-xs font-semibold">
+          <RouterLink to="/components" class="text-slate-400 hover:text-white transition-colors">组件规范</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-400 hover:text-white transition-colors">项目管理</RouterLink>
+          <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-400 hover:text-white transition-colors">控制台</RouterLink>
+        </div>
         </div>
 
         <!-- 全屏巨大项目选择按钮 (Hero Project Dropdown) -->
@@ -299,16 +296,16 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 底部平台工具链 -->
-      <div class="pt-6 border-t border-slate-800/80 space-y-4 relative z-10">
+      <div v-if="showConsole" class="pt-6 border-t border-slate-800/80 space-y-4 relative z-10">
         <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">PLATFORM ARSENAL</span>
         <div class="grid grid-cols-2 gap-3">
           <RouterLink
-            to="/tools/project-routes"
+            to="/tools/projects"
             class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-800 transition-all group"
           >
             <el-icon class="text-lg text-indigo-400 group-hover:scale-110 transition-transform"><Menu /></el-icon>
             <div>
-              <div class="text-xs font-bold text-white">路由菜单管理</div>
+              <div class="text-xs font-bold text-white">项目管理</div>
               <div class="text-[10px] text-slate-500">页面结构配置</div>
             </div>
           </RouterLink>

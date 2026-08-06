@@ -111,7 +111,7 @@ function createLegacyProjectRedirects() {
 }
 
 const routes = [
-  // 默认平台首页：保留原有项目选择、入口和工程工具
+  // 默认平台首页：使用带多套皮肤的新首页
   {
     path: '/',
     name: 'home',
@@ -119,12 +119,12 @@ const routes = [
     meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
 
-  // 带皮肤的新首页，通过 /#/home-skins 访问
+  // 新首页备用入口，保留原有地址兼容
   {
     path: '/home-skins',
     name: 'home-skins',
-    component: () => import('../views/HomeViewClean.vue'),
-    meta: { title: '项目展示中心', transition: 'platform' },
+    component: () => import('../views/HomeView.vue'),
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
 
   // 连续 A 至 K 独立皮肤/排版架构方案路由 (方案 A 确定为苹果液体玻璃)
@@ -195,9 +195,15 @@ const routes = [
     meta: { title: '方案 K：3D 赛博驾驶舱', transition: 'platform' },
   },
   {
+    path: '/variant-v',
+    name: 'variant-v',
+    component: () => import('../views/home-variants/HomeViewAppleVisionOS.vue'),
+    meta: { title: '方案 V：Apple VisionOS 空间计算', transition: 'platform' },
+  },
+  {
     path: '/home-legacy',
     name: 'home-legacy',
-    component: () => import('../views/HomeView.vue'),
+    component: () => import('../views/HomeViewLegacy.vue'),
     meta: { title: '旧版平台主页', transition: 'platform' },
   },
 
