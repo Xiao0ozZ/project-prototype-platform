@@ -855,29 +855,83 @@ body:has(.platform-page) {
 }
 
 /* Apple-inspired tool dialogs are opt-in and do not affect business page dialogs. */
+/* ======= apple-tool-overlay：仅影响弹窗遮罩，不覆盖 Element Plus 的显示状态 ======= */
 .apple-tool-overlay {
-  background: rgb(0 0 0 / 24%);
-  backdrop-filter: blur(10px) saturate(115%);
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgb(15 23 42 / 40%);
+  backdrop-filter: blur(6px);
 }
 
-.apple-tool-dialog.el-dialog {
-  max-width: calc(100vw - 32px);
-  margin-top: 5vh;
-  overflow: hidden;
-  border: 0.5px solid rgb(0 0 0 / 10%);
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 28px 80px rgb(0 0 0 / 22%);
-  transform-origin: center top;
-  --el-border-radius-base: 10px;
+/* Element Plus 通过 el-overlay 的 display 控制开关；居中应放在内部容器。 */
+.apple-tool-overlay .el-overlay-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  pointer-events: auto;
 }
 
-.apple-tool-dialog .el-dialog__header {
-  min-height: 66px;
-  margin: 0;
-  padding: 21px 64px 18px 24px;
-  border-bottom: 0.5px solid rgb(0 0 0 / 8%);
-  background: rgb(255 255 255 / 92%);
+/* ======= project-dialog-apple-glass 弹窗本体：margin:0 让 flex 居中生效 ======= */
+.project-dialog-apple-glass.el-dialog {
+  margin: 0 !important;
+  max-height: calc(100vh - 48px) !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.25) !important;
+}
+
+/* 彻底消除 Element Plus 默认 .el-dialog__header（顶部空白横条根源） */
+.project-dialog-apple-glass .el-dialog__header,
+.el-overlay-dialog .project-dialog-apple-glass .el-dialog__header,
+header.el-dialog__header {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+}
+
+.project-dialog-apple-glass .el-dialog__body {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.project-dialog-apple-glass .el-dialog__footer {
+  display: none !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* dialog 进退场动画（两类弹窗共用） */
+.dialog-fade-enter-active .apple-tool-dialog,
+.dialog-fade-enter-active .project-dialog-apple-glass,
+.dialog-fade-leave-active .apple-tool-dialog,
+.dialog-fade-leave-active .project-dialog-apple-glass {
+  transition:
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-fade-enter-from .apple-tool-dialog,
+.dialog-fade-enter-from .project-dialog-apple-glass,
+.dialog-fade-leave-to .apple-tool-dialog,
+.dialog-fade-leave-to .project-dialog-apple-glass {
+  opacity: 0;
+  transform: scale(0.985);
 }
 
 .apple-tool-dialog .el-dialog__title {
@@ -1018,20 +1072,7 @@ body:has(.platform-page) {
   font-weight: 550;
 }
 
-.dialog-fade-enter-active .apple-tool-dialog,
-.dialog-fade-leave-active .apple-tool-dialog {
-  transition:
-    opacity 180ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 180ms ease;
-}
 
-.dialog-fade-enter-from .apple-tool-dialog,
-.dialog-fade-leave-to .apple-tool-dialog {
-  opacity: 0;
-  filter: blur(4px);
-  transform: translateY(-8px) scale(0.985);
-}
 
 @media (max-width: 760px) {
   .apple-tool-dialog.el-dialog {

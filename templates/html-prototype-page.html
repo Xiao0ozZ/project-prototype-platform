@@ -7,8 +7,10 @@
     <title>资料管理</title>
     <link rel="icon" href="data:," />
 
+    <!-- TEMPLATE-LOCK: 以下 AI 编写协议必须连同开始、结束标记和全部正文原样保留，不得删减、概括或改写。 -->
+    <!-- PROTOTYPE_AI_PROTOCOL_START -->
     <!--
-      HTML 原型 AI 编写协议 v1.3（修改页面前必须完整阅读）
+      HTML 原型 AI 编写协议 v1.5（修改页面前必须完整阅读）
 
       目标
       - 本模板用于创建一份完整、可直接在浏览器打开的桌面端后台业务 HTML 页面。
@@ -22,6 +24,7 @@
       3. 完成后按“交付自检”逐项核对；不要只保证页面看起来能打开。
 
       不可破坏的模板契约
+      - PROTOTYPE_AI_PROTOCOL_START/END 及其间的协议标题和全部正文必须完整保留；不得只保留版本标题，也不得压缩、摘要、改写或删除协议内容。
       - [TEMPLATE-LOCK] 区域、所有 START/END 标记、#app、prototype-page-manifest 和启动代码不得删除、改名或移动。
       - 只修改 [AI-EDIT] 区域和带 data-shell-* 的外壳文字；外壳骨架、基础主题及统一依赖保持不变。
       - 本文件只承载一个桌面端后台业务页面；不得改造成登录页、移动端页面或同时承载多个页面。
@@ -39,7 +42,9 @@
       - pageHeaderMode 仅使用 standard、back-only 或 none；none 时删除整个 data-page-header。
 
       HTML、Vue 与交互规则
-      - data-business-content 内部可整体替换为列表、表单、详情、看板、控制台、地图或自定义布局，不保留无关示例结构。
+      - data-page-header 只约定页面标题、说明和页面级操作的位置，不约定其后的业务内容结构。
+      - data-business-content 内的现有代码只是可运行示例，不代表业务页面必须采用该结构、组件、信息层级或交互方式。
+      - 根据当前业务需求自由设计并完整替换 data-business-content 内部内容；替换时同步更新 PAGE_STYLE、PAGE_OVERLAYS 和 PAGE_LOGIC，并删除不再使用的示例代码。
       - 页面状态、计算属性、方法和模拟数据只能写在 PAGE_LOGIC 中；使用 Vue 3 Composition API，不污染 window。
       - SHELL_NAV 默认只作为视觉导航示例，不得添加指向不存在文件的链接或虚构跳转路径。
       - 只有确认目标 HTML 文件真实存在且确实需要跳转时，才使用标准相对链接，例如 <a href="./目标页面.html">；禁止使用 window.location 实现页面跳转。
@@ -51,14 +56,16 @@
       CSS 与视觉规则
       - 页面专属样式只写在 PAGE_STYLE；优先使用 --app-* 与 --el-* 变量，不新增全局样式、CDN、外部字体或外部图片。
       - 页面标题 24px、区块标题 16px、正文/表格/表单/详情字段 14px、辅助信息 12-13px；不依赖浏览器默认字号。
-      - 先使用布局、间距、分隔和文字层级；卡片只用于本身就是独立交互对象的内容，不堆叠无意义容器。
+      - 内容区的布局、组件和视觉组织由当前业务需求决定；统一使用模板主题变量，并保持信息层级、间距和交互状态清晰一致。
 
       交付自检
+      - PROTOTYPE_AI_PROTOCOL_START/END 和协议全部正文仍完整存在，没有只保留协议标题或删除注释提示词。
       - HTML 可直接打开；控制台无错误；加载、空数据、校验、取消、确认和分页等已用状态均可操作。
       - 多页面原型中的相对链接均指向实际存在的文件，当前页面导航项带 is-active 和 aria-current="page"。
       - Manifest 是有效 JSON，页面身份字段一致，所有 Vue 模板表达式引用的状态和方法都在 pageSetup 返回。
       - 没有修改锁定区、没有新增第二份壳层、没有重复 data-page-* 标记、没有遗留无用代码或未使用状态。
     -->
+    <!-- PROTOTYPE_AI_PROTOCOL_END -->
 
     <!-- TEMPLATE-LOCK: 页面基础样式依赖，不得修改、删除或重复引入。 -->
     <!-- PROTOTYPE_DEPENDENCIES_START -->
@@ -260,7 +267,9 @@
         font-size: 14px;
         font-weight: 500;
         text-decoration: none;
-        transition: background-color 160ms ease, color 160ms ease;
+        transition:
+          background-color 160ms ease,
+          color 160ms ease;
       }
 
       .prototype-menu-icon {
@@ -535,11 +544,7 @@
             <span>工作台首页</span>
           </div>
           <div class="prototype-menu-group">业务管理</div>
-          <div
-            class="prototype-menu-item is-active"
-            data-shell-page-title
-            aria-disabled="true"
-          >
+          <div class="prototype-menu-item is-active" data-shell-page-title aria-disabled="true">
             <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Document" /></el-icon>
             <span>资料管理</span>
           </div>
@@ -599,14 +604,11 @@
 
             <!--
               [AI-EDIT] BUSINESS_CONTENT_START
-              子标题以下全部属于自由业务内容区。下面提供“筛选 + 表格”的默认结构。
-              可根据实际需求删除并整体重做内部结构，例如：
-              - 表单/新增流程：分组表单、步骤、费用摘要、确认区；
-              - 详情页：摘要、分组资料、时间线、日志；
-              - 看板/控制台：对象列表、地图、甘特图、图表、操作面板；
-              - 配置页：标签页、规则区、版本和日志。
-              无论使用哪种布局，只保留唯一 data-business-content 外层节点，并将 data-layout-type
-              改为 list、form、detail、dashboard、console 或 custom。
+              标题区以下的现有内容只是一个可运行示例。根据当前业务需求，可以删除并完整替换
+              data-business-content 内部的结构、组件、文案、数据和交互，不需要沿用示例的布局。
+              唯一需要保留的是一个 data-business-content 外层节点；data-layout-type 仅描述当前页面，
+              现有类型无法准确描述时使用 custom。替换内容后，同步更新 PAGE_STYLE、PAGE_OVERLAYS
+              和 PAGE_LOGIC，并清理不再使用的示例样式、状态和方法。
             -->
             <div data-business-content data-layout-type="list">
               <section class="content-panel" data-block-id="list-panel" data-block-name="资料列表">

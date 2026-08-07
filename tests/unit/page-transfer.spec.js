@@ -196,9 +196,16 @@ describe('page transfer', () => {
     const manifest = JSON.parse(manifestSource.trim());
     const htmlWithoutComments = source.replace(/<!--[\s\S]*?-->/gu, '');
 
-    expect(source).toContain('HTML 原型 AI 编写协议 v1.3');
+    expect(source).toContain('HTML 原型 AI 编写协议 v1.5');
     expect(source).toContain('以本模板作为唯一的结构与实现基准');
     expect(source).toContain('可将本模板复制为多个 HTML 文件组成多页面原型');
+    expect(source).toContain('<!-- PROTOTYPE_AI_PROTOCOL_START -->');
+    expect(source).toContain('<!-- PROTOTYPE_AI_PROTOCOL_END -->');
+    expect(source).toContain('协议标题和全部正文必须完整保留');
+    expect(source).toContain('现有内容只是一个可运行示例');
+    expect(source).toContain('可以删除并完整替换');
+    expect(source).not.toContain('四个统计卡片');
+    expect(source).not.toContain('统计摘要仅在业务需要');
     expect(source).toContain('<a href="./目标页面.html">');
     expect(source).not.toMatch(/历史\s*HTML|旧\s*HTML|旧页面|legacy|迁移|转换生成|模板化副本/iu);
     expect(source).not.toMatch(
@@ -221,7 +228,8 @@ describe('page transfer', () => {
     expect(source).toContain(`<title>${manifest.pageTitle}</title>`);
     expect(source).toContain(`<h1>${manifest.pageTitle}</h1>`);
     expect(source).toContain(`data-shell-page-title`);
-    expect(source).toContain(`href="./${manifest.fileName}"`);
+    expect(htmlWithoutComments).not.toContain(`href="./${manifest.fileName}"`);
+    expect(htmlWithoutComments).toContain('aria-disabled="true"');
     expect(source).toContain('<!-- [AI-EDIT] SHELL_NAV_START:');
     expect(source).toContain('<!-- SHELL_NAV_END -->');
     expect(source).toContain(`class="${manifest.rootClass}"`);

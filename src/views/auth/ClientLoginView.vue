@@ -227,8 +227,17 @@ const captchaToken = ref(Date.now());
 const selectedClient = ref(props.clientId);
 let loginTimer;
 
-// 时空机穿梭降临动画状态
-const isChronoArrival = ref(true);
+// 时空机穿梭降临动画状态（仅在方案 G 星际穿越皮肤下触发）
+const skinStorageKey = 'project-platform:home-skin-theme-v3';
+function checkShouldShowWarp() {
+  try {
+    return localStorage.getItem(skinStorageKey) === 'interstellar-warp';
+  } catch {
+    return false;
+  }
+}
+const shouldShowWarp = checkShouldShowWarp();
+const isChronoArrival = ref(shouldShowWarp);
 const chronoCanvasRef = ref(null);
 let animationFrameId = null;
 
@@ -381,11 +390,13 @@ function initChronoCanvas() {
 }
 
 onMounted(() => {
-  playChronoAudio('arrival');
-  initChronoCanvas();
-  setTimeout(() => {
-    isChronoArrival.value = false;
-  }, 750);
+  if (shouldShowWarp) {
+    playChronoAudio('arrival');
+    initChronoCanvas();
+    setTimeout(() => {
+      isChronoArrival.value = false;
+    }, 750);
+  }
 });
 
 watch(
@@ -404,11 +415,15 @@ function refreshCaptcha() {
 }
 
 function switchClient(client) {
-  playChronoAudio('arrival');
-  isChronoArrival.value = true;
-  setTimeout(() => {
+  if (shouldShowWarp) {
+    playChronoAudio('arrival');
+    isChronoArrival.value = true;
+    setTimeout(() => {
+      router.push(`/p/${props.projectId}/${client}/login`);
+    }, 500);
+  } else {
     router.push(`/p/${props.projectId}/${client}/login`);
-  }, 500);
+  }
 }
 
 function showForgotPasswordTip() {

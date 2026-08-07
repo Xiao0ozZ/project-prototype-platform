@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { ArrowUp, Brush, Check } from '@element-plus/icons-vue';
 
 import HomeViewAppleGlass from './home-variants/HomeViewAppleGlass.vue';
 import HomeViewStageHub from './home-variants/HomeViewStageHub.vue';
@@ -15,10 +16,38 @@ import HomeViewCyberCockpit from './home-variants/HomeViewCyberCockpit.vue';
 import HomeViewAppleVisionOS from './home-variants/HomeViewAppleVisionOS.vue';
 
 const skinStorageKey = 'project-platform:home-skin-theme-v3';
+const consoleVisibilityKey = 'project-platform:home-engineering-tools';
+
 const skinMenuRef = ref(null);
 const showSkinMenu = ref(false);
 
-// 正确修正保留的 12 套连续编号皮肤（包含全新的方案 V 苹果 VisionOS 空间计算）
+function readConsoleVisibility() {
+  try {
+    return window.sessionStorage.getItem(consoleVisibilityKey) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+const showConsole = ref(readConsoleVisibility());
+
+function toggleConsole() {
+  showConsole.value = !showConsole.value;
+  try {
+    window.sessionStorage.setItem(consoleVisibilityKey, String(showConsole.value));
+  } catch {
+    // Session storage is optional
+  }
+}
+
+function handleConsoleShortcut(event) {
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm') {
+    event.preventDefault();
+    toggleConsole();
+  }
+}
+
+// 12 套皮肤（包括方案 V 苹果 VisionOS 空间计算）
 const skins = [
   {
     id: 'apple-glass',
@@ -133,17 +162,19 @@ function handleOutsideClick(event) {
 
 onMounted(() => {
   document.addEventListener('pointerdown', handleOutsideClick);
+  window.addEventListener('keydown', handleConsoleShortcut);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleOutsideClick);
+  window.removeEventListener('keydown', handleConsoleShortcut);
 });
 </script>
 
 <template>
   <div class="homepage-skin-container relative">
-    <!-- 右下角极简常驻向上弹出下拉菜单 -->
-    <div class="fixed bottom-6 right-6 z-50">
+    <!-- 右下角悬浮皮肤/架构选择器（默认隐藏，按 Ctrl+Shift+M 快捷键调出显示） -->
+    <div v-if="showConsole" class="fixed bottom-6 right-6 z-50">
       <div ref="skinMenuRef" class="relative">
         <button
           type="button"

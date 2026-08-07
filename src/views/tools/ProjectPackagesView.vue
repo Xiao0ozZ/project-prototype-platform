@@ -1,130 +1,238 @@
 <template>
-  <main class="packages-page platform-page">
-    <header class="packages-header tool-hero">
-      <div class="tool-hero__main">
-        <RouterLink to="/" class="packages-back back-link">
-          <el-icon><ArrowLeft /></el-icon>
-          返回首页
-        </RouterLink>
-        <div class="tool-title-row">
-          <div class="tool-title-icon">
-            <el-icon><FolderOpened /></el-icon>
-          </div>
-          <div class="tool-title-copy">
-            <p class="eyebrow">PROJECT LIBRARY</p>
-            <h1>项目包状态</h1>
-            <p class="subtitle">管理本地项目资料、首页入口和项目能力；新增项目会从模板生成初始化包。</p>
-          </div>
-        </div>
-      </div>
-      <div class="packages-header__actions">
-        <el-button v-if="canManageProjects" type="primary" @click="openCreateDialog">
-          <el-icon><Plus /></el-icon>
-          新建项目
-        </el-button>
-        <el-button v-if="canManageProjects" @click="$router.push('/tools/project-routes')">
-          路由菜单管理
-        </el-button>
-        <el-button :loading="loading" @click="loadPackages">
-          <el-icon><Refresh /></el-icon>
-          重新扫描
-        </el-button>
-      </div>
-    </header>
-
-    <div class="packages-feedback">
-      <el-alert v-if="error" :title="error" type="error" :closable="false" />
-      <el-alert v-if="notice" :title="notice" type="success" :closable="true" @close="notice = ''" />
+  <div class="packages-page min-h-screen bg-[#f0f4f8] text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white relative overflow-hidden">
+    <!-- 苹果光流背景 Gradient Orbs -->
+    <div class="fixed inset-0 pointer-events-none z-0">
+      <div class="absolute -top-40 right-0 w-[600px] h-[600px] rounded-full bg-blue-300/25 blur-[120px]"></div>
+      <div class="absolute bottom-0 -left-20 w-[600px] h-[600px] rounded-full bg-purple-300/25 blur-[120px]"></div>
     </div>
 
-    <section class="packages-overview" aria-label="项目包概览">
-      <div class="packages-overview__lead">
-        <span class="overview-kicker">LOCAL PROJECT PACKAGES</span>
-        <h2>项目资料总览</h2>
-        <p>首页、客户端入口、文档和移动端内容都来自本地项目包。</p>
-      </div>
-      <div class="overview-metrics">
-        <div class="overview-metric">
-          <span>可用项目</span>
-          <strong>{{ projects.length }}</strong>
-          <small>已通过完整性检查</small>
-        </div>
-        <div class="overview-metric" :class="{ 'is-warning': invalidProjects.length }">
-          <span>异常项目</span>
-          <strong>{{ invalidProjects.length }}</strong>
-          <small>{{ invalidProjects.length ? '需要处理后才能使用' : '当前没有异常' }}</small>
-        </div>
-        <div class="overview-metric">
-          <span>当前权限</span>
-          <strong>{{ canManageProjects ? '可管理' : '只读' }}</strong>
-          <small>{{ canManageProjects ? '可编辑项目包配置' : '仅查看生产构建内容' }}</small>
-        </div>
-      </div>
-    </section>
+    <!-- 主 Stage -->
+    <main class="mx-auto max-w-6xl px-6 py-6 space-y-5 relative z-10">
+      <!-- 1. 精简紧凑型 Header 顶栏 -->
+      <header class="rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 px-7 py-5 shadow-xl shadow-slate-200/50 space-y-3">
+        <!-- 顶行：返回首页 + 操作按钮群 -->
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <RouterLink to="/" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>返回首页</span>
+          </RouterLink>
 
-    <section class="packages-section">
-      <div class="packages-section__heading">
-        <div>
-          <span class="section-kicker">PROJECT INDEX</span>
-          <h2>项目清单</h2>
+          <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <button
+              v-if="canManageProjects"
+              type="button"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-1.5"
+              @click="openCreateDialog"
+            >
+              <el-icon><Plus /></el-icon>
+              <span>新建项目</span>
+            </button>
+            <button
+              v-if="canManageProjects"
+              type="button"
+              class="px-3.5 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 font-bold text-xs border border-slate-200/80 shadow-xs transition-all flex items-center gap-1.5"
+              @click="$router.push('/tools/project-routes')"
+            >
+              <el-icon><Menu /></el-icon>
+              <span>路由菜单管理</span>
+            </button>
+            <button
+              type="button"
+              class="px-3.5 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 font-bold text-xs border border-slate-200/80 shadow-xs transition-all flex items-center gap-1.5"
+              :disabled="loading"
+              @click="loadPackages"
+            >
+              <el-icon :class="{ 'animate-spin': loading }"><Refresh /></el-icon>
+              <span>重新扫描</span>
+            </button>
+          </div>
         </div>
-        <span>{{ projects.length }} 个项目</span>
-      </div>
-      <el-table :data="projects" border empty-text="尚未发现有效项目包">
-        <el-table-column prop="name" label="项目名称" min-width="180" />
-        <el-table-column prop="id" label="项目 ID" min-width="160" />
-        <el-table-column prop="version" label="版本" width="110" />
-        <el-table-column label="客户端" min-width="220">
-          <template #default="{ row }">{{
-            row.clients.map((client) => client.name).join('、') || '-'
-          }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default><el-tag type="success">可用</el-tag></template>
-        </el-table-column>
-        <el-table-column label="首页显示" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.homepage?.visible !== false ? 'success' : 'info'">
-              {{ row.homepage?.visible !== false ? '显示' : '隐藏' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="canManageProjects" label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openEditDialog(row)">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </section>
 
-    <section v-if="invalidProjects.length" class="packages-section">
-      <div class="packages-section__heading">
-        <h2>无效项目包</h2>
-        <span>{{ invalidProjects.length }} 个</span>
-      </div>
-      <el-table :data="invalidProjects" border>
-        <el-table-column prop="folder" label="文件夹" width="220" />
-        <el-table-column label="问题">
-          <template #default="{ row }">{{ row.errors.join('；') }}</template>
-        </el-table-column>
-      </el-table>
-    </section>
+        <!-- 标题行：图标 + 标题 + 简介 (高度极致紧凑) -->
+        <div class="flex items-center gap-3 pt-1">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 flex items-center justify-center text-lg font-bold shrink-0">
+            <el-icon><FolderOpened /></el-icon>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">项目包状态</h1>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wider">
+                PROJECT LIBRARY
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+              管理本地项目资料、首页入口和项目能力；新增项目会从模板生成初始化包。
+            </p>
+          </div>
+        </div>
+      </header>
 
-    <ProjectConfigDialog
-      v-model="dialogVisible"
-      :mode="dialogMode"
-      :project="editingProject"
-      @saved="handleDialogSaved"
-    />
-  </main>
+      <!-- 反馈 Notice -->
+      <div v-if="error || notice" class="space-y-2">
+        <el-alert v-if="error" :title="error" type="error" :closable="false" class="!rounded-2xl" />
+        <el-alert v-if="notice" :title="notice" type="success" :closable="true" class="!rounded-2xl" @close="notice = ''" />
+      </div>
+
+      <!-- 2. 项目资料总览 (Overview Panel) -->
+      <section class="rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 px-7 py-5 shadow-xl shadow-slate-200/50 flex flex-col md:flex-row items-stretch justify-between gap-6" aria-label="项目包概览">
+        <div class="space-y-1 md:w-1/3 flex flex-col justify-center">
+          <span class="text-[10px] font-mono font-bold text-blue-600 uppercase tracking-widest">LOCAL PROJECT PACKAGES</span>
+          <h2 class="text-lg font-extrabold text-slate-900">项目资料总览</h2>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            首页、客户端入口、文档和移动端内容都来自本地项目包。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 md:border-l md:border-slate-200/80 md:pl-6 flex-1">
+          <div class="bg-white/60 backdrop-blur-xl rounded-2xl p-4 border border-white/80 shadow-2xs flex flex-col justify-center space-y-0.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500">可用项目</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
+            </div>
+            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">{{ projects.length }}</span>
+            <span class="text-[10px] text-slate-400 font-medium">已通过完整性检查</span>
+          </div>
+
+          <div class="bg-white/60 backdrop-blur-xl rounded-2xl p-4 border border-white/80 shadow-2xs flex flex-col justify-center space-y-0.5" :class="{ 'bg-amber-50/70 border-amber-200/80': invalidProjects.length }">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500">异常项目</span>
+              <span class="w-2 h-2 rounded-full" :class="invalidProjects.length ? 'bg-amber-500 shadow-sm shadow-amber-500/50' : 'bg-slate-300'"></span>
+            </div>
+            <span class="text-2xl font-extrabold tracking-tight" :class="invalidProjects.length ? 'text-amber-600' : 'text-slate-900'">{{ invalidProjects.length }}</span>
+            <span class="text-[10px] text-slate-400 font-medium">{{ invalidProjects.length ? '需要处理后才能使用' : '当前没有异常' }}</span>
+          </div>
+
+          <div class="bg-white/60 backdrop-blur-xl rounded-2xl p-4 border border-white/80 shadow-2xs flex flex-col justify-center space-y-0.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500">当前权限</span>
+              <span class="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
+            </div>
+            <span class="text-xl font-extrabold text-blue-600 tracking-tight">{{ canManageProjects ? '可管理' : '只读' }}</span>
+            <span class="text-[10px] text-slate-400 font-medium">{{ canManageProjects ? '可编辑项目包配置' : '仅查看生产构建内容' }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 项目清单 (Project Index Table) -->
+      <section class="rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 px-7 py-6 shadow-xl shadow-slate-200/50 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <h2 class="text-lg font-extrabold text-slate-900">项目清单</h2>
+            <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">PROJECT INDEX</span>
+          </div>
+          <span class="px-3 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
+            {{ projects.length }} 个项目
+          </span>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200/70 overflow-hidden shadow-2xs">
+          <el-table :data="projects" border empty-text="尚未发现有效项目包" class="apple-glass-table">
+            <el-table-column prop="name" label="项目名称" min-width="170">
+              <template #default="{ row }">
+                <span class="font-bold text-slate-900">{{ row.name }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="id" label="项目 ID" min-width="140">
+              <template #default="{ row }">
+                <span class="font-mono text-xs text-slate-500">{{ row.id }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="version" label="版本" width="100">
+              <template #default="{ row }">
+                <span class="font-mono text-xs font-bold text-slate-600">v{{ row.version || '1.0' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="客户端" min-width="220">
+              <template #default="{ row }">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    v-for="client in row.clients"
+                    :key="client.id"
+                    class="px-2.5 py-0.5 rounded-xl text-xs font-semibold bg-slate-100/90 text-slate-700 border border-slate-200/70"
+                  >
+                    {{ client.name }}
+                  </span>
+                  <span v-if="!row.clients.length" class="text-xs text-slate-400">-</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-2xs"></span>
+                  <span>可用</span>
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="首页显示" width="110">
+              <template #default="{ row }">
+                <span
+                  class="px-2.5 py-0.5 rounded-full text-xs font-bold inline-block"
+                  :class="row.homepage?.visible !== false ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-400 border border-slate-200'"
+                >
+                  {{ row.homepage?.visible !== false ? '显示' : '隐藏' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="canManageProjects" label="操作" width="90" fixed="right">
+              <template #default="{ row }">
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors border border-blue-100/80 inline-flex items-center gap-1"
+                  @click="openEditDialog(row)"
+                >
+                  <el-icon><Edit /></el-icon>
+                  <span>编辑</span>
+                </button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </section>
+
+      <!-- 4. 无效项目包 Warning (如果有) -->
+      <section v-if="invalidProjects.length" class="rounded-3xl bg-amber-50/80 backdrop-blur-2xl border border-amber-200/80 px-7 py-5 shadow-xl shadow-amber-950/5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-extrabold text-amber-900">无效项目包</h2>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+            {{ invalidProjects.length }} 个需要处理
+          </span>
+        </div>
+        <el-table :data="invalidProjects" border class="apple-glass-table">
+          <el-table-column prop="folder" label="文件夹" width="220" />
+          <el-table-column label="问题">
+            <template #default="{ row }">{{ row.errors.join('；') }}</template>
+          </el-table-column>
+          <el-table-column v-if="canManageProjects" label="操作" width="120" align="center">
+            <template #default="{ row }">
+              <button
+                v-if="row.project"
+                type="button"
+                class="px-3 py-1 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs transition-colors border border-amber-200 inline-flex items-center gap-1"
+                @click="openInvalidProjectDialog(row)"
+              >
+                <el-icon><Edit /></el-icon>
+                <span>配置</span>
+              </button>
+              <span v-else class="text-xs text-slate-400">无法读取配置</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+
+      <ProjectConfigDialog
+        v-model="dialogVisible"
+        :mode="dialogMode"
+        :project="editingProject"
+        @saved="handleDialogSaved"
+      />
+    </main>
+  </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { ArrowLeft, Edit, FolderOpened, Plus, Refresh } from '@element-plus/icons-vue';
+import { ArrowLeft, Edit, FolderOpened, Menu, Plus, Refresh } from '@element-plus/icons-vue';
 import { useRoute } from 'vue-router';
 
 import ProjectConfigDialog from '../../components/ProjectConfigDialog.vue';
@@ -170,15 +278,26 @@ function openEditDialog(project) {
   dialogVisible.value = true;
 }
 
-function handleDialogSaved({ message }) {
+function openInvalidProjectDialog(invalidProject) {
+  if (!invalidProject.project) {
+    notice.value = '该项目的 project.json 无法读取，需先修复配置文件格式后才能编辑。';
+    return;
+  }
+  openEditDialog(invalidProject.project);
+}
+
+async function handleDialogSaved({ message }) {
   notice.value = `${message} 开发服务正在重新载入项目配置。`;
+  await loadPackages();
 }
 
 onMounted(async () => {
   await loadPackages();
   const projectId = typeof route.query.project === 'string' ? route.query.project : '';
   if (canManageProjects && route.query.edit === '1' && projectId) {
-    const project = projects.value.find((item) => item.id === projectId);
+    const project =
+      projects.value.find((item) => item.id === projectId) ||
+      invalidProjects.value.find((item) => item.folder === projectId)?.project;
     if (project) openEditDialog(project);
   }
   stopWatching = onProjectPackagesChanged(loadPackages);
@@ -187,269 +306,26 @@ onBeforeUnmount(() => stopWatching());
 </script>
 
 <style scoped>
-.packages-page {
-  width: min(var(--platform-content-max), calc(100% - 64px));
-  min-height: 100svh;
-  margin: 0 auto;
-  padding: 40px 0 64px;
-}
-.packages-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 32px;
-  margin-bottom: 28px;
-}
-.tool-hero__main {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.tool-title-row {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 14px;
-}
-.tool-title-copy {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.tool-title-icon {
-  display: inline-flex;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  margin-top: 2px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--app-color-primary) 11%, white);
-  color: var(--app-color-primary);
-  font-size: 22px;
-}
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--app-color-primary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-.packages-header h1 {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.2;
-}
-.packages-header .subtitle {
-  margin: 10px 0 0;
-  color: var(--app-color-text-muted);
-  font-size: 15px;
-  line-height: 1.6;
-}
-.packages-header__actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.packages-back {
-  margin-bottom: 14px;
-}
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  width: fit-content;
-  padding: 6px 0;
-  color: var(--app-color-text-secondary);
+.apple-glass-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(248, 250, 252, 0.85);
+  --el-table-row-hover-bg-color: rgba(239, 246, 255, 0.7);
+  --el-table-border-color: rgba(241, 245, 249, 0.9);
   font-size: 13px;
-  transition: color 160ms ease;
 }
-.back-link:hover {
-  color: var(--app-color-primary);
-}
-.packages-feedback {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.packages-feedback :deep(.el-alert) {
-  border-radius: 12px;
-}
-.packages-overview {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 22px;
-  padding: 24px 28px;
-  border: 0.5px solid rgb(0 0 0 / 9%);
-  border-radius: var(--platform-radius-surface);
-  background: var(--platform-color-surface);
-  box-shadow: var(--platform-shadow-surface);
-}
-.packages-overview__lead {
-  display: flex;
-  min-width: 230px;
-  flex-direction: column;
-  justify-content: center;
-}
-.overview-kicker,
-.section-kicker {
-  color: var(--app-color-text-muted);
-  font-size: 11px;
+:deep(.el-table th.el-table__cell) {
+  background-color: rgba(248, 250, 252, 0.85) !important;
+  color: #64748b;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
-.packages-overview h2 {
-  margin: 8px 0 0;
-  font-size: 22px;
-  letter-spacing: -0.025em;
-}
-.packages-overview p {
-  margin: 8px 0 0;
-  color: var(--app-color-text-muted);
-  font-size: 13px;
-  line-height: 1.55;
-}
-.overview-metrics {
-  display: grid;
-  min-width: min(100%, 540px);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-left: 1px solid rgb(0 0 0 / 7%);
-}
-.overview-metric {
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  padding: 0 22px;
-  border-right: 1px solid rgb(0 0 0 / 7%);
-}
-.overview-metric:last-child {
-  border-right: 0;
-}
-.overview-metric span,
-.overview-metric small {
-  color: var(--app-color-text-muted);
-  font-size: 12px;
-}
-.overview-metric strong {
-  color: var(--app-color-text-primary);
-  font-size: 24px;
-  letter-spacing: -0.035em;
-}
-.overview-metric.is-warning strong {
-  color: var(--app-color-warning-text);
-}
-.packages-section {
-  margin-top: 24px;
-  padding: 24px;
-  border: 0.5px solid rgb(0 0 0 / 10%);
-  border-radius: var(--platform-radius-surface);
-  background: var(--platform-color-surface);
-  box-shadow: var(--platform-shadow-surface);
-}
-.packages-section__heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.packages-section__heading > div {
-  display: grid;
-  gap: 5px;
-}
-.packages-section__heading .section-kicker {
-  letter-spacing: 0.1em;
-}
-.packages-section__heading h2 {
-  margin: 0;
-  font-size: 20px;
-  letter-spacing: -0.02em;
-}
-.packages-section__heading span {
-  color: var(--app-color-text-muted);
-  font-size: 12px;
-}
-.packages-section :deep(.el-table) {
-  overflow: hidden;
-  border-radius: 12px;
-  --el-table-border-color: rgb(0 0 0 / 7%);
-}
-.packages-section :deep(.el-table .el-table__cell) {
-  padding-top: 13px;
-  padding-bottom: 13px;
-}
-.packages-section :deep(.el-table th.el-table__cell) {
-  background: #f7f7fa;
-  color: var(--app-color-text-secondary);
-  font-weight: 600;
-}
-.packages-section :deep(.el-table tr:hover > td.el-table__cell) {
-  background: #f2f2f7;
-}
-.packages-page :deep(.packages-header__actions .el-button),
-.packages-page :deep(.packages-section .el-button:not(.is-link)) {
-  min-height: 38px;
-  border-radius: 10px;
-  font-weight: 550;
-}
-@media (max-width: 1080px) {
-  .packages-header {
-    align-items: start;
-    flex-wrap: wrap;
-  }
-  .packages-header__actions {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: 60px;
-  }
-}
-@media (max-width: 920px) {
-  .packages-overview {
-    flex-direction: column;
-    padding: 20px;
-  }
-  .overview-metrics {
-    min-width: 0;
-    border-top: 1px solid rgb(0 0 0 / 7%);
-    border-left: 0;
-    padding-top: 16px;
-  }
-  .overview-metric {
-    padding: 0 12px;
-  }
-}
-@media (max-width: 760px) {
-  .packages-page {
-    width: calc(100% - 32px);
-  }
-  .packages-header {
-    align-items: start;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .packages-header__actions {
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    padding-left: 0;
-  }
-  .packages-overview {
-    flex-direction: column;
-    padding: 20px;
-  }
-  .overview-metrics {
-    min-width: 0;
-    border-top: 1px solid rgb(0 0 0 / 7%);
-    border-left: 0;
-    padding-top: 16px;
-  }
-  .overview-metric {
-    padding: 0 12px;
-  }
+:deep(.el-table td.el-table__cell) {
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 </style>

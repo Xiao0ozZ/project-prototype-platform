@@ -105,13 +105,29 @@ export function prdContentPlugin({ projectsRoot }) {
   const root = path.resolve(projectsRoot);
   let isBuild = false;
   let documentRoots = new Map();
+  let documentRootsLoading = null;
+
+  async function refreshDocumentRoots() {
+    if (!documentRootsLoading) {
+      documentRootsLoading = loadProjectDocumentRoots(root)
+        .then((nextRoots) => {
+          documentRoots = nextRoots;
+          return nextRoots;
+        })
+        .finally(() => {
+          documentRootsLoading = null;
+        });
+    }
+    return documentRootsLoading;
+  }
+
   return {
     name: 'project-prd-content',
     configResolved(config) {
       isBuild = config.command === 'build';
     },
     async configureServer(server) {
-      documentRoots = await loadProjectDocumentRoots(root);
+      await refreshDocumentRoots();
       server.watcher.add(root);
       documentRoots.forEach((docsRoot) => server.watcher.add(docsRoot));
       server.watcher.on('all', async (_eventName, changedPath) => {
@@ -121,7 +137,7 @@ export function prdContentPlugin({ projectsRoot }) {
           const isProjectConfigChange =
             absolutePath === root || /^([a-z][a-z0-9-]*)\/project\.json$/i.test(relativePath);
           if (isProjectConfigChange) {
-            documentRoots = await loadProjectDocumentRoots(root);
+            await refreshDocumentRoots();
             documentRoots.forEach((docsRoot) => server.watcher.add(docsRoot));
           }
           for (const [projectId, docsRoot] of documentRoots) {
@@ -138,7 +154,11 @@ export function prdContentPlugin({ projectsRoot }) {
         const requestUrl = new URL(req.url || '/', 'http://localhost');
         if (!['/__prd/manifest', '/__prd/file'].includes(requestUrl.pathname)) return next();
         const projectId = requestUrl.searchParams.get('project');
-        const docsRoot = documentRoots.get(projectId);
+        let docsRoot = documentRoots.get(projectId);
+        if (!docsRoot) {
+          const refreshedRoots = await refreshDocumentRoots();
+          docsRoot = refreshedRoots.get(projectId);
+        }
         if (!docsRoot) {
           sendJson(res, { message: '项目文档目录不存在或项目不可用' }, 404);
           return;

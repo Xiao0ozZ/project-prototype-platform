@@ -360,8 +360,13 @@ export async function scanProjectPackages(projectsRoot, { cache } = {}) {
           errors.push(...(await validateProjectResources(manifest, projectRoot)));
         }
       }
-      if (errors.length) invalidProjects.push({ folder: entry.name, errors });
-      else projects.push({ ...toPublicManifest(manifest), folder: entry.name });
+      if (errors.length) {
+        invalidProjects.push({
+          folder: entry.name,
+          project: toPublicManifest(manifest),
+          errors,
+        });
+      } else projects.push({ ...toPublicManifest(manifest), folder: entry.name });
     } catch (error) {
       invalidProjects.push({ folder: entry.name, errors: [`project.json 读取失败：${error.message}`] });
     }
