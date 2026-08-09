@@ -27,9 +27,7 @@
                 {{ form.id }} · {{ form.version }}
               </span>
             </div>
-            <p class="mt-0.5 text-xs text-slate-500">
-              只设置项目内容入口，其他工程参数会自动处理。
-            </p>
+            <p class="mt-0.5 text-xs text-slate-500">只设置项目内容入口，其他工程参数会自动处理。</p>
           </div>
         </div>
 
@@ -66,14 +64,16 @@
             >
               <span
                 class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
-                :class="activeSection === 'project' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'"
+                :class="
+                  activeSection === 'project' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
+                "
               >
                 01
               </span>
               <span class="min-w-0">
                 <strong class="block truncate text-xs">项目资料</strong>
                 <small class="mt-0.5 block truncate text-[10px] font-normal text-slate-400 max-md:hidden">
-                  名称、PRD 与显示
+                  名称、PRD、主题与显示
                 </small>
               </span>
             </button>
@@ -90,7 +90,9 @@
             >
               <span
                 class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
-                :class="activeSection === 'clients' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'"
+                :class="
+                  activeSection === 'clients' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
+                "
               >
                 02
               </span>
@@ -111,7 +113,7 @@
           <section v-show="activeSection === 'project'">
             <div class="mb-5 border-b border-slate-200/80 pb-4">
               <h3 class="text-base font-bold text-slate-900">项目资料</h3>
-              <p class="mt-1 text-xs text-slate-500">只填写用于识别项目和读取文档的内容。</p>
+              <p class="mt-1 text-xs text-slate-500">设置项目名称、文档来源和统一主题色。</p>
             </div>
 
             <div class="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
@@ -126,7 +128,7 @@
                   />
                 </el-form-item>
                 <p v-if="dialogMode === 'create'" class="mt-1.5 text-[11px] leading-5 text-slate-400">
-                  项目 ID、简称、版本和主题等信息由平台自动生成。
+                  项目 ID、简称和版本由平台自动生成。
                 </p>
               </div>
 
@@ -145,14 +147,36 @@
               </div>
             </div>
 
-            <div class="mt-6 flex items-center justify-between gap-5 border-t border-slate-200/80 pt-4">
+            <div class="mt-6 grid grid-cols-1 gap-5 border-t border-slate-200/80 pt-4 md:grid-cols-2">
               <div>
-                <h4 class="text-sm font-bold text-slate-800">在首页显示项目</h4>
-                <p class="mt-1 text-[11px] leading-5 text-slate-400">
-                  关闭后，项目不会出现在首页的项目选择列表中。
+                <el-form-item label="项目主题色" prop="primary">
+                  <div class="flex w-full items-center gap-2.5">
+                    <el-color-picker v-model="form.primary" color-format="hex" size="large" />
+                    <el-input
+                      v-model="form.primary"
+                      class="min-w-0 flex-1"
+                      size="large"
+                      maxlength="7"
+                      placeholder="#2563eb"
+                    />
+                  </div>
+                </el-form-item>
+                <p class="mt-1.5 text-[11px] leading-5 text-slate-400">
+                  用于客户端外壳、主要按钮、链接和选中状态。
                 </p>
               </div>
-              <el-switch v-model="form.homepageVisible" />
+
+              <div
+                class="flex min-h-[70px] items-center justify-between gap-5 md:border-l md:border-slate-200/80 md:pl-5"
+              >
+                <div>
+                  <h4 class="text-sm font-bold text-slate-800">在首页显示项目</h4>
+                  <p class="mt-1 text-[11px] leading-5 text-slate-400">
+                    关闭后，项目不会出现在首页的项目选择列表中。
+                  </p>
+                </div>
+                <el-switch v-model="form.homepageVisible" />
+              </div>
             </div>
           </section>
 
@@ -190,7 +214,9 @@
                     </strong>
                   </div>
                   <div class="flex shrink-0 items-center gap-3">
-                    <label class="flex cursor-pointer items-center gap-2 text-[11px] font-medium text-slate-500">
+                    <label
+                      class="flex cursor-pointer items-center gap-2 text-[11px] font-medium text-slate-500"
+                    >
                       <span>首页显示</span>
                       <el-switch v-model="client.entryEnabled" size="small" />
                     </label>
@@ -205,7 +231,9 @@
                   </div>
                 </div>
 
-                <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(140px,0.8fr)_minmax(180px,1fr)_minmax(230px,1.4fr)]">
+                <div
+                  class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(140px,0.8fr)_minmax(180px,1fr)_minmax(230px,1.4fr)]"
+                >
                   <el-form-item label="客户端名称">
                     <el-input v-model="client.name" placeholder="例如：营运端" />
                   </el-form-item>
@@ -246,9 +274,7 @@
       <footer
         class="flex w-full shrink-0 items-center justify-between gap-4 border-t border-slate-200/80 bg-slate-50/80 px-6 py-3.5"
       >
-        <p class="hidden text-[11px] text-slate-400 sm:block">
-          保存后会重新扫描项目内容并刷新入口。
-        </p>
+        <p class="hidden text-[11px] text-slate-400 sm:block">保存后会重新扫描项目内容并刷新入口。</p>
         <div class="ml-auto flex items-center gap-2.5">
           <button
             type="button"
@@ -323,6 +349,14 @@ const form = reactive({
 
 const formRules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  primary: [
+    { required: true, message: '请选择或输入项目主题色', trigger: ['blur', 'change'] },
+    {
+      pattern: /^#[0-9a-f]{6}$/i,
+      message: '主题色必须使用六位十六进制色值，例如 #2563eb',
+      trigger: ['blur', 'change'],
+    },
+  ],
 };
 
 const clientPresetOptions = [

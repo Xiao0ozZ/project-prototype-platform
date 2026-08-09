@@ -217,6 +217,13 @@ describe('page transfer', () => {
     expect(source).toContain('class="secondary-form-layout"');
     expect(source).toContain('<!-- [AI-EDIT] THEME_TOKENS_START:');
     expect(source).toContain('<!-- THEME_TOKENS_END -->');
+    expect(source).toContain('--app-color-primary: #007aff;');
+    expect(source).toContain('--app-color-sidebar: rgb(246 247 249 / 94%);');
+    expect(source).toContain('background: var(--app-color-sidebar);');
+    expect(source).toMatch(
+      /\.prototype-menu-item\.is-active\s*\{[^}]*color:\s*var\(--app-color-primary\);[^}]*background:\s*var\(--app-color-primary-light-9\);/su,
+    );
+    expect(source).not.toMatch(/\.prototype-sidebar\s*\{[^}]*background:\s*var\(--app-color-primary\);/su);
     expect(source.match(/<!-- PROTOTYPE_STYLE_DEPENDENCIES_START -->/gu)).toHaveLength(1);
     expect(source.match(/<!-- PROTOTYPE_STYLE_DEPENDENCIES_END -->/gu)).toHaveLength(1);
     expect(source.match(/<!-- PROTOTYPE_SCRIPT_DEPENDENCIES_START -->/gu)).toHaveLength(1);
@@ -269,6 +276,60 @@ describe('page transfer', () => {
     expect(source.match(/\/\* \[AI-EDIT\] PAGE_LOGIC_START:/gu)).toHaveLength(1);
     expect(source).not.toMatch(/\bon(?:click|change|input|submit)\s*=/iu);
     expect(source).not.toMatch(/<script[^>]+src=["'](?!https?:)/iu);
+  });
+
+  it('keeps the separate Apple-style HTML template import-compatible and accessible', async () => {
+    const source = await fs.readFile(
+      path.join(projectRoot, 'templates', 'html-prototype-page-apple.html'),
+      'utf8',
+    );
+    const manifestSource = source.match(
+      /<script\b[^>]*\bid=["']prototype-page-manifest["'][^>]*>([\s\S]*?)<\/script>/u,
+    )?.[1];
+    if (!manifestSource) throw new Error('Apple 风格模板缺少 prototype-page-manifest。');
+    const manifest = JSON.parse(manifestSource.trim());
+
+    expect(inspectHtml(source)).toMatchObject({
+      valid: true,
+      format: 'html-template',
+      warnings: [],
+    });
+    expect(manifest).toMatchObject({
+      templateVersion: 1,
+      scriptMode: 'composition-api',
+      fileName: 'html-prototype-page-apple.html',
+      rootClass: 'business-page',
+      overlayRootClass: 'business-page-dialog',
+    });
+    expect(source).toContain('HTML 原型 AI 编写协议 v1.7 · Apple 风格示例版');
+    expect(source).toContain('--app-color-primary: #007aff;');
+    expect(source).toContain('--app-color-success: #34c759;');
+    expect(source).toContain('backdrop-filter: blur(20px) saturate(180%);');
+    expect(source).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(source).toContain('@media (prefers-reduced-transparency: reduce)');
+    expect(source).toContain('@media (prefers-contrast: more)');
+    expect(source.match(/<!-- PROTOTYPE_AI_PROTOCOL_START -->/gu)).toHaveLength(1);
+    expect(source.match(/<!-- PROTOTYPE_AI_PROTOCOL_END -->/gu)).toHaveLength(1);
+    expect(source.match(/<!-- \[AI-EDIT\] PAGE_CONTENT_START:/gu)).toHaveLength(1);
+    expect(source.match(/<!-- \[AI-EDIT\] PAGE_MANIFEST_START:/gu)).toHaveLength(1);
+    expect(source).not.toMatch(/<component\b[^>]*\/>/u);
+
+    const { root, packageRoot } = await createPlatformFixture();
+    const result = await importPage({
+      projectRoot: root,
+      source,
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        routePath: 'apple-materials',
+        menuSection: 'workspace',
+        menuTitle: 'Apple 资料管理',
+        fileName: 'html-prototype-page-apple.html',
+      },
+    });
+    expect(result.routePath).toBe('/p/sample-project/admin/apple-materials');
+    const generatedView = path.join(packageRoot, 'views', 'admin', 'AppleMaterialsView.vue');
+    expect(await fs.readFile(generatedView, 'utf8')).toContain('business-page-dialog.el-dialog');
   });
 
   it('rejects a duplicate route in the same project client', async () => {
