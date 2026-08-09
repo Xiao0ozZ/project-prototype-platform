@@ -196,7 +196,7 @@ describe('page transfer', () => {
     const manifest = JSON.parse(manifestSource.trim());
     const htmlWithoutComments = source.replace(/<!--[\s\S]*?-->/gu, '');
 
-    expect(source).toContain('HTML 原型 AI 编写协议 v1.6');
+    expect(source).toContain('HTML 原型 AI 编写协议 v1.7');
     expect(source).toContain('以本模板作为唯一的结构与实现基准');
     expect(source).toContain('可将本模板复制为多个 HTML 文件组成多页面原型');
     expect(source).toContain('<!-- PROTOTYPE_AI_PROTOCOL_START -->');
@@ -215,6 +215,17 @@ describe('page transfer', () => {
     expect(source).toContain('data-page-header="back-only"');
     expect(source).toContain('class="secondary-object-summary"');
     expect(source).toContain('class="secondary-form-layout"');
+    expect(source).toContain('<!-- [AI-EDIT] THEME_TOKENS_START:');
+    expect(source).toContain('<!-- THEME_TOKENS_END -->');
+    expect(source.match(/<!-- PROTOTYPE_STYLE_DEPENDENCIES_START -->/gu)).toHaveLength(1);
+    expect(source.match(/<!-- PROTOTYPE_STYLE_DEPENDENCIES_END -->/gu)).toHaveLength(1);
+    expect(source.match(/<!-- PROTOTYPE_SCRIPT_DEPENDENCIES_START -->/gu)).toHaveLength(1);
+    expect(source.match(/<!-- PROTOTYPE_SCRIPT_DEPENDENCIES_END -->/gu)).toHaveLength(1);
+    expect(source).not.toContain('<!-- PROTOTYPE_DEPENDENCIES_START -->');
+    expect(source).not.toContain('<!-- PROTOTYPE_DEPENDENCIES_END -->');
+    expect(source).not.toMatch(/<component\b[^>]*\/>/u);
+    expect(source).toContain('aria-current="page"');
+    expect(source).toMatch(/\.prototype-sidebar\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/su);
     expect(source).not.toContain('secondary-flow-heading');
     expect(source).not.toContain('四个统计卡片');
     expect(source).not.toContain('统计摘要仅在业务需要');
@@ -229,10 +240,11 @@ describe('page transfer', () => {
       templateVersion: 1,
       scriptMode: 'composition-api',
       menu: true,
-      pageKey: 'standard-list-page',
+      pageKey: 'business-page',
+      pageType: 'custom',
       fileName: '资料管理.html',
-      rootClass: 'standard-list-page',
-      overlayRootClass: 'standard-list-dialog',
+      rootClass: 'business-page',
+      overlayRootClass: 'business-page-dialog',
     });
     expect(manifest.rootClass).toBe(manifest.pageKey);
     expect(manifest.menuTitle).toBe(manifest.pageTitle);

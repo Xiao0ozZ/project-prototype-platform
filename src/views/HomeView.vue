@@ -187,7 +187,6 @@ onBeforeUnmount(() => {
           <el-icon class="text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': showSkinMenu }"><ArrowUp /></el-icon>
         </button>
 
-        <!-- 向上弹出精简选项菜单 -->
         <Transition
           enter-active-class="transition duration-150 ease-out"
           enter-from-class="transform scale-95 opacity-0 translate-y-2"

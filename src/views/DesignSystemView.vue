@@ -107,7 +107,7 @@ function confirmReason() {
 </script>
 
 <template>
-  <main class="design-system-page">
+  <main class="design-system-page platform-page">
     <PageLayout class="design-system-shell">
       <div class="catalog-nav platform-material">
         <RouterLink to="/" class="back-link">
@@ -117,8 +117,10 @@ function confirmReason() {
         <span>组件规范 v3.1 · 20 个公共组件</span>
       </div>
 
-      <div class="design-hero">
-        <div class="design-hero__icon"><el-icon><Grid /></el-icon></div>
+      <div class="design-hero platform-hero">
+        <div class="design-hero__icon">
+          <el-icon><Grid /></el-icon>
+        </div>
         <div class="design-hero__body">
           <p class="eyebrow">DESIGN SYSTEM</p>
           <PageHeader
@@ -390,8 +392,9 @@ function confirmReason() {
 <style scoped>
 .design-system-page {
   min-height: 100vh;
-  padding: 32px;
-  background: var(--app-color-page);
+  padding: 24px;
+  --app-color-primary: var(--platform-color-accent);
+  --app-color-primary-rgb: var(--platform-color-accent-rgb);
   color: var(--app-color-text-primary);
 }
 .design-system-shell {
@@ -421,7 +424,7 @@ function confirmReason() {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding-top: 8px;
+  padding: 20px 22px;
 }
 .design-hero__icon {
   display: inline-flex;
@@ -432,8 +435,9 @@ function confirmReason() {
   justify-content: center;
   margin-top: 2px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--app-color-primary) 11%, white);
-  color: var(--app-color-primary);
+  background: linear-gradient(145deg, #3b82f6, #4f46e5);
+  color: #fff;
+  box-shadow: 0 8px 20px rgb(37 99 235 / 20%);
   font-size: 22px;
 }
 .design-hero__body {
@@ -451,15 +455,15 @@ function confirmReason() {
   margin-bottom: 0;
 }
 .design-page-header :deep(h1) {
-  font-size: 34px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.2;
 }
 .design-page-header :deep(p) {
-  margin-top: 10px;
+  margin-top: 5px;
   color: var(--app-color-text-muted);
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .token-strip {

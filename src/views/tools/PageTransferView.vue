@@ -1,6 +1,6 @@
 <template>
   <main class="transfer-page platform-page">
-    <header class="transfer-header tool-hero">
+    <header class="transfer-header tool-hero platform-hero">
       <div class="tool-hero__main">
         <RouterLink class="back-link" to="/">
           <el-icon><ArrowLeft /></el-icon>
@@ -80,7 +80,7 @@
 
     <el-tabs v-model="activeTab" class="transfer-tabs">
       <el-tab-pane label="导入 HTML 原型" name="import">
-        <section class="tool-panel">
+        <section class="tool-panel platform-surface">
           <div class="panel-heading">
             <div>
               <h2>导入规范 HTML</h2>
@@ -269,7 +269,7 @@
       </el-tab-pane>
 
       <el-tab-pane label="导出演示包" name="export">
-        <section class="tool-panel">
+        <section class="tool-panel platform-surface">
           <div class="panel-heading">
             <div>
               <h2>导出独立演示包</h2>
@@ -703,10 +703,12 @@ function reloadProject() {
 
 <style scoped>
 .transfer-page {
+  --app-color-primary: var(--platform-color-accent);
+  --app-color-primary-rgb: var(--platform-color-accent-rgb);
   width: min(var(--platform-content-max), calc(100% - 64px));
   min-height: 100svh;
   margin: 0 auto;
-  padding: 40px 0 64px;
+  padding: 24px 0 56px;
   color: var(--app-color-text-primary);
 }
 .transfer-header {
@@ -714,7 +716,8 @@ function reloadProject() {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
+  padding: 18px 22px;
 }
 .tool-hero__main {
   min-width: 0;
@@ -733,8 +736,9 @@ function reloadProject() {
   justify-content: center;
   margin-top: 2px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--app-color-primary) 11%, white);
-  color: var(--app-color-primary);
+  background: linear-gradient(145deg, #3b82f6, #4f46e5);
+  color: #fff;
+  box-shadow: 0 8px 20px rgb(37 99 235 / 20%);
   font-size: 22px;
 }
 .tool-hero__context {
@@ -782,15 +786,15 @@ function reloadProject() {
 }
 .transfer-header h1 {
   margin: 0;
-  font-size: 34px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.2;
 }
 .subtitle {
-  margin: 10px 0 0;
+  margin: 4px 0 0;
   color: var(--app-color-text-muted);
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .boundary-alert {
@@ -895,11 +899,9 @@ function reloadProject() {
   overflow: visible;
 }
 .tool-panel {
-  padding: 28px;
-  border: 0.5px solid rgb(0 0 0 / 10%);
-  border-radius: var(--platform-radius-surface);
-  background: var(--platform-color-surface);
-  box-shadow: var(--platform-shadow-surface);
+  padding: 24px;
+  border-color: var(--platform-color-border);
+  background: rgb(255 255 255 / 84%);
 }
 .panel-heading,
 .export-toolbar,

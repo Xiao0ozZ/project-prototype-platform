@@ -5,21 +5,18 @@ import {
   Aim,
   ArrowDown,
   Check,
-  Compass,
   Iphone,
   Lightning,
   Monitor,
   OfficeBuilding,
   Position,
   Right,
-  Setting,
-  Switch,
-  VideoPlay,
 } from '@element-plus/icons-vue';
 
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -462,18 +459,7 @@ const clientEntries = computed(() =>
     })),
 );
 
-const documentEntries = computed(() =>
-  [...(selectedProject.value?.entries || [])]
-    .filter((entry) => entry.kind === 'docs')
-    .sort((left, right) => (left.order || 0) - (right.order || 0))
-    .map((entry) => ({
-      ...entry,
-      to: getProjectEntryPath(selectedProject.value, entry),
-    })),
-);
-
 const projectTitle = computed(() => selectedProject.value?.name || projectConfig.name);
-const projectVersion = computed(() => selectedProject.value?.version || '1.0.0');
 const hasSelectedProject = computed(() => Boolean(selectedProject.value));
 
 function toggleConsole() {
@@ -491,11 +477,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -584,7 +567,7 @@ onBeforeUnmount(() => {
           
           <div class="mt-8 text-center space-y-2">
             <div class="text-xs font-mono text-pink-400 tracking-widest uppercase animate-pulse">
-              >>> HYPERDRIVE WARP LEAP INITIATED <<<
+              &gt;&gt;&gt; HYPERDRIVE WARP LEAP INITIATED &lt;&lt;&lt;
             </div>
             <div class="text-4xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.9)]">
               {{ warpingTarget?.name }}
@@ -680,7 +663,13 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold">
           <RouterLink to="/components" class="text-slate-300 hover:text-pink-400 transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-300 hover:text-pink-400 transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            tone="dark"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-300 hover:text-pink-400 transition-colors">控制台</RouterLink>
         </div>
       </div>
@@ -711,24 +700,6 @@ onBeforeUnmount(() => {
           移动鼠标掌控全向 3D 飞行驾驶舱视角，点击项目或客户端发起超光速跃迁：
         </p>
 
-        <div v-if="showConsole" class="pt-2 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            class="px-5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95"
-            @click="openProjectSettings"
-          >
-            <el-icon><Setting /></el-icon>
-            修改包配置
-          </button>
-          <button
-            type="button"
-            class="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 text-xs font-black text-white shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all active:scale-95 hover:scale-105"
-            @click="openPageTransfer"
-          >
-            <el-icon><Switch /></el-icon>
-            页面导入导出
-          </button>
-        </div>
       </div>
 
       <!-- 驾驶舱全息终端大卡片 (Cockpit Terminal Cards) -->

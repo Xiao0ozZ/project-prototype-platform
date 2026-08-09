@@ -1,6 +1,6 @@
 <template>
   <main class="routes-page platform-page">
-    <header class="routes-header tool-hero">
+    <header class="routes-header tool-hero platform-hero">
       <div class="tool-hero__main">
         <RouterLink to="/tools/projects" class="back-link">
           <el-icon><ArrowLeft /></el-icon>
@@ -41,7 +41,7 @@
     />
     <el-alert v-if="error" :title="error" type="error" :closable="false" class="routes-alert" />
 
-    <section v-if="routeData" class="routes-overview" aria-label="路由工作区概览">
+    <section v-if="routeData" class="routes-overview platform-surface" aria-label="路由工作区概览">
       <div class="routes-overview__lead">
         <span class="overview-kicker">ROUTE WORKSPACE</span>
         <h2>{{ routeData.project.name }}</h2>
@@ -66,7 +66,7 @@
       </div>
     </section>
 
-    <section v-if="routeData" class="routes-panel">
+    <section v-if="routeData" class="routes-panel platform-surface">
       <div class="panel-heading">
         <div>
           <span class="section-kicker">CLIENT ROUTES</span>
@@ -191,7 +191,9 @@
                 >
                   <el-table-column label="顺序" width="54" align="center">
                     <template #default="{ $index }">
-                      <span class="route-order-badge route-order-badge--small">{{ formatOrder($index) }}</span>
+                      <span class="route-order-badge route-order-badge--small">{{
+                        formatOrder($index)
+                      }}</span>
                     </template>
                   </el-table-column>
                   <el-table-column label="菜单名称">
@@ -200,7 +202,11 @@
                         <strong>{{ row.title }}</strong>
                         <el-tag
                           size="small"
-                          :type="row.source === 'html-direct' || row.source === 'html-template' ? 'success' : 'info'"
+                          :type="
+                            row.source === 'html-direct' || row.source === 'html-template'
+                              ? 'success'
+                              : 'info'
+                          "
                         >
                           {{
                             row.source === 'html-direct'
@@ -287,7 +293,9 @@
                         >
                           删除
                         </el-button>
-                        <span v-if="row.source === 'html-direct'" class="route-source-note">HTML 目录管理</span>
+                        <span v-if="row.source === 'html-direct'" class="route-source-note"
+                          >HTML 目录管理</span
+                        >
                       </div>
                     </template>
                   </el-table-column>
@@ -300,7 +308,7 @@
       </el-tabs>
     </section>
 
-    <section class="routes-panel backup-panel">
+    <section class="routes-panel backup-panel platform-surface">
       <div class="panel-heading">
         <div>
           <h2>页面备份</h2>
@@ -341,7 +349,7 @@
       </el-table>
     </section>
 
-    <section class="routes-panel backup-panel">
+    <section class="routes-panel backup-panel platform-surface">
       <div class="panel-heading">
         <div>
           <h2>分组备份</h2>
@@ -1157,10 +1165,12 @@ async function restoreSectionBackup(backup) {
 
 <style scoped>
 .routes-page {
+  --app-color-primary: var(--platform-color-accent);
+  --app-color-primary-rgb: var(--platform-color-accent-rgb);
   width: min(var(--platform-content-max), calc(100% - 64px));
   min-height: 100svh;
   margin: 0 auto;
-  padding: 40px 0 64px;
+  padding: 24px 0 56px;
   color: var(--app-color-text-primary);
 }
 .routes-header {
@@ -1168,7 +1178,8 @@ async function restoreSectionBackup(backup) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
+  padding: 18px 22px;
 }
 .tool-hero__main {
   min-width: 0;
@@ -1193,8 +1204,9 @@ async function restoreSectionBackup(backup) {
   justify-content: center;
   margin-top: 2px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--app-color-primary) 11%, white);
-  color: var(--app-color-primary);
+  background: linear-gradient(145deg, #3b82f6, #4f46e5);
+  color: #fff;
+  box-shadow: 0 8px 20px rgb(37 99 235 / 20%);
   font-size: 22px;
 }
 .back-link {
@@ -1226,7 +1238,7 @@ async function restoreSectionBackup(backup) {
   margin: 0;
 }
 .routes-header h1 {
-  font-size: 34px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.2;
@@ -1234,9 +1246,9 @@ async function restoreSectionBackup(backup) {
 .subtitle,
 .panel-heading p,
 .client-summary span {
-  margin-top: 10px !important;
+  margin-top: 5px !important;
   color: var(--app-color-text-muted);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.55;
 }
 .header-actions,
@@ -1263,11 +1275,9 @@ async function restoreSectionBackup(backup) {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 22px;
-  padding: 24px 28px;
-  border: 0.5px solid rgb(0 0 0 / 9%);
-  border-radius: var(--platform-radius-surface);
-  background: var(--platform-color-surface);
-  box-shadow: var(--platform-shadow-surface);
+  padding: 20px 24px;
+  border-color: var(--platform-color-border);
+  background: rgb(255 255 255 / 82%);
 }
 .routes-overview__lead {
   display: flex;
@@ -1321,11 +1331,9 @@ async function restoreSectionBackup(backup) {
 }
 .routes-panel {
   margin-bottom: 24px;
-  padding: 28px;
-  border: 0.5px solid rgb(0 0 0 / 10%);
-  border-radius: var(--platform-radius-surface);
-  background: var(--platform-color-surface);
-  box-shadow: var(--platform-shadow-surface);
+  padding: 24px;
+  border-color: var(--platform-color-border);
+  background: rgb(255 255 255 / 84%);
 }
 .panel-heading {
   margin-bottom: 22px;

@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -144,16 +145,6 @@ const currentActiveEntry = computed(() => {
   return clientEntries.value[activeFace.value % clientEntries.value.length];
 });
 
-const documentEntries = computed(() =>
-  [...(selectedProject.value?.entries || [])]
-    .filter((entry) => entry.kind === 'docs')
-    .sort((left, right) => (left.order || 0) - (right.order || 0))
-    .map((entry) => ({
-      ...entry,
-      to: getProjectEntryPath(selectedProject.value, entry),
-    })),
-);
-
 const projectTitle = computed(() => selectedProject.value?.name || projectConfig.name);
 const projectVersion = computed(() => selectedProject.value?.version || '1.0.0');
 const hasSelectedProject = computed(() => Boolean(selectedProject.value));
@@ -178,11 +169,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -305,7 +293,13 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold">
           <RouterLink to="/components" class="text-slate-300 hover:text-cyan-400 transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-300 hover:text-cyan-400 transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            tone="dark"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-300 hover:text-cyan-400 transition-colors">控制台</RouterLink>
         </div>
       </div>

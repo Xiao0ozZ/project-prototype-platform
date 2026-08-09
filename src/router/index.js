@@ -4,15 +4,13 @@ import ProjectUnavailableView from '../views/system/ProjectUnavailableView.vue';
 import ClientLoginView from '../views/auth/ClientLoginView.vue';
 import MobilePrototypeView from '../views/mobile/MobilePrototypeView.vue';
 import ProjectClientLayout from '../layouts/ProjectClientLayout.vue';
+import ClientEmptyView from '../views/system/ClientEmptyView.vue';
 
 // 可插拔项目包关联关系
-import {
-  createProjectPageRoutes,
-  getProject,
-  installedProjects,
-} from '../config/project-packages';
+import { createProjectPageRoutes, getProject, installedProjects } from '../config/project-packages';
 import { projectConfig } from '../config/project.config';
 import { applyProjectTheme } from '../config/theme';
+import { getProjectClientEntryPath } from '../services/project-navigation';
 
 function createInstalledProjectRoutes() {
   return installedProjects.flatMap((project) => {
@@ -26,6 +24,20 @@ function createInstalledProjectRoutes() {
     ];
 
     for (const client of project.clients) {
+      const clientRoot = `/p/${project.id}/${client.id}`;
+      const entryPath = getProjectClientEntryPath(project.id, client);
+      const children = createProjectPageRoutes(project, client);
+      if (!children.length) {
+        children.push({
+          path: '',
+          component: ClientEmptyView,
+          meta: {
+            title: '客户端暂无页面',
+            projectId: project.id,
+            clientId: client.id,
+          },
+        });
+      }
       projectRoutes.push(
         {
           path: `/p/${project.id}/${client.id}/login`,
@@ -35,11 +47,11 @@ function createInstalledProjectRoutes() {
           meta: { title: `${client.name}登录`, projectId: project.id, clientId: client.id },
         },
         {
-          path: `/p/${project.id}/${client.id}`,
+          path: clientRoot,
           component: ProjectClientLayout,
           props: { projectId: project.id, clientId: client.id },
-          redirect: `/p/${project.id}/${client.id}/login`,
-          children: createProjectPageRoutes(project, client),
+          ...(entryPath !== clientRoot ? { redirect: entryPath } : {}),
+          children,
         },
       );
     }
@@ -60,7 +72,7 @@ function createInstalledProjectRoutes() {
         name: `${project.id}-docs`,
         component: () => import('../views/docs/DocsCenterView.vue'),
         props: { projectId: project.id },
-        meta: { title: '文档中心', projectId: project.id },
+        meta: { title: '文档中心', projectId: project.id, theme: 'platform' },
       });
     }
 
@@ -80,7 +92,9 @@ function createLegacyProjectRedirects() {
         ? to.params.legacyPath.join('/')
         : String(to.params.legacyPath || '');
       return {
-        path: `/p/${project.id}/${client.id}/${rawPath || 'login'}`,
+        path: rawPath
+          ? `/p/${project.id}/${client.id}/${rawPath}`
+          : getProjectClientEntryPath(project.id, client),
         query: to.query,
         hash: to.hash,
       };
@@ -219,25 +233,25 @@ const routes = [
     path: '/tools/projects',
     name: 'project-packages',
     component: () => import('../views/tools/ProjectPackagesView.vue'),
-    meta: { title: '项目包状态', transition: 'platform' },
+    meta: { title: '项目包状态', transition: 'platform', theme: 'platform' },
   },
   {
     path: '/tools/project-routes',
     name: 'project-routes',
     component: () => import('../views/tools/ProjectRoutesView.vue'),
-    meta: { title: '路由与页面映射', transition: 'platform' },
+    meta: { title: '路由与页面映射', transition: 'platform', theme: 'platform' },
   },
   {
     path: '/tools/page-transfer',
     name: 'page-transfer',
     component: () => import('../views/tools/PageTransferView.vue'),
-    meta: { title: '页面导入与导出', transition: 'platform' },
+    meta: { title: '页面导入与导出', transition: 'platform', theme: 'platform' },
   },
   {
     path: '/components',
     name: 'component-catalog',
     component: () => import('../views/DesignSystemView.vue'),
-    meta: { title: '组件规范目录', transition: 'platform' },
+    meta: { title: '组件规范目录', transition: 'platform', theme: 'platform' },
   },
 ];
 
@@ -249,13 +263,13 @@ routes.push(
     name: 'project-unavailable',
     component: ProjectUnavailableView,
     props: (route) => ({ projectId: route.params.projectId }),
-    meta: { title: '项目不可用' },
+    meta: { title: '项目不可用', transition: 'platform', theme: 'platform' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('../views/system/NotFoundView.vue'),
-    meta: { title: '页面不存在' },
+    meta: { title: '页面不存在', transition: 'platform', theme: 'platform' },
   },
 );
 

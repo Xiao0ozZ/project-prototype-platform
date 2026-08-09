@@ -5,6 +5,9 @@ import { pathToFileURL } from 'node:url';
 const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 const PAGE_PATH_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ENTRY_KINDS = new Set(['client', 'docs', 'mobile']);
+const CLIENT_ENTRY_MODES = new Set(['direct', 'platform-login', 'custom-page']);
+const CLIENT_LAYOUT_TYPES = new Set(['sidebar', 'topnav', 'none', 'bare']);
+const HTML_SHELL_MODES = new Set(['auto', 'full']);
 const HTML_EXTENSIONS = new Set(['.html', '.htm']);
 const PUBLIC_DIRECTORIES = new Set(['.platform', 'assets', 'data', 'mobile']);
 const PUBLIC_EXTENSIONS = new Set([
@@ -82,6 +85,15 @@ function validateProjectManifest(manifest, folderName, projectRoot) {
     if (clientIds.has(client.id)) errors.push(`客户端 id 重复：${client.id}。`);
     clientIds.add(client.id);
     if (!String(client.name || '').trim()) errors.push(`客户端 ${client.id || '未知'} 缺少名称。`);
+    if (client.entry?.mode && !CLIENT_ENTRY_MODES.has(client.entry.mode)) {
+      errors.push(`客户端 ${client.id || '未知'} 的进入方式无效：${client.entry.mode}。`);
+    }
+    if (client.entry?.mode === 'custom-page' && !String(client.entry.page || '').trim()) {
+      errors.push(`客户端 ${client.id || '未知'} 使用自定义入口时必须指定入口页面。`);
+    }
+    if (client.layout?.type && !CLIENT_LAYOUT_TYPES.has(client.layout.type)) {
+      errors.push(`客户端 ${client.id || '未知'} 的页面外壳无效：${client.layout.type}。`);
+    }
     if (client.login?.background && !isSafeRelativePath(client.login.background)) {
       errors.push(`客户端 ${client.id || '未知'} 的登录背景路径无效。`);
     }
@@ -153,7 +165,9 @@ function prototypeRootsForClient(manifest, projectRoot, clientId) {
 }
 
 async function hasExternalPrototypePage(manifest, projectRoot, clientId, expectedPath) {
-  const expected = String(expectedPath || '').trim().toLowerCase();
+  const expected = String(expectedPath || '')
+    .trim()
+    .toLowerCase();
   if (!expected || !manifest.prototype?.enabled) return false;
 
   async function containsHtmlRoute(root) {
@@ -205,6 +219,9 @@ async function validateProjectResources(manifest, projectRoot) {
         : [];
     if (entries.length) {
       for (const [clientId, item] of entries) {
+        if (item?.shellMode && !HTML_SHELL_MODES.has(item.shellMode)) {
+          errors.push(`客户端 ${item.clientId || clientId} 的 HTML 外壳处理方式无效：${item.shellMode}。`);
+        }
         if (item?.enabled === false || !item?.root) continue;
         const prototypeRoot = path.resolve(projectRoot, item.root);
         if (!(await fileExists(prototypeRoot, 'directory')))
@@ -286,6 +303,14 @@ export async function validateProjectDefinitions(manifest, projectRoot, definiti
       !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.defaultPage))
     ) {
       errors.push(`客户端 ${client.id} 的 defaultPage 未登记：${client.defaultPage}。`);
+    }
+    if (
+      client.entry?.mode === 'custom-page' &&
+      client.entry.page &&
+      !pagePaths.has(client.entry.page) &&
+      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.entry.page))
+    ) {
+      errors.push(`客户端 ${client.id} 的自定义入口页面未登记：${client.entry.page}。`);
     }
     if (manifest.features?.pageTransfer) {
       const marker = `// <generator:${client.id}-pages>`;
@@ -556,16 +581,29 @@ function mergeTheme(theme, primary, pageBackground) {
   return nextTheme;
 }
 
-function normalizeClientInput(value, index) {
+function normalizeClientInput(value, index, defaultEntryMode = 'platform-login') {
   const id = requiredText(value?.id, `第 ${index + 1} 个客户端 ID`);
   if (!PROJECT_ID_PATTERN.test(id)) throw new Error(`客户端 ${id} 必须使用小写 kebab-case。`);
   const login = value?.login || {};
+  const entryMode = String(value?.entry?.mode || defaultEntryMode).trim();
+  if (!CLIENT_ENTRY_MODES.has(entryMode)) throw new Error(`客户端 ${id} 的进入方式无效。`);
+  const entryPage = String(value?.entry?.page || '').trim();
+  if (entryMode === 'custom-page' && !entryPage) {
+    throw new Error(`客户端 ${id} 使用自定义入口时必须指定入口页面。`);
+  }
+  const layoutType = String(value?.layout?.type || 'sidebar').trim();
+  if (!CLIENT_LAYOUT_TYPES.has(layoutType)) throw new Error(`客户端 ${id} 的页面外壳无效。`);
   return {
     id,
     name: requiredText(value?.name, `客户端 ${id} 名称`),
     description: String(value?.description || '').trim(),
     icon: String(value?.icon || 'Document').trim() || 'Document',
     defaultPage: String(value?.defaultPage || '').trim(),
+    entry: {
+      mode: entryMode,
+      ...(entryMode === 'custom-page' ? { page: entryPage } : {}),
+    },
+    layout: { type: layoutType },
     login: {
       account: String(login.account || '').trim(),
       tenantCode: String(login.tenantCode || '').trim(),
@@ -594,7 +632,9 @@ function normalizeProjectInput(body, { editing = false, existingManifest = null 
   if (!PROJECT_ID_PATTERN.test(id)) throw new Error('项目 ID 必须使用小写 kebab-case。');
   if (editing && body.id !== id) throw new Error('项目 ID 不允许修改。');
   const clients = Array.isArray(body.clients)
-    ? body.clients.map(normalizeClientInput)
+    ? body.clients.map((client, index) =>
+        normalizeClientInput(client, index, editing ? 'platform-login' : 'direct'),
+      )
     : existingManifest?.clients || [];
   if (!clients.length) throw new Error('项目至少需要登记一个客户端。');
   const clientIds = new Set();
@@ -618,6 +658,21 @@ function normalizeProjectInput(body, { editing = false, existingManifest = null 
     section: String(body.prototype?.section || existingManifest?.prototype?.section || '').trim(),
     clients: body.prototype?.clients || existingManifest?.prototype?.clients || {},
   };
+  const prototypeClientEntries = Array.isArray(prototype.clients)
+    ? prototype.clients.map((item) => [item?.clientId || item?.id, item])
+    : prototype.clients && typeof prototype.clients === 'object'
+      ? Object.entries(prototype.clients)
+      : [];
+  const normalizedPrototypeClientEntries = prototypeClientEntries.map(([clientId, item]) => {
+    const shellMode = String(item?.shellMode || 'auto').trim();
+    if (!HTML_SHELL_MODES.has(shellMode)) {
+      throw new Error(`客户端 ${item?.clientId || clientId || '未知'} 的 HTML 外壳处理方式无效。`);
+    }
+    return [clientId, { ...item, shellMode }];
+  });
+  prototype.clients = Array.isArray(prototype.clients)
+    ? normalizedPrototypeClientEntries.map(([, item]) => item)
+    : Object.fromEntries(normalizedPrototypeClientEntries);
   const mobile = {
     ...(existingManifest?.mobile || {}),
     ...(body.mobile || {}),

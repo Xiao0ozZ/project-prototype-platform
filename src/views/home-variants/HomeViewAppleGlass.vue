@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -131,11 +132,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -233,7 +231,12 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-600">
           <RouterLink to="/components" class="hover:text-blue-600 transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="hover:text-blue-600 transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="hover:text-blue-600 transition-colors">控制台</RouterLink>
         </div>
       </div>
@@ -255,22 +258,6 @@ onBeforeUnmount(() => {
           {{ hasSelectedProject ? (selectedProject?.description || '苹果液体玻璃感高保真原型系统，体验流畅的触控交互与全量业务描述。') : '请在上方下拉选择项目包，体验苹果流体玻璃视效。' }}
         </p>
 
-        <div v-if="showConsole" class="pt-2 flex items-center gap-3">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-xl bg-white/80 hover:bg-white text-xs font-bold text-slate-700 border border-slate-200 shadow-sm transition-all"
-            @click="openProjectSettings"
-          >
-            配置项目包
-          </button>
-          <button
-            type="button"
-            class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20 transition-all active:scale-95"
-            @click="openPageTransfer"
-          >
-            页面导入导出
-          </button>
-        </div>
       </section>
 
       <!-- 卡片 Grid -->
@@ -343,26 +330,6 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <section v-if="showConsole" class="space-y-3">
-          <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">平台工具</h2>
-          <div class="space-y-2">
-            <RouterLink
-              to="/tools/projects"
-              class="flex items-center justify-between p-4 rounded-2xl bg-white/80 border border-white/90 hover:bg-white transition-all text-xs font-bold text-slate-800 group"
-            >
-              <span>项目管理</span>
-              <el-icon class="text-slate-400 group-hover:text-blue-600"><Right /></el-icon>
-            </RouterLink>
-
-            <RouterLink
-              to="/tools/page-transfer"
-              class="flex items-center justify-between p-4 rounded-2xl bg-white/80 border border-white/90 hover:bg-white transition-all text-xs font-bold text-slate-800 group"
-            >
-              <span>页面导入与导出</span>
-              <el-icon class="text-slate-400 group-hover:text-blue-600"><Right /></el-icon>
-            </RouterLink>
-          </div>
-        </section>
       </div>
     </main>
   </div>

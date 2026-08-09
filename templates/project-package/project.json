@@ -21,6 +21,12 @@
       "description": "项目管理后台。",
       "icon": "Management",
       "defaultPage": "home",
+      "entry": {
+        "mode": "direct"
+      },
+      "layout": {
+        "type": "sidebar"
+      },
       "login": {
         "account": "admin",
         "tenantCode": "demo"

@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -115,7 +116,6 @@ const documentEntries = computed(() =>
     })),
 );
 
-const projectTitle = computed(() => selectedProject.value?.name || projectConfig.name);
 const projectVersion = computed(() => selectedProject.value?.version || '1.0.0');
 const hasSelectedProject = computed(() => Boolean(selectedProject.value));
 
@@ -149,11 +149,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -197,7 +194,13 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold">
           <RouterLink to="/components" class="text-slate-400 hover:text-white transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-400 hover:text-white transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            tone="dark"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-400 hover:text-white transition-colors">控制台</RouterLink>
         </div>
         </div>
@@ -295,43 +298,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 底部平台工具链 -->
-      <div v-if="showConsole" class="pt-6 border-t border-slate-800/80 space-y-4 relative z-10">
-        <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">PLATFORM ARSENAL</span>
-        <div class="grid grid-cols-2 gap-3">
-          <RouterLink
-            to="/tools/projects"
-            class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-800 transition-all group"
-          >
-            <el-icon class="text-lg text-indigo-400 group-hover:scale-110 transition-transform"><Menu /></el-icon>
-            <div>
-              <div class="text-xs font-bold text-white">项目管理</div>
-              <div class="text-[10px] text-slate-500">页面结构配置</div>
-            </div>
-          </RouterLink>
-
-          <RouterLink
-            to="/tools/page-transfer"
-            class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-800 transition-all group"
-          >
-            <el-icon class="text-lg text-cyan-400 group-hover:scale-110 transition-transform"><Switch /></el-icon>
-            <div>
-              <div class="text-xs font-bold text-white">页面导入导出</div>
-              <div class="text-[10px] text-slate-500">HTML包转换</div>
-            </div>
-          </RouterLink>
-        </div>
-
-        <div v-if="showConsole" class="pt-2 flex gap-2">
-          <button
-            type="button"
-            class="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors border border-slate-700"
-            @click="openProjectSettings"
-          >
-            编辑项目包配置
-          </button>
-        </div>
-      </div>
     </aside>
 
     <!-- 颠覆排版 右半屏：58% 宽度手风琴客户端视界 (Right Interactive Accordion Showcase) -->

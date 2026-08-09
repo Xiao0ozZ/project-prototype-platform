@@ -66,6 +66,18 @@ describe('project package scanner', () => {
     expect(result.invalidProjects[0].errors).toContain('页面文件不存在：admin/HomeView.vue。');
   });
 
+  it('rejects an unregistered custom client entry page', async () => {
+    const { projectsRoot, packageRoot } = await createProjectFixture();
+    const manifestPath = path.join(packageRoot, 'project.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.clients[0].entry = { mode: 'custom-page', page: 'missing-page' };
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+    const result = await scanProjectPackages(projectsRoot);
+    expect(result.projects).toEqual([]);
+    expect(result.invalidProjects[0].errors).toContain('客户端 admin 的自定义入口页面未登记：missing-page。');
+  });
+
   it('accepts a PRD directory outside the project package', async () => {
     const { projectsRoot, packageRoot } = await createProjectFixture();
     const externalDocsRoot = path.join(path.dirname(projectsRoot), 'prd-source');
@@ -247,5 +259,43 @@ describe('project package scanner', () => {
       menu: true,
     });
     expect(applyContentOnlyMode(source)).toContain('id="platform-html-content-only"');
+  });
+
+  it('can preserve the complete shell of a templateized HTML source', async () => {
+    const { projectsRoot, packageRoot } = await createProjectFixture();
+    const prototypeRoot = path.join(path.dirname(projectsRoot), 'full-shell-html');
+    await fs.mkdir(prototypeRoot, { recursive: true });
+    const source = `<!doctype html><html><head><title>完整外壳页面</title></head><body>
+      <aside class="prototype-sidebar">原页面菜单</aside>
+      <main data-page-content><div data-business-content>页面内容</div></main>
+      <script id="prototype-page-manifest" type="application/json">${JSON.stringify({
+        templateVersion: 1,
+        pageKey: 'full-shell-page',
+        pageTitle: '完整外壳页面',
+        client: 'admin',
+        routePath: '/admin/full-shell-page',
+      })}</script>
+    </body></html>`;
+    await fs.writeFile(path.join(prototypeRoot, 'full-shell-page.html'), source, 'utf8');
+    const manifestPath = path.join(packageRoot, 'project.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.prototype = {
+      enabled: true,
+      clients: {
+        admin: { enabled: true, root: prototypeRoot, shellMode: 'full' },
+      },
+    };
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+    const result = await scanHtmlPrototypePages(projectsRoot);
+    expect(result.projects['sample-project'].admin[0]).toMatchObject({
+      path: 'full-shell-page',
+      renderMode: 'full',
+      sourceType: 'html-direct',
+    });
+    expect(result.roots['sample-project'][0]).toMatchObject({
+      clientId: 'admin',
+      shellMode: 'full',
+    });
   });
 });

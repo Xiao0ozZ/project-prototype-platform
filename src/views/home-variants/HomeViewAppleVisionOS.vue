@@ -3,28 +3,21 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowDown,
-  Box,
   Check,
-  Compass,
-  Document,
   FolderOpened,
   Iphone,
   Lightning,
-  MagicStick,
   Monitor,
   OfficeBuilding,
   Pointer,
-  Position,
   Right,
-  Setting,
-  Switch,
-  VideoPlay,
   View,
 } from '@element-plus/icons-vue';
 
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -348,18 +341,7 @@ const clientEntries = computed(() =>
     })),
 );
 
-const documentEntries = computed(() =>
-  [...(selectedProject.value?.entries || [])]
-    .filter((entry) => entry.kind === 'docs')
-    .sort((left, right) => (left.order || 0) - (right.order || 0))
-    .map((entry) => ({
-      ...entry,
-      to: getProjectEntryPath(selectedProject.value, entry),
-    })),
-);
-
 const projectTitle = computed(() => selectedProject.value?.name || projectConfig.name);
-const projectVersion = computed(() => selectedProject.value?.version || '1.0.0');
 const hasSelectedProject = computed(() => Boolean(selectedProject.value));
 
 function toggleConsole() {
@@ -388,11 +370,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -463,7 +442,7 @@ onBeforeUnmount(() => {
 
           <div class="mt-8 space-y-2">
             <div class="text-xs font-mono text-[#38bdf8] tracking-widest uppercase animate-pulse">
-              >>> APPLE VISIONOS SPATIAL EXPERIENCE LAUNCHING <<<
+              &gt;&gt;&gt; APPLE VISIONOS SPATIAL EXPERIENCE LAUNCHING &lt;&lt;&lt;
             </div>
             <div class="text-5xl font-extrabold text-white tracking-tight drop-shadow-[0_0_40px_rgba(255,255,255,0.9)]">
               {{ spatialLaunchTarget?.name }}
@@ -559,7 +538,13 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold">
           <RouterLink to="/components" class="text-slate-300 hover:text-white transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="text-slate-300 hover:text-white transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            tone="dark"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="text-slate-300 hover:text-white transition-colors">控制台</RouterLink>
         </div>
       </div>
@@ -590,24 +575,6 @@ onBeforeUnmount(() => {
           {{ hasSelectedProject ? (selectedProject?.description || '体验 Apple VisionOS 空间计算黑玻璃高保真原型，支持眼动追焦与捏合手势流转。') : '请在上方选择目标项目包，开启 VisionOS 空间视效。' }}
         </p>
 
-        <div v-if="showConsole" class="pt-2 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            class="px-5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all shadow-md active:scale-95"
-            @click="openProjectSettings"
-          >
-            <el-icon><Setting /></el-icon>
-            修改包配置
-          </button>
-          <button
-            type="button"
-            class="px-6 py-2.5 rounded-2xl bg-[#007AFF] hover:bg-[#0062cc] text-white font-extrabold text-xs shadow-lg shadow-[#007AFF]/25 transition-all active:scale-95"
-            @click="openPageTransfer"
-          >
-            <el-icon><Switch /></el-icon>
-            页面导入导出
-          </button>
-        </div>
       </div>
 
       <!-- VisionOS 3D 空间黑玻璃窗口 Card Grid -->

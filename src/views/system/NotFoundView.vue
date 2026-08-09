@@ -1,10 +1,11 @@
 <template>
-  <main class="not-found-page">
-    <section class="not-found-panel">
+  <main class="not-found-page platform-page">
+    <section class="not-found-panel platform-hero">
+      <span class="status-eyebrow">PLATFORM NAVIGATION</span>
       <span class="status-code">404</span>
-      <h1>页面不存在</h1>
-      <p>当前地址没有对应的原型页面，请返回项目首页重新选择入口。</p>
-      <router-link class="home-link" to="/">返回项目首页</router-link>
+      <h1>没有找到这个页面</h1>
+      <p>当前地址没有对应的公共工具或原型页面，可以返回首页重新选择入口。</p>
+      <router-link class="home-link" to="/">返回首页</router-link>
     </section>
   </main>
 </template>
@@ -15,43 +16,60 @@
   display: grid;
   place-items: center;
   padding: 32px;
-  background: #f6f8fa;
-  color: #172033;
+  color: var(--platform-color-text);
 }
 .not-found-panel {
   width: min(480px, 100%);
-  padding: 40px;
+  padding: 38px;
   text-align: center;
-  background: #fff;
-  border: 1px solid #dfe5ec;
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgb(15 23 42 / 8%);
+}
+.status-eyebrow {
+  display: block;
+  color: var(--platform-color-accent);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
 }
 .status-code {
   display: block;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 48px;
-  font-weight: 700;
+  margin: 12px 0 3px;
+  color: var(--platform-color-accent);
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.06em;
 }
 h1 {
-  margin: 0 0 12px;
-  font-size: 24px;
+  margin: 0 0 10px;
+  font-size: 25px;
+  letter-spacing: -0.035em;
 }
 p {
-  margin: 0 0 24px;
-  color: #667085;
-  line-height: 1.7;
+  max-width: 360px;
+  margin: 0 auto 24px;
+  color: var(--platform-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
 }
 .home-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 0 18px;
+  min-height: 40px;
+  padding: 0 20px;
   color: #fff;
-  text-decoration: none;
-  background: var(--app-color-primary);
-  border-radius: 4px;
+  border-radius: 11px;
+  background: var(--platform-color-accent);
+  box-shadow: 0 9px 20px rgb(37 99 235 / 20%);
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background-color var(--platform-motion-base) ease,
+    transform var(--platform-motion-fast) ease;
+}
+.home-link:hover {
+  background: var(--platform-color-accent-hover);
+}
+.home-link:active {
+  transform: scale(0.97);
 }
 </style>

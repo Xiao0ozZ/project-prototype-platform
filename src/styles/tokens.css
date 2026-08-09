@@ -34,9 +34,10 @@
   --app-color-surface-muted: #f9fafb;
   --app-color-page: #f5f7fb;
   --app-font-family-sans:
-    'SF Pro Text', 'SF Pro Display', 'SF Pro', 'PingFang SC', 'PingFang TC', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Hiragino Sans GB', 'Microsoft YaHei',
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+    'SF Pro Text', 'SF Pro Display', 'SF Pro', 'PingFang SC', 'PingFang TC', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji', sans-serif;
   --app-font-family-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   --app-font-size-xs: 12px;
@@ -64,14 +65,25 @@
   /* Shared platform chrome. Project packages keep using the app tokens above. */
   --platform-content-max: 1200px;
   --platform-page-gutter: clamp(16px, 3vw, 40px);
-  --platform-color-page: #f5f5f7;
+  --platform-color-accent: #2563eb;
+  --platform-color-accent-rgb: 37 99 235;
+  --platform-color-accent-hover: #1d4ed8;
+  --platform-color-accent-soft: #eff6ff;
+  --platform-color-page: #f0f4f8;
   --platform-color-surface: #ffffff;
+  --platform-color-surface-glass: rgb(255 255 255 / 78%);
   --platform-color-surface-soft: #f2f2f7;
   --platform-color-text: #1d1d1f;
   --platform-color-text-secondary: #6e6e73;
+  --platform-color-border: rgb(255 255 255 / 78%);
+  --platform-page-background:
+    radial-gradient(circle at 92% -8%, rgb(147 197 253 / 34%), transparent 32rem),
+    radial-gradient(circle at 4% 92%, rgb(196 181 253 / 25%), transparent 34rem),
+    linear-gradient(145deg, #f5f8fc 0%, #eef3f9 52%, #f3f0fb 100%);
   --platform-radius-control: 10px;
   --platform-radius-surface: 18px;
-  --platform-shadow-surface: 0 4px 20px rgb(0 0 0 / 5%);
+  --platform-radius-hero: 24px;
+  --platform-shadow-surface: 0 10px 30px rgb(51 65 85 / 8%);
   --platform-shadow-float: 0 20px 56px rgb(0 0 0 / 16%);
   --platform-motion-fast: 120ms;
   --platform-motion-base: 180ms;

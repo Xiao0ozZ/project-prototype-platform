@@ -1874,6 +1874,11 @@ export async function setPlatformDeveloperMode() { return platformSettings; }
 `,
     'utf8',
   );
+  const exportProjectNavigationImport = './export-project-navigation.js';
+  await fsp.copyFile(
+    path.join(PLATFORM_ROOT, 'src', 'services', 'project-navigation.js'),
+    path.join(workDir, 'export-project-navigation.js'),
+  );
   await fsp.writeFile(
     path.join(workDir, 'export-router.js'),
     `const projectId = ${JSON.stringify(projectPackage.projectId)};
@@ -1938,6 +1943,7 @@ export default router;
     .replace("'../config/project-packages'", JSON.stringify(projectPackagesImport))
     .replace("'../i18n'", JSON.stringify(i18nImport))
     .replace("'../i18n/legacy-localizer'", JSON.stringify(localizerImport))
+    .replace("'../services/project-navigation'", JSON.stringify(exportProjectNavigationImport))
     .replace("'../services/project-sources'", JSON.stringify(exportProjectSourcesImport))
     .replace("'../services/platform-settings'", JSON.stringify(exportPlatformSettingsImport));
   await fsp.writeFile(path.join(workDir, 'ExportAppShell.vue'), exportAppShellSource, 'utf8');
@@ -1965,7 +1971,9 @@ export default router;
       ? `import { ${menu.icons.join(', ')} } from '@element-plus/icons-vue';\n`
       : '';
     const clientName = projectPackage.manifest.clients?.find((item) => item.id === client)?.name || client;
-    const layoutSource = `<template>\n  <AppShell project-id="${projectPackage.projectId}" app-name="${String(projectPackage.manifest.name).replaceAll('"', '&quot;')}" client="${client}" client-name="${String(clientName).replaceAll('"', '&quot;')}" :menus="menus" />\n</template>\n\n<script setup>\nimport AppShell from ${JSON.stringify(appShellImport)};\n${iconImport}const menus = ${menu.source};\n</script>\n`;
+    const layoutType =
+      projectPackage.manifest.clients?.find((item) => item.id === client)?.layout?.type || 'sidebar';
+    const layoutSource = `<template>\n  <AppShell project-id="${projectPackage.projectId}" app-name="${String(projectPackage.manifest.name).replaceAll('"', '&quot;')}" client="${client}" client-name="${String(clientName).replaceAll('"', '&quot;')}" layout-type="${layoutType}" :menus="menus" />\n</template>\n\n<script setup>\nimport AppShell from ${JSON.stringify(appShellImport)};\n${iconImport}const menus = ${menu.source};\n</script>\n`;
     await fsp.writeFile(path.join(workDir, layoutFile), layoutSource, 'utf8');
     layoutImports.push(`import ${layoutName} from './${layoutFile}';`);
 

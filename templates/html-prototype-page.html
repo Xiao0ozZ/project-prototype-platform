@@ -10,13 +10,14 @@
     <!-- TEMPLATE-LOCK: 以下 AI 编写协议必须连同开始、结束标记和全部正文原样保留，不得删减、概括或改写。 -->
     <!-- PROTOTYPE_AI_PROTOCOL_START -->
     <!--
-      HTML 原型 AI 编写协议 v1.6（修改页面前必须完整阅读）
+      HTML 原型 AI 编写协议 v1.7（修改页面前必须完整阅读）
 
       目标
       - 本模板用于创建一份完整、可直接在浏览器打开的桌面端后台业务 HTML 页面。
       - 可将本模板复制为多个 HTML 文件组成多页面原型；每个文件都必须能够单独打开和运行。
       - 复制本文件创建新页面，并以本模板作为唯一的结构与实现基准；不要另建或替换壳层、全局样式及启动代码。
       - 交付物必须是 UTF-8 的完整有效 HTML；不要把解释、Markdown 代码围栏、占位 TODO 或无关 Prompt 写入文件。
+      - 统一运行依赖通过固定版本 CDN 加载；直接打开页面时需要能够访问这些 CDN 地址。
 
       执行顺序
       1. 先确认页面用途、信息层级、主要操作、必要状态和弹窗，再开始改代码。
@@ -26,7 +27,8 @@
       不可破坏的模板契约
       - PROTOTYPE_AI_PROTOCOL_START/END 及其间的协议标题和全部正文必须完整保留；不得只保留版本标题，也不得压缩、摘要、改写或删除协议内容。
       - [TEMPLATE-LOCK] 区域、所有 START/END 标记、#app、prototype-page-manifest 和启动代码不得删除、改名或移动。
-      - 只修改 [AI-EDIT] 区域和带 data-shell-* 的外壳文字；外壳骨架、基础主题及统一依赖保持不变。
+      - 只修改 [AI-EDIT] 区域和带 data-shell-* 的外壳文字；外壳骨架、统一依赖和基础样式保持不变。
+      - 如需更换页面主题色，只修改 THEME_TOKENS 区域中的主色变量，并同步更新全部主色派生变量；不要修改基础样式实现。
       - 除模板自带的结构演示分支外，本文件只承载一个桌面端后台业务页面；正式交付时不得保留多个页面结构或改造成登录页、移动端页面。
       - 页面必须且只能有一个 data-page-content、一个 data-business-content；弹窗和抽屉统一放在 PAGE_OVERLAYS 区域。
 
@@ -64,11 +66,13 @@
 
       CSS 与视觉规则
       - 页面专属样式只写在 PAGE_STYLE；优先使用 --app-* 与 --el-* 变量，不新增全局样式、CDN、外部字体或外部图片。
+      - 默认主色为 Element Plus 蓝；项目需要其他主题色时，可修改 THEME_TOKENS，但应保持文字、边框和交互状态具有足够对比度。
       - 页面标题 24px、区块标题 16px、正文/表格/表单/详情字段 14px、辅助信息 12-13px；不依赖浏览器默认字号。
       - 内容区的布局、组件和视觉组织由当前业务需求决定；统一使用模板主题变量，并保持信息层级、间距和交互状态清晰一致。
 
       交付自检
       - PROTOTYPE_AI_PROTOCOL_START/END 和协议全部正文仍完整存在，没有只保留协议标题或删除注释提示词。
+      - THEME_TOKENS 只包含完整的一组主色及其派生色，没有把页面布局或业务样式写入其中。
       - HTML 可直接打开；控制台无错误；加载、空数据、校验、取消、确认和分页等已用状态均可操作。
       - 多页面原型中的相对链接均指向实际存在的文件，当前页面导航项带 is-active 和 aria-current="page"。
       - Manifest 是有效 JSON，页面身份字段一致，所有 Vue 模板表达式引用的状态和方法都在 pageSetup 返回。
@@ -77,18 +81,30 @@
     <!-- PROTOTYPE_AI_PROTOCOL_END -->
 
     <!-- TEMPLATE-LOCK: 页面基础样式依赖，不得修改、删除或重复引入。 -->
-    <!-- PROTOTYPE_DEPENDENCIES_START -->
+    <!-- PROTOTYPE_STYLE_DEPENDENCIES_START -->
     <link rel="stylesheet" href="https://unpkg.com/element-plus@2.8.0/dist/index.css" />
-    <!-- PROTOTYPE_DEPENDENCIES_END -->
+    <!-- PROTOTYPE_STYLE_DEPENDENCIES_END -->
 
-    <!-- TEMPLATE-LOCK: 页面统一基础主题变量。 -->
-    <!-- PROTOTYPE_BASE_STYLE_START -->
-    <style>
+    <!-- [AI-EDIT] THEME_TOKENS_START: 仅在需要更换主题色时修改这一组主色变量。 -->
+    <style data-theme-tokens>
       :root {
         --app-color-primary: #409eff;
         --app-color-primary-hover: #79bbff;
         --app-color-primary-active: #337ecc;
         --app-color-primary-shadow: rgb(64 158 255 / 18%);
+        --app-color-primary-light-3: #79bbff;
+        --app-color-primary-light-5: #a0cfff;
+        --app-color-primary-light-7: #c6e2ff;
+        --app-color-primary-light-8: #d9ecff;
+        --app-color-primary-light-9: #ecf5ff;
+      }
+    </style>
+    <!-- THEME_TOKENS_END -->
+
+    <!-- TEMPLATE-LOCK: 页面统一基础样式变量与外壳样式。 -->
+    <!-- PROTOTYPE_BASE_STYLE_START -->
+    <style>
+      :root {
         --app-color-success: #16a34a;
         --app-color-warning: #f59e0b;
         --app-color-danger: #dc2626;
@@ -126,12 +142,12 @@
         --app-table-row-height: 48px;
         --app-panel-header-height: 52px;
         --el-color-primary: var(--app-color-primary);
-        --el-color-primary-light-3: #79bbff;
-        --el-color-primary-light-5: #a0cfff;
-        --el-color-primary-light-7: #c6e2ff;
-        --el-color-primary-light-8: #d9ecff;
-        --el-color-primary-light-9: #ecf5ff;
-        --el-color-primary-dark-2: #337ecc;
+        --el-color-primary-light-3: var(--app-color-primary-light-3);
+        --el-color-primary-light-5: var(--app-color-primary-light-5);
+        --el-color-primary-light-7: var(--app-color-primary-light-7);
+        --el-color-primary-light-8: var(--app-color-primary-light-8);
+        --el-color-primary-light-9: var(--app-color-primary-light-9);
+        --el-color-primary-dark-2: var(--app-color-primary-active);
         --el-font-family: var(--app-font-family-sans);
       }
 
@@ -174,7 +190,9 @@
       }
 
       .prototype-sidebar {
+        display: flex;
         flex: 0 0 256px;
+        flex-direction: column;
         width: 256px;
         min-height: 0;
         overflow: hidden;
@@ -377,30 +395,30 @@
     </style>
     <!-- PROTOTYPE_BASE_STYLE_END -->
 
-    <!-- [AI-EDIT] PAGE_STYLE_START: 内容选择器以 .standard-list-page 开头；覆盖层选择器以 .standard-list-dialog 开头。 -->
+    <!-- [AI-EDIT] PAGE_STYLE_START: 内容选择器以 .business-page 开头；覆盖层选择器以 .business-page-dialog 开头。 -->
     <style data-page-style>
-      .standard-list-page {
+      .business-page {
         width: 100%;
         font-size: var(--app-font-size-base);
         line-height: 1.5;
       }
 
       /* 页面自行增加的区块标题使用此层级；正文、表格、表单和详情字段继续使用 14px。 */
-      .standard-list-page .section-title {
+      .business-page .section-title {
         margin: 0;
         font-size: var(--app-font-size-md);
         font-weight: 700;
         line-height: 1.5;
       }
 
-      .standard-list-page .page-heading {
+      .business-page .page-heading {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         margin-bottom: 24px;
       }
 
-      .standard-list-page .page-heading h1 {
+      .business-page .page-heading h1 {
         margin: 0;
         color: var(--app-color-text-primary);
         font-size: var(--app-font-size-page-title);
@@ -409,17 +427,17 @@
         letter-spacing: 0;
       }
 
-      .standard-list-page .page-heading p {
+      .business-page .page-heading p {
         margin: 4px 0 0;
         color: var(--app-color-text-muted);
         font-size: var(--app-font-size-base);
       }
 
-      .standard-list-page .page-heading .el-button--large {
+      .business-page .page-heading .el-button--large {
         box-shadow: 0 4px 6px -1px var(--app-color-primary-shadow);
       }
 
-      .standard-list-page .content-panel {
+      .business-page .content-panel {
         overflow: hidden;
         background: var(--app-color-surface);
         border: 1px solid var(--app-color-border-subtle);
@@ -427,75 +445,75 @@
         box-shadow: var(--app-shadow-panel);
       }
 
-      .standard-list-page .filter-bar,
-      .standard-list-page .pagination-bar {
+      .business-page .filter-bar,
+      .business-page .pagination-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 16px;
       }
 
-      .standard-list-page .filter-bar {
+      .business-page .filter-bar {
         min-height: 60px;
         border-bottom: 1px solid var(--app-color-border-light);
         background: var(--app-color-surface-muted);
       }
 
-      .standard-list-page .filter-fields,
-      .standard-list-page .filter-summary {
+      .business-page .filter-fields,
+      .business-page .filter-summary {
         display: flex;
         align-items: center;
       }
 
-      .standard-list-page .filter-fields {
+      .business-page .filter-fields {
         flex-wrap: wrap;
         gap: 12px;
       }
 
-      .standard-list-page .filter-summary {
+      .business-page .filter-summary {
         flex: 0 0 auto;
         margin-left: 16px;
         color: var(--app-color-text-muted);
         font-size: var(--app-font-size-base);
       }
 
-      .standard-list-page .filter-fields .el-input {
+      .business-page .filter-fields .el-input {
         width: 280px;
       }
 
-      .standard-list-page .filter-fields .el-select {
+      .business-page .filter-fields .el-select {
         width: 160px;
       }
 
-      .standard-list-page .table-wrap {
+      .business-page .table-wrap {
         padding: 0;
       }
 
-      .standard-list-page .el-table th.el-table__cell {
+      .business-page .el-table th.el-table__cell {
         color: var(--app-color-text-secondary);
         font-weight: 700;
         background: var(--app-color-surface-muted);
       }
 
-      .standard-list-page .pagination-bar {
+      .business-page .pagination-bar {
         justify-content: flex-end;
         border-top: 1px solid var(--app-color-border-light);
         background: var(--app-color-surface-muted);
       }
 
-      .standard-list-page .name-cell strong {
+      .business-page .name-cell strong {
         display: block;
         font-size: 14px;
       }
 
-      .standard-list-page .name-cell span {
+      .business-page .name-cell span {
         display: block;
         margin-top: 2px;
         font-size: 12px;
         color: var(--app-color-text-muted);
       }
 
-      .standard-list-page .template-demo-switch {
+      .business-page .template-demo-switch {
         position: fixed;
         right: 24px;
         bottom: 24px;
@@ -510,14 +528,14 @@
         box-shadow: 0 10px 28px rgb(15 23 42 / 14%);
       }
 
-      .standard-list-page .template-demo-switch-label {
+      .business-page .template-demo-switch-label {
         padding-left: 8px;
         color: var(--app-color-text-muted);
         font-size: var(--app-font-size-sm);
         white-space: nowrap;
       }
 
-      .standard-list-page .template-demo-switch-options {
+      .business-page .template-demo-switch-options {
         display: flex;
         align-items: center;
         gap: 2px;
@@ -526,7 +544,7 @@
         border-radius: 7px;
       }
 
-      .standard-list-page .template-demo-switch button {
+      .business-page .template-demo-switch button {
         min-height: 30px;
         padding: 0 10px;
         color: var(--app-color-text-secondary);
@@ -538,30 +556,30 @@
         cursor: pointer;
       }
 
-      .standard-list-page .template-demo-switch button:hover {
+      .business-page .template-demo-switch button:hover {
         color: var(--app-color-primary);
       }
 
-      .standard-list-page .template-demo-switch button.is-active {
+      .business-page .template-demo-switch button.is-active {
         color: var(--app-color-primary);
         font-weight: 600;
         background: var(--app-color-surface);
         box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
       }
 
-      .standard-list-page .template-demo-switch button:focus-visible {
+      .business-page .template-demo-switch button:focus-visible {
         outline: 2px solid var(--app-color-primary);
         outline-offset: 2px;
       }
 
-      .standard-list-page .secondary-backbar {
+      .business-page .secondary-backbar {
         display: flex;
         align-items: center;
         min-height: 36px;
         margin-bottom: 16px;
       }
 
-      .standard-list-page .secondary-object-summary {
+      .business-page .secondary-object-summary {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -574,61 +592,61 @@
         box-shadow: var(--app-shadow-panel);
       }
 
-      .standard-list-page .secondary-object-main,
-      .standard-list-page .secondary-object-title,
-      .standard-list-page .secondary-object-actions {
+      .business-page .secondary-object-main,
+      .business-page .secondary-object-title,
+      .business-page .secondary-object-actions {
         display: flex;
         align-items: center;
       }
 
-      .standard-list-page .secondary-object-main {
+      .business-page .secondary-object-main {
         min-width: 0;
         gap: 16px;
       }
 
-      .standard-list-page .secondary-object-copy {
+      .business-page .secondary-object-copy {
         min-width: 0;
       }
 
-      .standard-list-page .secondary-object-title {
+      .business-page .secondary-object-title {
         flex-wrap: wrap;
         gap: 10px;
       }
 
-      .standard-list-page .secondary-object-title h1 {
+      .business-page .secondary-object-title h1 {
         margin: 0;
         color: var(--app-color-text-primary);
         font-size: var(--app-font-size-page-title);
         line-height: 32px;
       }
 
-      .standard-list-page .secondary-object-kicker {
+      .business-page .secondary-object-kicker {
         margin-bottom: 4px;
         color: var(--app-color-text-muted);
         font-size: var(--app-font-size-sm);
       }
 
-      .standard-list-page .secondary-object-copy p {
+      .business-page .secondary-object-copy p {
         margin: 4px 0 0;
         color: var(--app-color-text-muted);
       }
 
-      .standard-list-page .secondary-object-actions {
+      .business-page .secondary-object-actions {
         flex: 0 0 auto;
         gap: 8px;
       }
 
-      .standard-list-page .secondary-form-layout {
+      .business-page .secondary-form-layout {
         display: grid;
         gap: 16px;
       }
 
-      .standard-list-page .secondary-form-layout {
+      .business-page .secondary-form-layout {
         grid-template-columns: minmax(0, 1fr) 320px;
         align-items: start;
       }
 
-      .standard-list-page .secondary-panel-header {
+      .business-page .secondary-panel-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -637,87 +655,87 @@
         border-bottom: 1px solid var(--app-color-border-light);
       }
 
-      .standard-list-page .secondary-panel-header h2 {
+      .business-page .secondary-panel-header h2 {
         margin: 0;
         color: var(--app-color-text-primary);
         font-size: var(--app-font-size-md);
       }
 
-      .standard-list-page .secondary-panel-body {
+      .business-page .secondary-panel-body {
         padding: 16px;
       }
 
-      .standard-list-page .secondary-order-summary {
+      .business-page .secondary-order-summary {
         display: grid;
         gap: 12px;
       }
 
-      .standard-list-page .secondary-summary-row {
+      .business-page .secondary-summary-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
       }
 
-      .standard-list-page .secondary-summary-row + .secondary-summary-row {
+      .business-page .secondary-summary-row + .secondary-summary-row {
         padding-top: 12px;
         border-top: 1px solid var(--app-color-border-subtle);
       }
 
-      .standard-list-page .secondary-summary-row span {
+      .business-page .secondary-summary-row span {
         color: var(--app-color-text-muted);
       }
 
-      .standard-list-page .secondary-form-section + .secondary-form-section {
+      .business-page .secondary-form-section + .secondary-form-section {
         margin-top: 20px;
         padding-top: 20px;
         border-top: 1px solid var(--app-color-border-light);
       }
 
-      .standard-list-page .secondary-form-section h3 {
+      .business-page .secondary-form-section h3 {
         margin: 0 0 14px;
         color: var(--app-color-text-primary);
         font-size: var(--app-font-size-md);
       }
 
-      .standard-list-page .secondary-form-grid {
+      .business-page .secondary-form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0 16px;
       }
 
-      .standard-list-page .secondary-summary-panel {
+      .business-page .secondary-summary-panel {
         position: sticky;
         top: 0;
       }
 
-      .standard-list-page .secondary-summary-actions {
+      .business-page .secondary-summary-actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
         margin-top: 18px;
       }
 
-      .standard-list-page .secondary-summary-actions .el-button {
+      .business-page .secondary-summary-actions .el-button {
         width: 100%;
         margin: 0;
       }
 
       @media (max-width: 1100px) {
-        .standard-list-page .secondary-form-layout {
+        .business-page .secondary-form-layout {
           grid-template-columns: 1fr;
         }
 
-        .standard-list-page .secondary-summary-panel {
+        .business-page .secondary-summary-panel {
           position: static;
         }
       }
 
-      .standard-list-dialog .el-dialog__body {
+      .business-page-dialog .el-dialog__body {
         padding-top: 10px;
       }
 
-      .standard-list-dialog .dialog-footer {
+      .business-page-dialog .dialog-footer {
         display: flex;
         justify-content: flex-end;
         gap: 8px;
@@ -730,10 +748,10 @@
       {
         "templateVersion": 1,
         "scriptMode": "composition-api",
-        "pageKey": "standard-list-page",
+        "pageKey": "business-page",
         "pageTitle": "资料管理",
         "fileName": "资料管理.html",
-        "pageType": "list",
+        "pageType": "custom",
         "pageHeaderMode": "standard",
         "client": "operation",
         "routePath": "/operation/materials",
@@ -741,8 +759,8 @@
         "menuTitle": "资料管理",
         "menuIcon": "Document",
         "menu": true,
-        "rootClass": "standard-list-page",
-        "overlayRootClass": "standard-list-dialog",
+        "rootClass": "business-page",
+        "overlayRootClass": "business-page-dialog",
         "contentSelector": "[data-page-content]",
         "businessContentSelector": "[data-business-content]",
         "overlaySelector": "[data-page-overlay]",
@@ -767,16 +785,27 @@
           <!-- [AI-EDIT] SHELL_NAV_START: 默认只更新菜单文案和当前项状态；确认目标文件存在后再使用链接。 -->
           <div class="prototype-menu-group">核心工作区</div>
           <div class="prototype-menu-item" aria-disabled="true">
-            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Platform" /></el-icon>
+            <el-icon class="prototype-menu-icon" aria-hidden="true"
+              ><component :is="Platform"></component
+            ></el-icon>
             <span>工作台首页</span>
           </div>
           <div class="prototype-menu-group">业务管理</div>
-          <div class="prototype-menu-item is-active" data-shell-page-title aria-disabled="true">
-            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Document" /></el-icon>
+          <div
+            class="prototype-menu-item is-active"
+            data-shell-page-title
+            aria-current="page"
+            aria-disabled="true"
+          >
+            <el-icon class="prototype-menu-icon" aria-hidden="true"
+              ><component :is="Document"></component
+            ></el-icon>
             <span>资料管理</span>
           </div>
           <div class="prototype-menu-item" aria-disabled="true">
-            <el-icon class="prototype-menu-icon" aria-hidden="true"><component :is="Setting" /></el-icon>
+            <el-icon class="prototype-menu-icon" aria-hidden="true"
+              ><component :is="Setting"></component
+            ></el-icon>
             <span>业务配置</span>
           </div>
           <!-- SHELL_NAV_END -->
@@ -803,10 +832,10 @@
         <main class="prototype-main">
           <!-- [AI-EDIT] PAGE_CONTENT_START: 当前页面的唯一主内容根节点。只能有一个 data-page-content。 -->
           <section
-            class="standard-list-page"
+            class="business-page"
             data-page-content
-            data-page-root="standard-list-page"
-            data-page-key="standard-list-page"
+            data-page-root="business-page"
+            data-page-key="business-page"
           >
             <!--
               [AI-EDIT] TEMPLATE_DEMO_SWITCH
@@ -1104,7 +1133,7 @@
       <!-- [AI-EDIT] PAGE_OVERLAYS_START: 所有 el-dialog/el-drawer 均放在这里，不能放到 #app 外。 -->
       <el-dialog
         v-model="dialogVisible"
-        class="standard-list-dialog"
+        class="business-page-dialog"
         data-page-overlay="dialog"
         :title="dialogMode === 'create' ? '新增资料' : '编辑资料'"
         width="640px"
@@ -1144,12 +1173,12 @@
     </div>
 
     <!-- TEMPLATE-LOCK: 页面运行依赖，不得修改、删除或重复引入。 -->
-    <!-- PROTOTYPE_DEPENDENCIES_START -->
+    <!-- PROTOTYPE_SCRIPT_DEPENDENCIES_START -->
     <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/element-plus@2.8.0/dist/index.full.min.js"></script>
     <script src="https://unpkg.com/element-plus@2.8.0/dist/locale/zh-cn"></script>
     <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
-    <!-- PROTOTYPE_DEPENDENCIES_END -->
+    <!-- PROTOTYPE_SCRIPT_DEPENDENCIES_END -->
 
     <script data-page-script>
       /* [AI-EDIT] PAGE_LOGIC_START: 只写页面状态、计算属性、方法和模拟数据。 */

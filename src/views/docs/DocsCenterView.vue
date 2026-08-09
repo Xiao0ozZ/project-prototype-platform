@@ -1,6 +1,6 @@
 <template>
   <div
-    class="docs-page"
+    class="docs-page platform-page"
     :class="{
       'docs-page--embedded': embedded,
       'docs-page--embedded-outline': embedded && outlineVisible,
@@ -726,20 +726,22 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .docs-page {
+  --app-color-primary: var(--platform-color-accent);
+  --app-color-primary-rgb: var(--platform-color-accent-rgb);
   --docs-page-bg: #f5f5f7;
   --docs-surface: #fff;
   --docs-surface-soft: #f2f2f7;
   --docs-ink: #1d1d1f;
   --docs-secondary: #6e6e73;
   --docs-tertiary: #86868b;
-  --docs-primary: var(--app-color-primary);
+  --docs-primary: var(--platform-color-accent);
   --docs-border: rgb(0 0 0 / 9%);
   height: 100vh;
   min-height: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 8% 0, rgb(var(--app-color-primary-rgb) / 7%), transparent 28rem),
-    var(--docs-page-bg);
+    radial-gradient(circle at 90% 0, rgb(147 197 253 / 24%), transparent 28rem),
+    radial-gradient(circle at 4% 90%, rgb(196 181 253 / 18%), transparent 30rem), var(--docs-page-bg);
   color: var(--docs-ink);
   font-family: var(--app-font-family-sans);
   font-optical-sizing: auto;

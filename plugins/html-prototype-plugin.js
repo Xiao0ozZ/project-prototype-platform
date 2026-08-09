@@ -202,6 +202,7 @@ function normalizePrototypeSources(prototype = {}) {
         root: String(item?.root || '').trim(),
         section: String(item?.section || '').trim(),
         icon: String(item?.icon || '').trim(),
+        shellMode: item?.shellMode === 'full' ? 'full' : 'auto',
         enabled: item?.enabled !== false,
       }))
       .filter((item) => item.enabled && item.root);
@@ -214,6 +215,7 @@ function normalizePrototypeSources(prototype = {}) {
       root: String(prototype.root).trim(),
       section: String(prototype.section || '').trim(),
       icon: String(prototype.icon || '').trim(),
+      shellMode: prototype.shellMode === 'full' ? 'full' : 'auto',
       enabled: true,
     },
   ];
@@ -271,6 +273,7 @@ export async function scanHtmlPrototypePages(projectsRoot) {
     roots[item.projectId] = item.sources.map((source) => ({
       clientId: source.clientId,
       root: source.prototypeRoot,
+      shellMode: source.shellMode,
     }));
 
     for (const prototypeSource of item.sources) {
@@ -324,7 +327,8 @@ export async function scanHtmlPrototypePages(projectsRoot) {
           sourceType: 'html-direct',
           source: relativePath,
           sourceRoot: prototypeSource.clientId || '_',
-          renderMode: isContentOnlyHtml ? 'content-only' : 'full',
+          renderMode:
+            prototypeSource.shellMode === 'full' ? 'full' : isContentOnlyHtml ? 'content-only' : 'full',
           section,
           icon:
             readMetaValue(source, 'prototype-icon') ||
@@ -442,7 +446,8 @@ const CONTENT_ONLY_STYLE = `
 </style>`;
 
 export function applyContentOnlyMode(source) {
-  if (!isHtmlPrototypeContentSource(source) || /id=["']platform-html-content-only["']/i.test(source)) return source;
+  if (!isHtmlPrototypeContentSource(source) || /id=["']platform-html-content-only["']/i.test(source))
+    return source;
   if (/<\/head>/i.test(source)) return source.replace(/<\/head>/i, `${CONTENT_ONLY_STYLE}</head>`);
   return `${CONTENT_ONLY_STYLE}${source}`;
 }
@@ -525,7 +530,12 @@ export function htmlPrototypePlugin({ projectsRoot }) {
         try {
           const isHtml = /\.html?$/i.test(target);
           const content = isHtml
-            ? Buffer.from(applyContentOnlyMode(await fs.readFile(target, 'utf8')), 'utf8')
+            ? Buffer.from(
+                prototypeSource.shellMode === 'full'
+                  ? await fs.readFile(target, 'utf8')
+                  : applyContentOnlyMode(await fs.readFile(target, 'utf8')),
+                'utf8',
+              )
             : await fs.readFile(target);
           res.statusCode = 200;
           res.setHeader('Content-Type', mimeTypeFor(target));
@@ -549,7 +559,12 @@ export function htmlPrototypePlugin({ projectsRoot }) {
             const clientPrefix = prototypeSource.clientId ? `${prototypeSource.clientId}/` : '';
             const source = await fs.readFile(absolutePath);
             const output = /\.html?$/i.test(absolutePath)
-              ? Buffer.from(applyContentOnlyMode(source.toString('utf8')), 'utf8')
+              ? Buffer.from(
+                  prototypeSource.shellMode === 'full'
+                    ? source.toString('utf8')
+                    : applyContentOnlyMode(source.toString('utf8')),
+                  'utf8',
+                )
               : source;
             this.emitFile({
               type: 'asset',

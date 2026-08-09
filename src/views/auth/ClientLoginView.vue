@@ -22,7 +22,7 @@
 
           <div class="mt-8 text-center space-y-2">
             <div class="text-xs font-mono text-cyan-300 tracking-widest uppercase animate-pulse">
-              >>> CHRONO WARP ARRIVAL // TIMELINE SYNC: 100% <<<
+              &gt;&gt;&gt; CHRONO WARP ARRIVAL // TIMELINE SYNC: 100% &lt;&lt;&lt;
             </div>
             <div class="text-3xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,1)]">
               {{ project?.name || '项目平台' }} · {{ client?.name || '客户端' }}
@@ -206,7 +206,10 @@ import { localeOptions, setLocale } from '../../i18n';
 import { getProject, getProjectClient } from '../../config/project-packages';
 import { getThemeColorRgb } from '../../config/theme';
 import { getProjectAssetUrl } from '../../services/project-assets';
-import { getClientDefaultPagePath } from '../../services/project-navigation';
+import {
+  getClientDefaultPagePath,
+  getProjectClientEntryPath,
+} from '../../services/project-navigation';
 
 const props = defineProps({
   projectId: {
@@ -415,14 +418,18 @@ function refreshCaptcha() {
 }
 
 function switchClient(client) {
+  const targetClient = project.value?.clients.find((item) => item.id === client);
+  const destination = targetClient
+    ? getProjectClientEntryPath(props.projectId, targetClient)
+    : `/p/${props.projectId}/${client}`;
   if (shouldShowWarp) {
     playChronoAudio('arrival');
     isChronoArrival.value = true;
     setTimeout(() => {
-      router.push(`/p/${props.projectId}/${client}/login`);
+      router.push(destination);
     }, 500);
   } else {
-    router.push(`/p/${props.projectId}/${client}/login`);
+    router.push(destination);
   }
 }
 

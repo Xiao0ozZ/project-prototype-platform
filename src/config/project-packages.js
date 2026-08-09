@@ -2,6 +2,7 @@ import * as ElementIcons from '@element-plus/icons-vue';
 import htmlPrototypePages from 'virtual:project-html-pages';
 
 import HtmlPrototypeView from '../views/prototype/HtmlPrototypeView.vue';
+import { getProjectClientEntryPath } from '../services/project-navigation';
 
 const manifestModules = import.meta.glob('../../projects/*/project.json', {
   eager: true,
@@ -225,7 +226,12 @@ export function createProjectPageRoutes(project, client) {
 }
 
 export function getProjectEntryPath(project, entry) {
-  if (entry.kind === 'client') return `/p/${project.id}/${entry.clientId}/login`;
+  if (entry.kind === 'client') {
+    const client = project.clients.find((item) => item.id === entry.clientId);
+    return client
+      ? getProjectClientEntryPath(project.id, client)
+      : `/p/${project.id}/${entry.clientId}`;
+  }
   if (entry.kind === 'mobile') return `/p/${project.id}/mobile`;
   if (entry.kind === 'docs') return `/p/${project.id}/docs`;
   return `/p/${project.id}`;

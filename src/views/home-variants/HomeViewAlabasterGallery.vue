@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getProject, getProjectEntryPath, installedProjects } from '../../config/project-packages';
 import { projectConfig } from '../../config/project.config';
 import { applyProjectTheme } from '../../config/theme';
+import HomeProjectActions from '../../components/HomeProjectActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -136,11 +137,8 @@ function handleOutsideProjectMenu(event) {
   }
 }
 
-function openProjectSettings() {
-  router.push({
-    path: '/tools/projects',
-    query: { project: selectedProjectId.value, edit: '1' },
-  });
+function openProjectManagement() {
+  router.push('/tools/projects');
 }
 
 function openPageTransfer() {
@@ -234,7 +232,12 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-4 text-xs font-semibold text-slate-600">
           <RouterLink to="/components" class="hover:text-slate-900 transition-colors">组件规范</RouterLink>
-          <RouterLink v-if="showConsole" to="/tools/projects" class="hover:text-slate-900 transition-colors">项目管理</RouterLink>
+          <HomeProjectActions
+            v-if="showConsole"
+            :can-transfer="hasSelectedProject"
+            @manage="openProjectManagement"
+            @transfer="openPageTransfer"
+          />
           <RouterLink v-if="showConsole" to="/tools/console" class="hover:text-slate-900 transition-colors">控制台</RouterLink>
         </div>
       </div>
@@ -257,24 +260,6 @@ onBeforeUnmount(() => {
           {{ hasSelectedProject ? (selectedProject?.description || '高保真原型展示与需求规划平台，提供真实业务场景与高质感交互视图。') : '请在上方下拉菜单中选择目标项目包，直接体验对应的客户端原型与需求规格书。' }}
         </p>
 
-        <div v-if="showConsole" class="pt-2 flex items-center gap-3">
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all"
-            @click="openProjectSettings"
-          >
-            <el-icon><Setting /></el-icon>
-            修改包配置
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-slate-900 text-xs font-bold text-white shadow-md shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95"
-            @click="openPageTransfer"
-          >
-            <el-icon><Switch /></el-icon>
-            页面导入导出
-          </button>
-        </div>
       </section>
 
       <!-- 客户端高保真 3D 画廊大卡片 (High-Aesthetics Gallery Showcase Cards) -->
@@ -360,27 +345,6 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <!-- 工具 -->
-        <section v-if="showConsole" class="space-y-4">
-          <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">工程工具</h2>
-          <div class="space-y-3">
-            <RouterLink
-              to="/tools/projects"
-              class="flex items-center justify-between p-4.5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-lg transition-all text-xs font-bold text-slate-800 group shadow-sm"
-            >
-              <span>项目管理</span>
-              <el-icon class="text-slate-400 group-hover:text-slate-900"><Right /></el-icon>
-            </RouterLink>
-
-            <RouterLink
-              to="/tools/page-transfer"
-              class="flex items-center justify-between p-4.5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-lg transition-all text-xs font-bold text-slate-800 group shadow-sm"
-            >
-              <span>页面导入导出</span>
-              <el-icon class="text-slate-400 group-hover:text-slate-900"><Right /></el-icon>
-            </RouterLink>
-          </div>
-        </section>
       </div>
     </main>
   </div>

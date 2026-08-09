@@ -1,6 +1,6 @@
 <template>
   <div class="app-shell" :class="shellClasses">
-    <aside class="app-sidebar">
+    <aside v-if="hasSidebar" class="app-sidebar">
       <div class="sidebar-brand">
         <div class="brand-box" :title="appName">
           <span :data-initial="appName.slice(0, 1)">{{ appName }}</span>
@@ -42,7 +42,7 @@
       </nav>
     </aside>
     <button
-      v-if="mobileSidebarOpen"
+      v-if="hasSidebar && mobileSidebarOpen"
       type="button"
       class="sidebar-scrim"
       aria-label="关闭菜单"
@@ -50,8 +50,9 @@
     ></button>
 
     <div class="app-main">
-      <header class="topbar">
+      <header v-if="hasPlatformTopbar" class="topbar">
         <button
+          v-if="hasSidebar"
           type="button"
           class="sidebar-toggle"
           :aria-expanded="isNarrowViewport ? mobileSidebarOpen : !sidebarCollapsed"
@@ -63,6 +64,10 @@
             <component :is="isNarrowViewport ? Menu : sidebarCollapsed ? Expand : Fold" />
           </el-icon>
         </button>
+        <div v-if="!hasSidebar" class="topbar-brand" :title="`${appName} · ${translatedClientName}`">
+          <strong>{{ appName }}</strong>
+          <span>{{ translatedClientName }}</span>
+        </div>
         <div class="breadcrumb">
           {{ t('common.home') }} / {{ translatedClientName }} / {{ translatedCurrentTitle }}
         </div>
@@ -78,9 +83,6 @@
           <el-select v-model="selectedClient" class="client-switch" size="small" @change="switchClient">
             <el-option v-for="item in availableClients" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
-          <el-tag v-if="developerMode" class="developer-mode-badge" type="warning" size="small">
-            开发模式
-          </el-tag>
           <el-button
             v-if="developerMode && sourcePath"
             class="source-trigger"
@@ -110,13 +112,74 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="logout">{{ t('common.logout') }}</el-dropdown-item>
-                <el-dropdown-item divided @click="goHome">回到首页</el-dropdown-item>
+                <el-dropdown-item v-if="hasPlatformLogin" @click="logout">
+                  {{ t('common.logout') }}
+                </el-dropdown-item>
+                <el-dropdown-item :divided="hasPlatformLogin" @click="goHome">回到首页</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
       </header>
+
+      <nav v-if="hasTopNavigation" class="top-navigation" aria-label="客户端页面导航">
+        <el-dropdown
+          v-for="section in visibleMenus"
+          :key="section.title"
+          trigger="click"
+          @command="handleTopNavigationCommand"
+        >
+          <button
+            type="button"
+            class="top-navigation__group"
+            :class="{ 'is-active': isTopNavigationSectionActive(section) }"
+          >
+            <span>{{ translateStaticCopy(section.title, currentLocale) }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="item in section.items"
+                :key="item.path"
+                :command="item.path"
+                :class="{ 'is-active': route.path === item.path }"
+              >
+                <el-icon><component :is="item.icon" /></el-icon>
+                {{ translateStaticCopy(item.label, currentLocale) }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </nav>
+
+      <div v-if="isBareLayout && developerMode" class="bare-shell-tools" aria-label="开发工具">
+        <el-button text size="small" title="回到首页" aria-label="回到首页" @click="goHome">
+          <el-icon><House /></el-icon>
+        </el-button>
+        <el-button
+          v-if="sourcePath"
+          :disabled="Boolean(exportConfig)"
+          text
+          size="small"
+          title="下载源文件"
+          aria-label="下载源文件"
+          @click="handleSourceDownload"
+        >
+          <el-icon><Download /></el-icon>
+        </el-button>
+        <el-button
+          v-if="prdDocumentPath"
+          :disabled="Boolean(exportConfig)"
+          text
+          size="small"
+          :title="prdPanelOpen ? '关闭 PRD' : '查看 PRD'"
+          :aria-label="prdPanelOpen ? '关闭 PRD' : '查看 PRD'"
+          @click="togglePrdPanel"
+        >
+          <el-icon><Document /></el-icon>
+        </el-button>
+      </div>
 
       <div class="page-workspace" :class="workspaceClasses">
         <main
@@ -159,7 +222,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Document, Download, Expand, Fold, Menu } from '@element-plus/icons-vue';
+import { ArrowDown, Document, Download, Expand, Fold, House, Menu } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import PrdAssociationLayer from './PrdAssociationLayer.vue';
 import { useI18n } from 'vue-i18n';
@@ -168,6 +231,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getProject } from '../config/project-packages';
 import { localeOptions, setLocale } from '../i18n';
 import { translateStaticCopy } from '../i18n/legacy-localizer';
+import { getClientEntryMode, getProjectClientEntryPath } from '../services/project-navigation';
 import { downloadProjectSource } from '../services/project-sources';
 import {
   canPersistPlatformSettings,
@@ -197,6 +261,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  layoutType: {
+    type: String,
+    default: 'sidebar',
+  },
 });
 
 const route = useRoute();
@@ -218,9 +286,16 @@ const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const isNarrowViewport = ref(false);
 const sidebarStorageKey = computed(() => `platform-sidebar-collapsed:${props.projectId}`);
+const hasSidebar = computed(() => props.layoutType === 'sidebar');
+const hasTopNavigation = computed(() => props.layoutType === 'topnav');
+const isBareLayout = computed(() => props.layoutType === 'bare');
+const hasPlatformTopbar = computed(() => !isBareLayout.value);
 const shellClasses = computed(() => ({
-  'sidebar-collapsed': sidebarCollapsed.value && !isNarrowViewport.value,
-  'sidebar-drawer-open': mobileSidebarOpen.value,
+  'sidebar-collapsed': hasSidebar.value && sidebarCollapsed.value && !isNarrowViewport.value,
+  'sidebar-drawer-open': hasSidebar.value && mobileSidebarOpen.value,
+  'shell-no-navigation': !hasSidebar.value,
+  'shell-top-navigation': hasTopNavigation.value,
+  'shell-bare': isBareLayout.value,
 }));
 const workspaceClasses = computed(() => ({
   'prd-panel-open': prdPanelReady.value && prdLayoutMode.value === 'split',
@@ -271,6 +346,8 @@ watch(
 );
 
 const project = computed(() => getProject(props.projectId));
+const currentClient = computed(() => project.value?.clients.find((client) => client.id === props.client));
+const hasPlatformLogin = computed(() => getClientEntryMode(currentClient.value) === 'platform-login');
 const PrdReviewPanel = defineAsyncComponent(() => import('./PrdReviewPanel.vue'));
 const availableClients = computed(() => {
   const clients = project.value?.clients || [];
@@ -301,7 +378,12 @@ function switchClient(value) {
     if (target) window.location.href = exportFileFor(typeof target === 'string' ? target : target.path);
     return;
   }
-  router.push(`/p/${props.projectId}/${value}/login`);
+  const targetClient = project.value?.clients.find((client) => client.id === value);
+  router.push(
+    targetClient
+      ? getProjectClientEntryPath(props.projectId, targetClient)
+      : `/p/${props.projectId}/${value}`,
+  );
 }
 
 function logout() {
@@ -367,6 +449,7 @@ function closePrdPanel() {
 }
 
 function loadSidebarPreference() {
+  if (!hasSidebar.value) return;
   try {
     sidebarCollapsed.value = window.localStorage.getItem(sidebarStorageKey.value) === '1';
   } catch {
@@ -375,6 +458,7 @@ function loadSidebarPreference() {
 }
 
 function saveSidebarPreference() {
+  if (!hasSidebar.value) return;
   try {
     window.localStorage.setItem(sidebarStorageKey.value, sidebarCollapsed.value ? '1' : '0');
   } catch {
@@ -389,6 +473,7 @@ function updateViewportMode() {
 }
 
 function toggleSidebar() {
+  if (!hasSidebar.value) return;
   if (isNarrowViewport.value) {
     mobileSidebarOpen.value = !mobileSidebarOpen.value;
     return;
@@ -404,6 +489,18 @@ function closeMobileSidebar() {
 
 function handleSidebarNavigate() {
   closeMobileSidebar();
+}
+
+function isTopNavigationSectionActive(section) {
+  return section.items.some((item) => item.path === route.path);
+}
+
+function handleTopNavigationCommand(routePath) {
+  if (exportConfig) {
+    window.location.href = exportFileFor(routePath);
+    return;
+  }
+  router.push(routePath);
 }
 
 function handleSidebarEscape(event) {

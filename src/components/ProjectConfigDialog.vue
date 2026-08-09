@@ -1,251 +1,203 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    width="1180px"
+    width="980px"
     :close-on-click-modal="false"
     :show-close="false"
-    class="project-dialog-apple-glass"
+    class="project-dialog-apple-glass project-dialog-compact"
     modal-class="apple-tool-overlay"
   >
-    <!-- 空 #header 插槽，配合 CSS display: none 彻底销毁 Element Plus 默认标题区域 -->
     <template #header>
       <span class="sr-only">{{ dialogTitle }}</span>
     </template>
 
-    <div class="flex flex-col w-full overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-900/15">
-      <!-- 1. 方案 A 超紧凑单行 Header 顶栏 (高度 44px，100% 贴顶零边框空白) -->
-      <div class="px-6 py-3 border-b border-slate-200/70 bg-white flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-600 text-white shadow-xs flex items-center justify-center font-bold text-xs">
+    <div class="project-config-shell flex w-full flex-col overflow-hidden rounded-3xl bg-white">
+      <header class="flex shrink-0 items-center justify-between border-b border-slate-200/80 px-6 py-4">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <el-icon><Setting /></el-icon>
+          </span>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="truncate text-lg font-bold tracking-tight text-slate-950">{{ dialogTitle }}</h2>
+              <span
+                v-if="dialogMode === 'edit'"
+                class="hidden truncate font-mono text-[11px] text-slate-400 sm:inline"
+              >
+                {{ form.id }} · {{ form.version }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-slate-500">
+              只设置项目内容入口，其他工程参数会自动处理。
+            </p>
           </div>
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-extrabold text-slate-900 tracking-tight">{{ dialogTitle }}</h3>
-            <span class="px-2 py-0.2 rounded-full bg-blue-50 text-blue-600 font-mono text-[10px] font-bold border border-blue-100">
-              PROJECT CONFIG
-            </span>
-          </div>
-          <span class="text-xs text-slate-400 font-medium hidden sm:inline">| {{ dialogMode === 'create' ? '从基础资料建立新项目包' : '调整入口、品牌与工程能力' }}</span>
         </div>
 
         <button
           type="button"
-          class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors text-xs font-bold"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          aria-label="关闭"
           @click="dialogVisible = false"
         >
-          ✕
+          <span aria-hidden="true">✕</span>
         </button>
-      </div>
+      </header>
 
-      <!-- 2. 主体 Workspace 容器 (极速渲染：剔除内部多层重复 backdrop-blur 降低 GPU 开销，实现 0ms 秒开) -->
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
         label-position="top"
-        class="flex w-full h-[620px] overflow-hidden"
+        class="flex min-h-0 w-full flex-1 overflow-hidden max-md:flex-col"
       >
-        <!-- 左侧方案 A 冰霜高透侧边栏 (采用纯正浅灰底色，性能极佳) -->
-        <aside class="w-[230px] bg-slate-50/90 border-r border-slate-200/70 p-4 flex flex-col justify-between shrink-0 select-none">
-          <div class="space-y-1.5">
-            <div class="px-3 py-1 text-[10px] font-mono font-bold text-blue-600 uppercase tracking-widest">
-              CONFIG SECTIONS
-            </div>
-
+        <aside
+          class="w-[176px] shrink-0 border-r border-slate-200/80 bg-slate-50/80 p-3 max-md:w-full max-md:border-b max-md:border-r-0"
+        >
+          <nav class="space-y-1 max-md:flex max-md:space-x-2 max-md:space-y-0" aria-label="项目配置分类">
             <button
               type="button"
-              class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-xs font-bold transition-all"
-              :class="activeConfigTab === 'basic' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/90' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'"
-              @click="activeConfigTab = 'basic'"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors max-md:w-auto max-md:flex-1"
+              :class="
+                activeSection === 'project'
+                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/80'
+                  : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
+              "
+              @click="activeSection = 'project'"
             >
-              <span class="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold" :class="activeConfigTab === 'basic' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'">01</span>
-              <span>基础资料</span>
-            </button>
-
-            <button
-              type="button"
-              class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left text-xs font-bold transition-all"
-              :class="activeConfigTab === 'clients' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/90' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'"
-              @click="activeConfigTab = 'clients'"
-            >
-              <div class="flex items-center gap-3">
-                <span class="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold" :class="activeConfigTab === 'clients' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'">02</span>
-                <span>客户端入口</span>
-              </div>
-              <span class="px-2 py-0.5 text-[10px] rounded-full" :class="activeConfigTab === 'clients' ? 'bg-blue-50 text-blue-600 font-bold' : 'bg-slate-200/70 text-slate-500'">
-                {{ form.clients.length }}
+              <span
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
+                :class="activeSection === 'project' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'"
+              >
+                01
+              </span>
+              <span class="min-w-0">
+                <strong class="block truncate text-xs">项目资料</strong>
+                <small class="mt-0.5 block truncate text-[10px] font-normal text-slate-400 max-md:hidden">
+                  名称、PRD 与显示
+                </small>
               </span>
             </button>
 
             <button
               type="button"
-              class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-xs font-bold transition-all"
-              :class="activeConfigTab === 'features' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/90' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'"
-              @click="activeConfigTab = 'features'"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors max-md:w-auto max-md:flex-1"
+              :class="
+                activeSection === 'clients'
+                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/80'
+                  : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
+              "
+              @click="activeSection = 'clients'"
             >
-              <span class="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold" :class="activeConfigTab === 'features' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'">03</span>
-              <span>能力与特性</span>
+              <span
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
+                :class="activeSection === 'clients' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'"
+              >
+                02
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center justify-between gap-2">
+                  <strong class="truncate text-xs">客户端</strong>
+                  <small class="text-[10px] font-bold text-slate-400">{{ form.clients.length }}</small>
+                </span>
+                <small class="mt-0.5 block truncate text-[10px] font-normal text-slate-400 max-md:hidden">
+                  结构与内容来源
+                </small>
+              </span>
             </button>
-          </div>
-
-          <div class="p-3 rounded-xl bg-white border border-slate-200/80 text-[11px] text-slate-500 space-y-1 shadow-2xs">
-            <div class="font-bold text-slate-700 flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-              <span>方案 A 提示</span>
-            </div>
-            <p class="leading-relaxed">修改保存后，平台自动刷新并同步配置入口。</p>
-          </div>
+          </nav>
         </aside>
 
-        <!-- 右侧方案 A 珍珠霜白流体底色 + 纯净高性能白卡片 -->
-        <main class="flex-1 bg-[#f0f4f8] p-6 overflow-y-auto space-y-5">
-          <!-- ==================== TAB 1: 基础资料 ==================== -->
-          <div v-show="activeConfigTab === 'basic'" class="space-y-5">
-            <!-- Card 1: 📌 项目身份与基础定义 -->
-            <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-              <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <span class="w-2 h-4 rounded-full bg-blue-600"></span>
-                <h4 class="text-sm font-extrabold text-slate-900">项目身份与基础定义</h4>
-              </div>
+        <main class="project-config-content min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-5">
+          <section v-show="activeSection === 'project'">
+            <div class="mb-5 border-b border-slate-200/80 pb-4">
+              <h3 class="text-base font-bold text-slate-900">项目资料</h3>
+              <p class="mt-1 text-xs text-slate-500">只填写用于识别项目和读取文档的内容。</p>
+            </div>
 
-              <div class="space-y-4">
-                <el-form-item label="项目 ID" prop="id">
-                  <el-input v-model="form.id" :disabled="dialogMode === 'edit'" placeholder="例如：demo-project" />
-                  <div class="text-[11px] text-slate-400 mt-1">仅使用小写英文字母、数字和连字符，创建后不可更改。</div>
-                </el-form-item>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <el-form-item label="项目名称" prop="name">
-                    <el-input v-model="form.name" placeholder="用于首页和顶栏大标题显示" />
-                  </el-form-item>
-
-                  <el-form-item label="项目简称" prop="shortName">
-                    <el-input v-model="form.shortName" placeholder="用于紧凑空间或卡片标语" />
-                  </el-form-item>
-
-                  <el-form-item label="项目版本">
-                    <el-input v-model="form.version" placeholder="例如：0.1.0" />
-                  </el-form-item>
-
-                  <el-form-item label="默认语言">
-                    <el-select v-model="form.defaultLocale" class="w-full">
-                      <el-option label="简体中文" value="zh-CN" />
-                      <el-option label="繁體中文" value="zh-TW" />
-                      <el-option label="English" value="en-US" />
-                    </el-select>
-                  </el-form-item>
-                </div>
-
-                <el-form-item label="项目说明">
+            <div class="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
+              <div>
+                <el-form-item label="项目名称" prop="name">
                   <el-input
-                    v-model="form.description"
-                    type="textarea"
-                    :rows="2"
-                    placeholder="可选，用于项目卡片下方简介说明"
+                    v-model="form.name"
+                    size="large"
+                    maxlength="60"
+                    placeholder="例如：RIMO Rental"
+                    show-word-limit
                   />
                 </el-form-item>
-              </div>
-            </section>
-
-            <!-- Card 2: 🎨 品牌色彩与主题风格 -->
-            <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div class="flex items-center gap-2">
-                  <span class="w-2 h-4 rounded-full bg-indigo-600"></span>
-                  <h4 class="text-sm font-extrabold text-slate-900">品牌色彩与主题风格</h4>
-                </div>
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                    <span>主色 Preview:</span>
-                    <span class="w-4 h-4 rounded-full border border-slate-300 shadow-2xs inline-block" :style="{ backgroundColor: form.primary }"></span>
-                  </div>
-                </div>
+                <p v-if="dialogMode === 'create'" class="mt-1.5 text-[11px] leading-5 text-slate-400">
+                  项目 ID、简称、版本和主题等信息由平台自动生成。
+                </p>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <el-form-item label="主题主色" prop="primary">
-                  <div class="flex items-center gap-2">
-                    <el-color-picker v-model="form.primary" color-format="hex" />
-                    <el-input v-model="form.primary" maxlength="7" class="font-mono" />
-                  </div>
-                </el-form-item>
-
-                <el-form-item label="内容区背景色" prop="pageBackground">
-                  <div class="flex items-center gap-2">
-                    <el-color-picker v-model="form.pageBackground" color-format="hex" />
-                    <el-input v-model="form.pageBackground" maxlength="7" class="font-mono" />
-                  </div>
-                </el-form-item>
-              </div>
-            </section>
-
-            <!-- Card 3: 🖼️ 项目 Logo 资产 -->
-            <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-              <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <span class="w-2 h-4 rounded-full bg-purple-600"></span>
-                <h4 class="text-sm font-extrabold text-slate-900">项目 Logo 品牌资产</h4>
-              </div>
-
-              <div class="flex items-center gap-5">
-                <div class="w-20 h-14 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-400 overflow-hidden shrink-0 shadow-2xs">
-                  <img v-if="logoPreview" :src="logoPreview" alt="Logo 预览" class="w-full h-full object-contain" />
-                  <span v-else>无 Logo</span>
-                </div>
-
-                <div class="space-y-2">
-                  <input ref="logoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden @change="handleLogoChange" />
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center gap-1"
-                      @click="chooseLogo"
-                    >
-                      <el-icon><Upload /></el-icon>
-                      <span>上传 Logo</span>
-                    </button>
-                    <button v-if="logoPreview" type="button" class="text-xs font-bold text-rose-600 hover:underline px-2" @click="clearLogo">
-                      移除 Logo
-                    </button>
-                  </div>
-                  <div class="text-[11px] text-slate-400">支持 PNG、JPG、WebP、SVG 格式，图片文件需小于 2MB。</div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <!-- ==================== TAB 2: 客户端入口 ==================== -->
-          <div v-show="activeConfigTab === 'clients'" class="space-y-4">
-            <div class="flex items-center justify-between bg-blue-50 rounded-2xl p-4 border border-blue-100">
               <div>
-                <h4 class="text-sm font-extrabold text-blue-900">客户端入口配置</h4>
-                <p class="text-xs text-blue-600 mt-0.5">配置项目下的端侧入口（例如管理端、营运端、企业端等）。</p>
+                <el-form-item label="PRD 文件夹">
+                  <el-input
+                    v-model="form.docsRoot"
+                    size="large"
+                    clearable
+                    placeholder="填写项目内目录或本机绝对路径；没有可留空"
+                  />
+                </el-form-item>
+                <p class="mt-1.5 text-[11px] leading-5 text-slate-400">
+                  填写后启用文档中心；清空则不显示文档入口。
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-6 flex items-center justify-between gap-5 border-t border-slate-200/80 pt-4">
+              <div>
+                <h4 class="text-sm font-bold text-slate-800">在首页显示项目</h4>
+                <p class="mt-1 text-[11px] leading-5 text-slate-400">
+                  关闭后，项目不会出现在首页的项目选择列表中。
+                </p>
+              </div>
+              <el-switch v-model="form.homepageVisible" />
+            </div>
+          </section>
+
+          <section v-show="activeSection === 'clients'">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-4">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">客户端</h3>
+                <p class="mt-1 text-xs text-slate-500">每个客户端只需确定名称、页面结构和内容来源。</p>
               </div>
               <button
                 type="button"
-                class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1 active:scale-95"
+                class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
                 @click="addClient"
               >
                 <el-icon><Plus /></el-icon>
-                <span>新增客户端</span>
+                <span>添加客户端</span>
               </button>
             </div>
 
-            <div class="space-y-4">
-              <article v-for="client in form.clients" :key="client.id" class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4 hover:border-blue-300 transition-all">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div class="flex items-center gap-2">
-                    <span class="font-extrabold text-slate-900 text-sm">{{ client.name || '未命名客户端' }}</span>
-                    <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold" :class="client.isNew ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-slate-100 text-slate-500'">
-                      ID: {{ client.id || '待填写' }}
+            <div class="divide-y divide-slate-200/80">
+              <article
+                v-for="(client, index) in form.clients"
+                :key="client.id"
+                class="py-4 first:pt-4 last:pb-1"
+              >
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span
+                      class="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 px-1.5 font-mono text-[10px] font-bold text-slate-500"
+                    >
+                      {{ String(index + 1).padStart(2, '0') }}
                     </span>
+                    <strong class="truncate text-sm text-slate-800">
+                      {{ client.name.trim() || `客户端 ${index + 1}` }}
+                    </strong>
                   </div>
-
-                  <div class="flex items-center gap-4 text-xs">
-                    <el-checkbox v-model="client.entryEnabled">在首页卡片展示</el-checkbox>
+                  <div class="flex shrink-0 items-center gap-3">
+                    <label class="flex cursor-pointer items-center gap-2 text-[11px] font-medium text-slate-500">
+                      <span>首页显示</span>
+                      <el-switch v-model="client.entryEnabled" size="small" />
+                    </label>
                     <button
+                      v-if="form.clients.length > 1"
                       type="button"
-                      class="font-bold text-rose-500 hover:text-rose-700 disabled:opacity-30 disabled:pointer-events-none"
-                      :disabled="form.clients.length <= 1"
+                      class="text-xs font-medium text-slate-400 transition-colors hover:text-rose-600"
                       @click="removeClient(client)"
                     >
                       移除
@@ -253,111 +205,69 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <el-form-item v-if="client.isNew" label="客户端 ID" class="sm:col-span-3">
-                    <el-input v-model="client.id" placeholder="例如：admin、operation、enterprise" />
-                  </el-form-item>
-                  <el-form-item label="入口名称">
+                <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(140px,0.8fr)_minmax(180px,1fr)_minmax(230px,1.4fr)]">
+                  <el-form-item label="客户端名称">
                     <el-input v-model="client.name" placeholder="例如：营运端" />
                   </el-form-item>
-                  <el-form-item label="入口图标">
-                    <el-input v-model="client.entryIcon" placeholder="例如：Van、OfficeBuilding" />
+
+                  <el-form-item label="页面结构">
+                    <el-select
+                      :model-value="getClientPreset(client)"
+                      class="w-full"
+                      @change="applyClientPreset(client, $event)"
+                    >
+                      <el-option
+                        v-for="option in getClientPresetOptions(client)"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </el-select>
                   </el-form-item>
-                  <el-form-item label="入口排序">
-                    <el-input-number v-model="client.entryOrder" :min="1" :max="999" controls-position="right" class="w-full" />
-                  </el-form-item>
-                  <el-form-item label="默认页面">
-                    <el-input v-model="client.defaultPage" placeholder="例如：dashboard" />
-                  </el-form-item>
-                  <el-form-item label="演示账号">
-                    <el-input v-model="client.loginAccount" placeholder="默认账号" />
-                  </el-form-item>
-                  <el-form-item label="租户代码">
-                    <el-input v-model="client.tenantCode" placeholder="默认租户代码" />
-                  </el-form-item>
-                  <el-form-item label="客户端说明" class="sm:col-span-3">
-                    <el-input v-model="client.description" placeholder="用于首页客户端卡片说明" />
+
+                  <el-form-item label="HTML 页面文件夹">
+                    <el-input
+                      v-model="form.prototype.clients[client.id].root"
+                      clearable
+                      placeholder="使用工程页面时留空"
+                    />
                   </el-form-item>
                 </div>
+
+                <p class="mt-2 text-[11px] leading-5 text-slate-400">
+                  {{ getClientPresetDescription(client) }}
+                </p>
               </article>
             </div>
-          </div>
-
-          <!-- ==================== TAB 3: 能力与特性 ==================== -->
-          <div v-show="activeConfigTab === 'features'" class="space-y-4">
-            <!-- 资源入口配置 -->
-            <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-              <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <span class="w-2 h-4 rounded-full bg-emerald-600"></span>
-                <h4 class="text-sm font-extrabold text-slate-900">产品资源与工具能力</h4>
-              </div>
-
-              <div class="space-y-4">
-                <article v-for="entry in form.resourceEntries" :key="entry.kind" class="bg-slate-50 rounded-xl p-4 border border-slate-200/70 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-slate-900 text-xs">{{ entry.kind === 'docs' ? '📄 文档中心' : '📱 移动端' }}</span>
-                    <el-checkbox v-model="entry.enabled">在首页展示</el-checkbox>
-                  </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <el-form-item label="入口名称">
-                      <el-input v-model="entry.name" />
-                    </el-form-item>
-                    <el-form-item label="图标">
-                      <el-input v-model="entry.icon" />
-                    </el-form-item>
-                    <el-form-item label="排序">
-                      <el-input-number v-model="entry.order" :min="1" :max="999" controls-position="right" class="w-full" />
-                    </el-form-item>
-                    <el-form-item v-if="entry.kind === 'docs'" label="PRD 目录路径" class="sm:col-span-3">
-                      <el-input v-model="form.docsRoot" placeholder="例如：docs 或 D:\\项目资料\\PRD" />
-                    </el-form-item>
-                  </div>
-                </article>
-              </div>
-            </section>
-
-            <!-- 勾选特性开关 -->
-            <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-              <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <span class="w-2 h-4 rounded-full bg-amber-600"></span>
-                <h4 class="text-sm font-extrabold text-slate-900">工程特性与显隐开关</h4>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <el-checkbox v-model="form.homepageVisible" class="!mr-0">在首页项目列表中展示</el-checkbox>
-                <el-checkbox v-model="form.features.pageTransfer" class="!mr-0">允许页面导入导出</el-checkbox>
-                <el-checkbox v-model="form.features.designSystem" class="!mr-0">显示组件规范入口</el-checkbox>
-                <el-checkbox v-model="form.compatibility.legacyRoutes" class="!mr-0">保留历史路由兼容</el-checkbox>
-              </div>
-            </section>
-          </div>
+          </section>
         </main>
       </el-form>
 
-      <!-- 3. 方案 A 超紧凑单行 Footer 底栏 (高度 48px，与底框齐平) -->
-      <div class="px-6 py-3 border-t border-slate-200/70 bg-white flex items-center justify-between shrink-0">
-        <span class="text-xs text-slate-400 font-medium">
-          💡 保存修改后，开发服务将重新扫描并渲染本地项目配置。
-        </span>
-        <div class="flex items-center gap-2.5">
+      <footer
+        class="flex w-full shrink-0 items-center justify-between gap-4 border-t border-slate-200/80 bg-slate-50/80 px-6 py-3.5"
+      >
+        <p class="hidden text-[11px] text-slate-400 sm:block">
+          保存后会重新扫描项目内容并刷新入口。
+        </p>
+        <div class="ml-auto flex items-center gap-2.5">
           <button
             type="button"
-            class="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 shadow-2xs transition-colors"
+            class="h-9 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
             @click="dialogVisible = false"
           >
             取消
           </button>
           <button
             type="button"
-            class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-1.5"
+            class="inline-flex h-9 min-w-24 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow-sm shadow-blue-600/20 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             :disabled="saving"
             @click="submitForm"
           >
-            <el-icon v-if="saving" class="animate-spin"><Loading /></el-icon>
-            <span>{{ saving ? '保存中...' : '保存配置' }}</span>
+            <el-icon v-if="saving" class="is-loading"><Loading /></el-icon>
+            <span>{{ saving ? '保存中' : '保存' }}</span>
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   </el-dialog>
 </template>
@@ -365,9 +275,9 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Loading, Plus, Setting, Upload } from '@element-plus/icons-vue';
+import { Loading, Plus, Setting } from '@element-plus/icons-vue';
 
-import { getProjectAssetUrl } from '../services/project-assets';
+import { installedProjects } from '../config/project-packages';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -383,10 +293,11 @@ const dialogVisible = computed({
 const dialogMode = computed(() => props.mode);
 const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建项目' : '编辑项目'));
 const saving = ref(false);
-const activeConfigTab = ref('basic');
 const formRef = ref();
-const logoInput = ref();
-const logoPreview = ref('');
+const activeSection = ref('project');
+const generatedProjectId = ref('');
+const reservedClientIds = new Set();
+
 const form = reactive({
   id: '',
   name: '',
@@ -399,7 +310,9 @@ const form = reactive({
   homepageVisible: true,
   clients: [],
   resourceEntries: [],
-  docsRoot: 'docs',
+  docsRoot: '',
+  storedDocsRoot: 'docs',
+  originalDocsEnabled: false,
   prototype: { enabled: false, root: 'prototype', client: '', section: '', clients: {} },
   mobileEntry: 'mobile/app.html',
   features: { pageTransfer: true, designSystem: true, legacyI18n: false },
@@ -407,15 +320,28 @@ const form = reactive({
   logoDataUrl: '',
   removeLogo: false,
 });
+
 const formRules = {
-  id: [
-    { required: true, message: '请输入项目 ID', trigger: 'blur' },
-    { pattern: /^[a-z][a-z0-9-]*$/, message: '请输入小写 kebab-case，例如 demo-project', trigger: 'blur' },
-  ],
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
-  shortName: [{ required: true, message: '请输入项目简称', trigger: 'blur' }],
-  primary: [{ pattern: /^#[a-f\d]{6}$/i, message: '请输入六位十六进制色值', trigger: 'blur' }],
-  pageBackground: [{ pattern: /^#[a-f\d]{6}$/i, message: '请输入六位十六进制色值', trigger: 'blur' }],
+};
+
+const clientPresetOptions = [
+  { value: 'standard', label: '左侧菜单' },
+  { value: 'topnav', label: '顶部导航' },
+  { value: 'simple', label: '无页面菜单' },
+  { value: 'immersive', label: '沉浸式页面' },
+  { value: 'html-full', label: '使用 HTML 自带外壳' },
+  { value: 'login', label: '先登录再进入' },
+];
+
+const clientPresetDescriptions = {
+  standard: '使用平台顶栏和左侧菜单，适合常规后台与管理类原型。',
+  topnav: '使用平台顶栏和顶部菜单，适合栏目较少的业务页面。',
+  simple: '保留平台顶栏，不显示页面菜单，适合单页功能或阅读页面。',
+  immersive: '不显示平台导航，页面以完整画布呈现；开发模式下仍保留必要工具。',
+  'html-full': '保留 HTML 文件自己的顶栏和菜单，不再叠加平台外壳。',
+  login: '先进入平台登录页，登录后使用左侧菜单进入内容。',
+  custom: '当前项目使用已有的自定义入口页面，保存时会原样保留。',
 };
 
 function createClientDraft(client = {}, entry = null) {
@@ -426,6 +352,9 @@ function createClientDraft(client = {}, entry = null) {
     description: client.description || '',
     icon: client.icon || 'Document',
     defaultPage: client.defaultPage || '',
+    entryMode: client.entry?.mode || 'platform-login',
+    customEntryPage: client.entry?.page || '',
+    layoutType: client.layout?.type || 'sidebar',
     loginAccount: client.login?.account || '',
     tenantCode: client.login?.tenantCode || '',
     loginBackground: client.login?.background || '',
@@ -451,10 +380,14 @@ function createResourceEntryDraft(kind, entry = null) {
 }
 
 function createPrototypeClientDraft(config = {}) {
+  const root = String(config.root || '');
+  const enabled = config.enabled !== false && Boolean(root.trim());
   return {
-    enabled: Boolean(config.enabled),
-    root: config.root || '',
+    enabled,
+    root: enabled ? root : '',
+    storedRoot: root,
     section: config.section || '',
+    shellMode: config.shellMode === 'full' ? 'full' : 'auto',
   };
 }
 
@@ -490,9 +423,78 @@ function syncPrototypeClientMap() {
   });
 }
 
+function getPrototypeClient(client) {
+  return form.prototype.clients[client.id] || createPrototypeClientDraft();
+}
+
+function getClientPreset(client) {
+  if (client.entryMode === 'custom-page') return 'custom';
+  if (client.entryMode === 'platform-login') return 'login';
+  if (client.layoutType === 'topnav') return 'topnav';
+  if (client.layoutType === 'none') return 'simple';
+  if (client.layoutType === 'bare') {
+    return getPrototypeClient(client).shellMode === 'full' ? 'html-full' : 'immersive';
+  }
+  return 'standard';
+}
+
+function getClientPresetOptions(client) {
+  if (getClientPreset(client) !== 'custom') return clientPresetOptions;
+  return [...clientPresetOptions, { value: 'custom', label: '保留现有自定义入口' }];
+}
+
+function getClientPresetDescription(client) {
+  return clientPresetDescriptions[getClientPreset(client)] || clientPresetDescriptions.standard;
+}
+
+function applyClientPreset(client, preset) {
+  if (preset === 'custom') return;
+  const prototypeClient = getPrototypeClient(client);
+  form.prototype.clients[client.id] = prototypeClient;
+  client.entryMode = preset === 'login' ? 'platform-login' : 'direct';
+  client.layoutType =
+    {
+      standard: 'sidebar',
+      topnav: 'topnav',
+      simple: 'none',
+      immersive: 'bare',
+      'html-full': 'bare',
+      login: 'sidebar',
+    }[preset] || 'sidebar';
+  prototypeClient.shellMode = preset === 'html-full' ? 'full' : 'auto';
+  if (preset === 'login') client.loginAccount ||= 'admin';
+}
+
+function createGeneratedProjectId() {
+  return `project-${Date.now().toString(36)}`;
+}
+
+function projectSlug(name) {
+  const slug = String(name || '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/^[^a-z]+/, '');
+  return slug || generatedProjectId.value || createGeneratedProjectId();
+}
+
+function createUniqueProjectId(name) {
+  const usedIds = new Set(installedProjects.map((project) => project.id));
+  const base = projectSlug(name);
+  let candidate = base;
+  let suffix = 2;
+  while (usedIds.has(candidate)) candidate = `${base}-${suffix++}`;
+  return candidate;
+}
+
 function resetForm() {
+  generatedProjectId.value = createGeneratedProjectId();
+  activeSection.value = 'project';
+  reservedClientIds.clear();
+  reservedClientIds.add('client-1');
   Object.assign(form, {
-    id: '',
+    id: generatedProjectId.value,
     name: '',
     shortName: '',
     version: '0.1.0',
@@ -504,13 +506,15 @@ function resetForm() {
     clients: [
       createClientDraft(
         {
-          id: 'admin',
+          id: 'client-1',
           name: '管理端',
-          description: '项目管理后台。',
+          description: '项目客户端入口。',
           icon: 'Management',
-          defaultPage: 'home',
+          defaultPage: '',
+          entry: { mode: 'direct' },
+          layout: { type: 'sidebar' },
         },
-        { name: '管理端', description: '进入项目管理后台。', icon: 'Management', order: 10 },
+        { name: '管理端', description: '进入项目客户端。', icon: 'Management', order: 10 },
       ),
     ],
     resourceEntries: [
@@ -522,7 +526,9 @@ function resetForm() {
       }),
       createResourceEntryDraft('mobile'),
     ],
-    docsRoot: 'docs',
+    docsRoot: '',
+    storedDocsRoot: 'docs',
+    originalDocsEnabled: false,
     prototype: { enabled: false, root: 'prototype', client: '', section: '', clients: {} },
     mobileEntry: 'mobile/app.html',
     features: { pageTransfer: true, designSystem: true, legacyI18n: false },
@@ -531,9 +537,6 @@ function resetForm() {
     removeLogo: false,
   });
   form.prototype.clients = createPrototypeClientMap(form.clients);
-  logoPreview.value = '';
-  activeConfigTab.value = 'basic';
-  if (logoInput.value) logoInput.value.value = '';
 }
 
 function hydrateProject(project) {
@@ -546,6 +549,8 @@ function hydrateProject(project) {
       entries.find((entry) => entry.kind === 'client' && entry.clientId === client.id),
     ),
   );
+  reservedClientIds.clear();
+  projectClients.forEach((client) => reservedClientIds.add(client.id));
   Object.assign(form, {
     id: project.id,
     name: project.name,
@@ -563,7 +568,9 @@ function hydrateProject(project) {
         entries.find((entry) => entry.kind === kind),
       ),
     ),
-    docsRoot: project.docs?.root || 'docs',
+    docsRoot: project.docs?.enabled ? project.docs?.root || 'docs' : '',
+    storedDocsRoot: project.docs?.root || 'docs',
+    originalDocsEnabled: Boolean(project.docs?.enabled),
     prototype: {
       enabled: Boolean(project.prototype?.enabled),
       root: project.prototype?.root || 'prototype',
@@ -578,8 +585,9 @@ function hydrateProject(project) {
       legacyI18n: Boolean(project.features?.legacyI18n),
     },
     compatibility: { legacyRoutes: Boolean(project.compatibility?.legacyRoutes) },
+    logoDataUrl: '',
+    removeLogo: false,
   });
-  logoPreview.value = project.branding?.logo ? getProjectAssetUrl(project.id, project.branding.logo) : '';
 }
 
 function prepareForm() {
@@ -601,49 +609,35 @@ watch(
   { immediate: true },
 );
 
-function chooseLogo() {
-  logoInput.value?.click();
-}
-
-function clearLogo() {
-  form.logoDataUrl = '';
-  form.removeLogo = Boolean(dialogMode.value === 'edit' && logoPreview.value);
-  logoPreview.value = '';
-}
-
-function handleLogoChange(event) {
-  const [file] = event.target.files || [];
-  event.target.value = '';
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error('Logo 文件大小需控制在 2 MB 以内。');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    form.logoDataUrl = String(reader.result || '');
-    form.removeLogo = false;
-    logoPreview.value = form.logoDataUrl;
-  };
-  reader.onerror = () => ElMessage.error('Logo 读取失败，请重新选择。');
-  reader.readAsDataURL(file);
-}
-
 function addClient() {
   let index = form.clients.length + 1;
   let id = `client-${index}`;
-  while (form.clients.some((client) => client.id === id)) {
+  while (reservedClientIds.has(id)) {
     index += 1;
     id = `client-${index}`;
   }
   form.clients.push(
     createClientDraft(
-      { id, isNew: true, name: `客户端 ${index}`, description: '项目客户端入口。', icon: 'Management' },
-      null,
+      {
+        id,
+        isNew: true,
+        name: `客户端 ${index}`,
+        description: '项目客户端入口。',
+        icon: 'Management',
+        defaultPage: '',
+        entry: { mode: 'direct' },
+        layout: { type: 'sidebar' },
+      },
+      {
+        name: `客户端 ${index}`,
+        description: '进入项目客户端。',
+        icon: 'Management',
+        order: index * 10,
+      },
     ),
   );
+  reservedClientIds.add(id);
   syncPrototypeClientMap();
-  activeConfigTab.value = 'clients';
 }
 
 async function removeClient(client) {
@@ -651,28 +645,34 @@ async function removeClient(client) {
     ElMessage.warning('项目至少需要保留一个客户端。');
     return;
   }
-
   if (!client.isNew) {
     const confirmed = await ElMessageBox.confirm(
-      `移除“${client.name || client.id}”后，它将不再作为项目客户端入口显示；对应页面文件和页面定义不会被删除。`,
+      `移除“${client.name || client.id}”后，它将不再显示为项目客户端；页面文件不会被删除。`,
       '确认移除客户端？',
       { confirmButtonText: '确认移除', cancelButtonText: '取消', type: 'warning' },
     ).catch(() => false);
     if (!confirmed) return;
   }
-
   const index = form.clients.indexOf(client);
   if (index >= 0) form.clients.splice(index, 1);
   syncPrototypeClientMap();
 }
 
 function buildProjectPayload() {
+  const docsEnabled = Boolean(form.docsRoot.trim());
+  const docsEntry = form.resourceEntries.find((entry) => entry.kind === 'docs');
+  const docsEntryEnabled = docsEnabled && (Boolean(docsEntry?.enabled) || !form.originalDocsEnabled);
   const clients = form.clients.map((client) => ({
     id: client.id,
     name: client.name.trim(),
     description: client.description.trim(),
     icon: client.icon.trim() || 'Document',
     defaultPage: client.defaultPage.trim(),
+    entry: {
+      mode: client.entryMode,
+      ...(client.entryMode === 'custom-page' ? { page: client.customEntryPage.trim() } : {}),
+    },
+    layout: { type: client.layoutType },
     login: {
       account: client.loginAccount.trim(),
       tenantCode: client.tenantCode.trim(),
@@ -692,7 +692,7 @@ function buildProjectPayload() {
         order: Number(client.entryOrder) || 10,
       })),
     ...form.resourceEntries
-      .filter((entry) => entry.enabled)
+      .filter((entry) => (entry.kind === 'docs' ? docsEntryEnabled : entry.enabled))
       .map((entry) => ({
         id: entry.kind,
         kind: entry.kind,
@@ -702,25 +702,27 @@ function buildProjectPayload() {
         order: Number(entry.order) || 30,
       })),
   ];
-  const docsEntry = form.resourceEntries.find((entry) => entry.kind === 'docs');
   const mobileEntry = form.resourceEntries.find((entry) => entry.kind === 'mobile');
   const prototypeClients = Object.fromEntries(
     form.clients.map((client) => {
       const config = form.prototype.clients[client.id] || {};
+      const root = String(config.root || '').trim();
+      const storedRoot = root || (!config.enabled ? String(config.storedRoot || '').trim() : '');
       return [
         client.id,
         {
-          enabled: Boolean(config.enabled),
-          root: String(config.root || '').trim(),
+          enabled: Boolean(root),
+          root: storedRoot,
           section: String(config.section || '').trim(),
+          shellMode: config.shellMode === 'full' ? 'full' : 'auto',
         },
       ];
     }),
   );
   return {
     id: form.id,
-    name: form.name,
-    shortName: form.shortName,
+    name: form.name.trim(),
+    shortName: form.shortName.trim() || form.name.trim(),
     version: form.version,
     defaultLocale: form.defaultLocale,
     description: form.description,
@@ -729,9 +731,12 @@ function buildProjectPayload() {
     homepage: { visible: Boolean(form.homepageVisible) },
     clients,
     entries,
-    docs: { enabled: Boolean(docsEntry?.enabled), root: form.docsRoot.trim() || 'docs' },
+    docs: {
+      enabled: docsEnabled,
+      root: form.docsRoot.trim() || form.storedDocsRoot.trim() || 'docs',
+    },
     prototype: {
-      enabled: Boolean(form.prototype.enabled),
+      enabled: Object.values(prototypeClients).some((config) => config.enabled),
       root: form.prototype.root.trim() || 'prototype',
       client: form.prototype.client.trim(),
       section: form.prototype.section.trim(),
@@ -749,15 +754,13 @@ async function submitForm() {
   if (saving.value) return;
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
-  if (form.clients.some((client) => !client.id.trim() || !/^[a-z][a-z0-9-]*$/.test(client.id.trim()))) {
-    ElMessage.error('请补充正确的客户端 ID。');
-    activeConfigTab.value = 'clients';
+  if (form.clients.some((client) => !client.name.trim())) {
+    ElMessage.error('请填写所有客户端名称。');
     return;
   }
-  if (form.clients.some((client) => !client.name.trim())) {
-    ElMessage.error('请补充所有客户端的入口名称。');
-    activeConfigTab.value = 'clients';
-    return;
+  if (dialogMode.value === 'create') {
+    form.id = createUniqueProjectId(form.name);
+    form.shortName = form.name.trim();
   }
   saving.value = true;
   try {
@@ -782,7 +785,19 @@ async function submitForm() {
 </script>
 
 <style scoped>
-/* 强力消灭 Element Plus 默认标题区域 .el-dialog__header（顶部空白横条根源） */
+:global(.project-config-shell) {
+  height: min(720px, calc(100dvh - 48px));
+}
+
+:global(.project-config-content) {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+:global(.project-dialog-compact.el-dialog) {
+  width: min(980px, calc(100vw - 32px)) !important;
+}
+
 :global(.project-dialog-apple-glass .el-dialog__header),
 :global(.el-overlay-dialog .project-dialog-apple-glass .el-dialog__header),
 :global(header.el-dialog__header) {
@@ -792,7 +807,7 @@ async function submitForm() {
   max-height: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
-  border: none !important;
+  border: 0 !important;
   overflow: hidden !important;
 }
 
@@ -804,20 +819,32 @@ async function submitForm() {
 :global(.project-dialog-apple-glass .el-form-item) {
   margin-bottom: 0;
 }
+
 :global(.project-dialog-apple-glass .el-form-item__label) {
+  height: auto !important;
+  margin-bottom: 5px !important;
+  padding: 0 !important;
   font-size: 11px !important;
   font-weight: 700 !important;
+  line-height: 1.4 !important;
   color: #475569 !important;
-  margin-bottom: 3px !important;
 }
+
 :global(.project-dialog-apple-glass .el-input__wrapper),
 :global(.project-dialog-apple-glass .el-select__wrapper) {
   border-radius: 10px !important;
-  background: #ffffff !important;
+  background: #fff !important;
   box-shadow: 0 0 0 1px #e2e8f0 inset !important;
 }
+
 :global(.project-dialog-apple-glass .el-input__wrapper.is-focus),
 :global(.project-dialog-apple-glass .el-select__wrapper.is-focused) {
   box-shadow: 0 0 0 2px #2563eb inset !important;
+}
+
+@media (max-width: 640px) {
+  :global(.project-dialog-compact.el-dialog) {
+    width: calc(100vw - 16px) !important;
+  }
 }
 </style>
