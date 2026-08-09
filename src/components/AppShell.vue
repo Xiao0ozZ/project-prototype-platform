@@ -68,7 +68,72 @@
           <strong>{{ appName }}</strong>
           <span>{{ translatedClientName }}</span>
         </div>
-        <div class="breadcrumb">
+        <div
+          v-if="hasTopNavigation"
+          class="top-navigation-shell"
+          :class="{
+            'can-scroll-left': canScrollTopNavigationLeft,
+            'can-scroll-right': canScrollTopNavigationRight,
+          }"
+        >
+          <button
+            v-show="canScrollTopNavigationLeft"
+            type="button"
+            class="top-navigation-scroll-button is-left"
+            aria-label="向左滚动导航"
+            title="向左滚动"
+            @click="scrollTopNavigation(-1)"
+          >
+            <el-icon><ArrowLeft /></el-icon>
+          </button>
+          <nav
+            ref="topNavigationRef"
+            class="top-navigation"
+            aria-label="客户端页面导航"
+            @scroll="updateTopNavigationScrollState"
+            @wheel="handleTopNavigationWheel"
+          >
+            <el-dropdown
+              v-for="section in visibleMenus"
+              :key="section.title"
+              trigger="click"
+              @command="handleTopNavigationCommand"
+            >
+              <button
+                type="button"
+                class="top-navigation__group"
+                :class="{ 'is-active': isTopNavigationSectionActive(section) }"
+              >
+                <span>{{ translateStaticCopy(section.title, currentLocale) }}</span>
+                <el-icon><ArrowDown /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="item in section.items"
+                    :key="item.path"
+                    :command="item.path"
+                    :class="{ 'is-active': route.path === item.path }"
+                  >
+                    <el-icon><component :is="item.icon" /></el-icon>
+                    {{ translateStaticCopy(item.label, currentLocale) }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </nav>
+          <button
+            v-show="canScrollTopNavigationRight"
+            type="button"
+            class="top-navigation-scroll-button is-right"
+            aria-label="向右滚动导航"
+            title="向右滚动"
+            @click="scrollTopNavigation(1)"
+          >
+            <el-icon><ArrowRight /></el-icon>
+          </button>
+        </div>
+        <div v-else class="breadcrumb">
           {{ t('common.home') }} / {{ translatedClientName }} / {{ translatedCurrentTitle }}
         </div>
         <div class="topbar-actions">
@@ -121,37 +186,6 @@
           </el-dropdown>
         </div>
       </header>
-
-      <nav v-if="hasTopNavigation" class="top-navigation" aria-label="客户端页面导航">
-        <el-dropdown
-          v-for="section in visibleMenus"
-          :key="section.title"
-          trigger="click"
-          @command="handleTopNavigationCommand"
-        >
-          <button
-            type="button"
-            class="top-navigation__group"
-            :class="{ 'is-active': isTopNavigationSectionActive(section) }"
-          >
-            <span>{{ translateStaticCopy(section.title, currentLocale) }}</span>
-            <el-icon><ArrowDown /></el-icon>
-          </button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item
-                v-for="item in section.items"
-                :key="item.path"
-                :command="item.path"
-                :class="{ 'is-active': route.path === item.path }"
-              >
-                <el-icon><component :is="item.icon" /></el-icon>
-                {{ translateStaticCopy(item.label, currentLocale) }}
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </nav>
 
       <div v-if="isBareLayout && developerMode" class="bare-shell-tools" aria-label="开发工具">
         <el-button text size="small" title="回到首页" aria-label="回到首页" @click="goHome">
@@ -222,7 +256,17 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ArrowDown, Document, Download, Expand, Fold, House, Menu } from '@element-plus/icons-vue';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Document,
+  Download,
+  Expand,
+  Fold,
+  House,
+  Menu,
+} from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import PrdAssociationLayer from './PrdAssociationLayer.vue';
 import { useI18n } from 'vue-i18n';
@@ -285,6 +329,9 @@ const prdLayoutMode = ref('split');
 const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const isNarrowViewport = ref(false);
+const topNavigationRef = ref(null);
+const canScrollTopNavigationLeft = ref(false);
+const canScrollTopNavigationRight = ref(false);
 const sidebarStorageKey = computed(() => `platform-sidebar-collapsed:${props.projectId}`);
 const hasSidebar = computed(() => props.layoutType === 'sidebar');
 const hasTopNavigation = computed(() => props.layoutType === 'topnav');
@@ -302,6 +349,8 @@ const workspaceClasses = computed(() => ({
   'prd-panel-overlay-open': prdPanelReady.value && prdLayoutMode.value === 'overlay',
 }));
 let prdPanelReadyFrame = 0;
+let topNavigationScrollFrame = 0;
+let topNavigationResizeObserver = null;
 
 const currentTitle = computed(() => route.meta.title || route.name || '工作台');
 function normalizePrdDocument(entry) {
@@ -470,6 +519,7 @@ function updateViewportMode() {
   const narrow = window.matchMedia?.('(max-width: 760px)').matches ?? window.innerWidth <= 760;
   isNarrowViewport.value = narrow;
   if (!narrow) mobileSidebarOpen.value = false;
+  scheduleTopNavigationScrollState();
 }
 
 function toggleSidebar() {
@@ -503,6 +553,44 @@ function handleTopNavigationCommand(routePath) {
   router.push(routePath);
 }
 
+function updateTopNavigationScrollState() {
+  const navigation = topNavigationRef.value;
+  if (!navigation) {
+    canScrollTopNavigationLeft.value = false;
+    canScrollTopNavigationRight.value = false;
+    return;
+  }
+
+  const maximumScrollLeft = Math.max(0, navigation.scrollWidth - navigation.clientWidth);
+  canScrollTopNavigationLeft.value = navigation.scrollLeft > 2;
+  canScrollTopNavigationRight.value = navigation.scrollLeft < maximumScrollLeft - 2;
+}
+
+function scheduleTopNavigationScrollState() {
+  window.cancelAnimationFrame(topNavigationScrollFrame);
+  topNavigationScrollFrame = window.requestAnimationFrame(() => {
+    updateTopNavigationScrollState();
+    topNavigationScrollFrame = 0;
+  });
+}
+
+function scrollTopNavigation(direction) {
+  const navigation = topNavigationRef.value;
+  if (!navigation) return;
+  const distance = Math.max(180, Math.round(navigation.clientWidth * 0.6));
+  navigation.scrollBy({ left: direction * distance, behavior: 'smooth' });
+}
+
+function handleTopNavigationWheel(event) {
+  const navigation = topNavigationRef.value;
+  if (!navigation || navigation.scrollWidth <= navigation.clientWidth + 2) return;
+
+  const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+  if (!delta) return;
+  event.preventDefault();
+  navigation.scrollLeft += delta;
+}
+
 function handleSidebarEscape(event) {
   if (event.key === 'Escape') closeMobileSidebar();
 }
@@ -533,10 +621,17 @@ onMounted(() => {
   window.addEventListener('keydown', handleDeveloperShortcut);
   window.addEventListener('resize', updateViewportMode);
   document.addEventListener('keydown', handleSidebarEscape);
+  if (typeof ResizeObserver !== 'undefined') {
+    topNavigationResizeObserver = new ResizeObserver(scheduleTopNavigationScrollState);
+    if (topNavigationRef.value) topNavigationResizeObserver.observe(topNavigationRef.value);
+  }
+  scheduleTopNavigationScrollState();
 });
 
 onBeforeUnmount(() => {
   window.cancelAnimationFrame(prdPanelReadyFrame);
+  window.cancelAnimationFrame(topNavigationScrollFrame);
+  topNavigationResizeObserver?.disconnect();
   window.removeEventListener('keydown', handleDeveloperShortcut);
   window.removeEventListener('resize', updateViewportMode);
   document.removeEventListener('keydown', handleSidebarEscape);
