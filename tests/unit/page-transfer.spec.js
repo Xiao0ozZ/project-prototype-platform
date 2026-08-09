@@ -196,7 +196,7 @@ describe('page transfer', () => {
     const manifest = JSON.parse(manifestSource.trim());
     const htmlWithoutComments = source.replace(/<!--[\s\S]*?-->/gu, '');
 
-    expect(source).toContain('HTML 原型 AI 编写协议 v1.5');
+    expect(source).toContain('HTML 原型 AI 编写协议 v1.6');
     expect(source).toContain('以本模板作为唯一的结构与实现基准');
     expect(source).toContain('可将本模板复制为多个 HTML 文件组成多页面原型');
     expect(source).toContain('<!-- PROTOTYPE_AI_PROTOCOL_START -->');
@@ -204,6 +204,18 @@ describe('page transfer', () => {
     expect(source).toContain('协议标题和全部正文必须完整保留');
     expect(source).toContain('现有内容只是一个可运行示例');
     expect(source).toContain('可以删除并完整替换');
+    expect(source).toContain('一级列表页、二级详情页、二级新增/编辑页');
+    expect(source).toContain('data-page-header 只能保留返回入口');
+    expect(source).toContain('返回入口后直接进入表单或流程内容');
+    expect(source).toContain('删除模板演示切换器、其余示例分支');
+    expect(source).toContain('class="template-demo-switch"');
+    expect(source).toContain("{ label: '一级列表', value: 'primary' }");
+    expect(source).toContain("{ label: '二级详情', value: 'detail' }");
+    expect(source).toContain("{ label: '二级新增/编辑', value: 'form' }");
+    expect(source).toContain('data-page-header="back-only"');
+    expect(source).toContain('class="secondary-object-summary"');
+    expect(source).toContain('class="secondary-form-layout"');
+    expect(source).not.toContain('secondary-flow-heading');
     expect(source).not.toContain('四个统计卡片');
     expect(source).not.toContain('统计摘要仅在业务需要');
     expect(source).toContain('<a href="./目标页面.html">');

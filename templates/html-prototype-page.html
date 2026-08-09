@@ -10,7 +10,7 @@
     <!-- TEMPLATE-LOCK: 以下 AI 编写协议必须连同开始、结束标记和全部正文原样保留，不得删减、概括或改写。 -->
     <!-- PROTOTYPE_AI_PROTOCOL_START -->
     <!--
-      HTML 原型 AI 编写协议 v1.5（修改页面前必须完整阅读）
+      HTML 原型 AI 编写协议 v1.6（修改页面前必须完整阅读）
 
       目标
       - 本模板用于创建一份完整、可直接在浏览器打开的桌面端后台业务 HTML 页面。
@@ -27,7 +27,7 @@
       - PROTOTYPE_AI_PROTOCOL_START/END 及其间的协议标题和全部正文必须完整保留；不得只保留版本标题，也不得压缩、摘要、改写或删除协议内容。
       - [TEMPLATE-LOCK] 区域、所有 START/END 标记、#app、prototype-page-manifest 和启动代码不得删除、改名或移动。
       - 只修改 [AI-EDIT] 区域和带 data-shell-* 的外壳文字；外壳骨架、基础主题及统一依赖保持不变。
-      - 本文件只承载一个桌面端后台业务页面；不得改造成登录页、移动端页面或同时承载多个页面。
+      - 除模板自带的结构演示分支外，本文件只承载一个桌面端后台业务页面；正式交付时不得保留多个页面结构或改造成登录页、移动端页面。
       - 页面必须且只能有一个 data-page-content、一个 data-business-content；弹窗和抽屉统一放在 PAGE_OVERLAYS 区域。
 
       页面身份必须同步
@@ -35,11 +35,20 @@
       - pageKey、rootClass、data-page-root、data-page-key 与页面内容根类使用同一 kebab-case 值。
       - 页面 CSS 以 .{rootClass} 开头；弹窗/抽屉 CSS 以 .{overlayRootClass} 开头，不写无作用域的页面样式。
       - client 是页面所属端的标识；必须等于 routePath 第一段，routePath 使用 /{client}/{page-path}。
-      - <title>、manifest.pageTitle、manifest.menuTitle、页面 H1 和 data-shell-page-title 文案保持一致。
+      - <title>、manifest.pageTitle、manifest.menuTitle、正式页面实际保留的 H1 和 data-shell-page-title 文案保持一致。
       - fileName 使用当前 HTML 文件名并保留 .html 后缀；同一组页面中的文件名不得重复。
       - menuSection、menuTitle、menuIcon 和 menu 描述导航信息；不显示导航项时仅将 menu 设为 false。
       - scriptMode、选择器、dependencies 和 assets 属于固定技术字段，没有明确要求时保持原值。
       - pageHeaderMode 仅使用 standard、back-only 或 none；none 时删除整个 data-page-header。
+
+      页面结构选择
+      - 模板内容区提供“一级列表页、二级详情页、二级新增/编辑页”三种可切换结构示例；它们只用于说明结构，不代表一个文件应同时承载三个业务页面。
+      - 创建正式页面时只选择一种结构，删除模板演示切换器、其余示例分支以及不再使用的样式、状态和方法。
+      - 一级列表、配置、看板和控制台等独立功能页通常使用 standard；data-page-header 可放页面 H1、简短说明和页面级主操作。
+      - 独立打开的详情、新增和编辑等二级页面通常使用 back-only；data-page-header 只能保留返回入口，不放页面 H1、说明、状态或页面级主操作。
+      - 二级页面如需显示对象名称、编号、业务状态、表单标题或主要操作，应放在 data-business-content 的业务区块中；具体信息和布局由业务需求决定。
+      - 二级新增或编辑页在返回入口后直接进入表单或流程内容，不额外建立页面标题区；表单内部可按业务需要设置区块标题。
+      - 弹窗或抽屉中的新增、编辑不属于独立二级页面，应保留当前页面上下文，不额外生成返回区。
 
       HTML、Vue 与交互规则
       - data-page-header 只约定页面标题、说明和页面级操作的位置，不约定其后的业务内容结构。
@@ -486,6 +495,224 @@
         color: var(--app-color-text-muted);
       }
 
+      .standard-list-page .template-demo-switch {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px;
+        background: var(--app-color-surface);
+        border: 1px solid var(--app-color-border);
+        border-radius: 10px;
+        box-shadow: 0 10px 28px rgb(15 23 42 / 14%);
+      }
+
+      .standard-list-page .template-demo-switch-label {
+        padding-left: 8px;
+        color: var(--app-color-text-muted);
+        font-size: var(--app-font-size-sm);
+        white-space: nowrap;
+      }
+
+      .standard-list-page .template-demo-switch-options {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 2px;
+        background: var(--app-color-surface-subtle);
+        border-radius: 7px;
+      }
+
+      .standard-list-page .template-demo-switch button {
+        min-height: 30px;
+        padding: 0 10px;
+        color: var(--app-color-text-secondary);
+        font: inherit;
+        font-size: var(--app-font-size-sm);
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .standard-list-page .template-demo-switch button:hover {
+        color: var(--app-color-primary);
+      }
+
+      .standard-list-page .template-demo-switch button.is-active {
+        color: var(--app-color-primary);
+        font-weight: 600;
+        background: var(--app-color-surface);
+        box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
+      }
+
+      .standard-list-page .template-demo-switch button:focus-visible {
+        outline: 2px solid var(--app-color-primary);
+        outline-offset: 2px;
+      }
+
+      .standard-list-page .secondary-backbar {
+        display: flex;
+        align-items: center;
+        min-height: 36px;
+        margin-bottom: 16px;
+      }
+
+      .standard-list-page .secondary-object-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 16px;
+        padding: 20px;
+        background: var(--app-color-surface);
+        border: 1px solid var(--app-color-border-light);
+        border-radius: var(--app-radius-list-panel);
+        box-shadow: var(--app-shadow-panel);
+      }
+
+      .standard-list-page .secondary-object-main,
+      .standard-list-page .secondary-object-title,
+      .standard-list-page .secondary-object-actions {
+        display: flex;
+        align-items: center;
+      }
+
+      .standard-list-page .secondary-object-main {
+        min-width: 0;
+        gap: 16px;
+      }
+
+      .standard-list-page .secondary-object-copy {
+        min-width: 0;
+      }
+
+      .standard-list-page .secondary-object-title {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .standard-list-page .secondary-object-title h1 {
+        margin: 0;
+        color: var(--app-color-text-primary);
+        font-size: var(--app-font-size-page-title);
+        line-height: 32px;
+      }
+
+      .standard-list-page .secondary-object-kicker {
+        margin-bottom: 4px;
+        color: var(--app-color-text-muted);
+        font-size: var(--app-font-size-sm);
+      }
+
+      .standard-list-page .secondary-object-copy p {
+        margin: 4px 0 0;
+        color: var(--app-color-text-muted);
+      }
+
+      .standard-list-page .secondary-object-actions {
+        flex: 0 0 auto;
+        gap: 8px;
+      }
+
+      .standard-list-page .secondary-form-layout {
+        display: grid;
+        gap: 16px;
+      }
+
+      .standard-list-page .secondary-form-layout {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        align-items: start;
+      }
+
+      .standard-list-page .secondary-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: var(--app-panel-header-height);
+        padding: 0 16px;
+        border-bottom: 1px solid var(--app-color-border-light);
+      }
+
+      .standard-list-page .secondary-panel-header h2 {
+        margin: 0;
+        color: var(--app-color-text-primary);
+        font-size: var(--app-font-size-md);
+      }
+
+      .standard-list-page .secondary-panel-body {
+        padding: 16px;
+      }
+
+      .standard-list-page .secondary-order-summary {
+        display: grid;
+        gap: 12px;
+      }
+
+      .standard-list-page .secondary-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .standard-list-page .secondary-summary-row + .secondary-summary-row {
+        padding-top: 12px;
+        border-top: 1px solid var(--app-color-border-subtle);
+      }
+
+      .standard-list-page .secondary-summary-row span {
+        color: var(--app-color-text-muted);
+      }
+
+      .standard-list-page .secondary-form-section + .secondary-form-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--app-color-border-light);
+      }
+
+      .standard-list-page .secondary-form-section h3 {
+        margin: 0 0 14px;
+        color: var(--app-color-text-primary);
+        font-size: var(--app-font-size-md);
+      }
+
+      .standard-list-page .secondary-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 16px;
+      }
+
+      .standard-list-page .secondary-summary-panel {
+        position: sticky;
+        top: 0;
+      }
+
+      .standard-list-page .secondary-summary-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .standard-list-page .secondary-summary-actions .el-button {
+        width: 100%;
+        margin: 0;
+      }
+
+      @media (max-width: 1100px) {
+        .standard-list-page .secondary-form-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .standard-list-page .secondary-summary-panel {
+          position: static;
+        }
+      }
+
       .standard-list-dialog .el-dialog__body {
         padding-top: 10px;
       }
@@ -582,12 +809,36 @@
             data-page-key="standard-list-page"
           >
             <!--
+              [AI-EDIT] TEMPLATE_DEMO_SWITCH
+              此切换器仅用于查看三种内容区结构。创建正式页面时选择一种结构，删除切换器、
+              其余示例分支以及对应的无用样式和状态。
+            -->
+            <div class="template-demo-switch" aria-label="内容区结构示例">
+              <span class="template-demo-switch-label">内容区示例</span>
+              <div class="template-demo-switch-options" role="group" aria-label="切换内容区结构">
+                <button
+                  v-for="option in demoModeOptions"
+                  :key="option.value"
+                  type="button"
+                  :class="{ 'is-active': demoMode === option.value }"
+                  :aria-pressed="demoMode === option.value"
+                  @click="demoMode = option.value"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+
+            <!--
               [AI-EDIT] PAGE_HEADER_OPTIONAL
               standard：保留标题、子标题和右侧页面主操作，主操作与标题区底部对齐；
-              back-only：改为返回按钮或对象摘要，不强制显示 H1；
-              none：二级详情等页面可删除整个 data-page-header，并将 manifest.pageHeaderMode 改为 none。
+              back-only：独立详情、新增或编辑等二级页面只保留返回入口；H1、状态和主要操作
+              放入 data-business-content 的第一个业务区块；
+              none：不需要独立标题区或返回区时，可删除整个 data-page-header，并将
+              manifest.pageHeaderMode 改为 none。
             -->
             <div
+              v-if="demoMode === 'primary'"
               class="page-heading"
               data-page-header="standard"
               data-block-id="page-heading"
@@ -601,6 +852,9 @@
                 >新增资料</el-button
               >
             </div>
+            <div v-else class="secondary-backbar" data-page-header="back-only">
+              <el-button :icon="ArrowLeft" @click="handleDemoBack">返回</el-button>
+            </div>
 
             <!--
               [AI-EDIT] BUSINESS_CONTENT_START
@@ -610,78 +864,236 @@
               现有类型无法准确描述时使用 custom。替换内容后，同步更新 PAGE_STYLE、PAGE_OVERLAYS
               和 PAGE_LOGIC，并清理不再使用的示例样式、状态和方法。
             -->
-            <div data-business-content data-layout-type="list">
-              <section class="content-panel" data-block-id="list-panel" data-block-name="资料列表">
-                <div class="filter-bar">
-                  <div class="filter-fields">
-                    <el-input
-                      v-model="filters.keyword"
-                      :prefix-icon="Search"
-                      aria-label="搜索编号或名称"
-                      clearable
-                      placeholder="搜索编号或名称"
-                    ></el-input>
-                    <el-select
-                      v-model="filters.status"
-                      aria-label="筛选资料状态"
-                      clearable
-                      placeholder="全部状态"
-                    >
-                      <el-option label="启用" value="enabled"></el-option>
-                      <el-option label="停用" value="disabled"></el-option>
-                    </el-select>
-                    <el-tooltip content="重置筛选" placement="top">
-                      <el-button
-                        circle
-                        :icon="Refresh"
-                        aria-label="重置筛选"
-                        @click="resetFilters"
-                      ></el-button>
-                    </el-tooltip>
-                    <el-button type="primary" plain :icon="Download" @click="exportRows">导出</el-button>
+            <div data-business-content :data-layout-type="demoMode">
+              <template v-if="demoMode === 'primary'">
+                <section class="content-panel" data-block-id="list-panel" data-block-name="资料列表">
+                  <div class="filter-bar">
+                    <div class="filter-fields">
+                      <el-input
+                        v-model="filters.keyword"
+                        :prefix-icon="Search"
+                        aria-label="搜索编号或名称"
+                        clearable
+                        placeholder="搜索编号或名称"
+                      ></el-input>
+                      <el-select
+                        v-model="filters.status"
+                        aria-label="筛选资料状态"
+                        clearable
+                        placeholder="全部状态"
+                      >
+                        <el-option label="启用" value="enabled"></el-option>
+                        <el-option label="停用" value="disabled"></el-option>
+                      </el-select>
+                      <el-tooltip content="重置筛选" placement="top">
+                        <el-button
+                          circle
+                          :icon="Refresh"
+                          aria-label="重置筛选"
+                          @click="resetFilters"
+                        ></el-button>
+                      </el-tooltip>
+                      <el-button type="primary" plain :icon="Download" @click="exportRows">导出</el-button>
+                    </div>
+                    <div class="filter-summary" aria-live="polite">共 {{ filteredRows.length }} 笔资料</div>
                   </div>
-                  <div class="filter-summary" aria-live="polite">共 {{ filteredRows.length }} 笔资料</div>
-                </div>
 
-                <div class="table-wrap">
-                  <el-table :data="pagedRows" row-key="id" stripe table-layout="fixed" style="width: 100%">
-                    <el-table-column prop="code" label="编号" width="140"></el-table-column>
-                    <el-table-column label="名称" min-width="220">
-                      <template #default="scope">
-                        <div class="name-cell">
-                          <strong>{{ scope.row.name }}</strong>
-                          <span>{{ scope.row.description }}</span>
+                  <div class="table-wrap">
+                    <el-table :data="pagedRows" row-key="id" stripe table-layout="fixed" style="width: 100%">
+                      <el-table-column prop="code" label="编号" width="140"></el-table-column>
+                      <el-table-column label="名称" min-width="220">
+                        <template #default="scope">
+                          <div class="name-cell">
+                            <strong>{{ scope.row.name }}</strong>
+                            <span>{{ scope.row.description }}</span>
+                          </div>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="category" label="分类" min-width="150"></el-table-column>
+                      <el-table-column label="状态" width="110">
+                        <template #default="scope">
+                          <el-tag :type="scope.row.status === 'enabled' ? 'success' : 'info'">
+                            {{ scope.row.status === 'enabled' ? '启用' : '停用' }}
+                          </el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="updatedAt" label="更新时间" width="170"></el-table-column>
+                      <el-table-column label="操作" width="150" align="right">
+                        <template #default="scope">
+                          <el-button link type="primary" @click="openEditDialog(scope.row)">编辑</el-button>
+                          <el-button link type="danger" @click="removeRow(scope.row)">删除</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+
+                  <div class="pagination-bar">
+                    <el-pagination
+                      v-model:current-page="pagination.page"
+                      v-model:page-size="pagination.pageSize"
+                      :page-sizes="[10, 20, 50]"
+                      :total="filteredRows.length"
+                      layout="total, sizes, prev, pager, next, jumper"
+                    ></el-pagination>
+                  </div>
+                </section>
+              </template>
+
+              <template v-else-if="demoMode === 'detail'">
+                <section
+                  class="secondary-object-summary"
+                  data-block-id="member-summary"
+                  data-block-name="会员概要"
+                >
+                  <div class="secondary-object-main">
+                    <el-avatar :size="56">林</el-avatar>
+                    <div class="secondary-object-copy">
+                      <div class="secondary-object-kicker">会员编号 M202600128</div>
+                      <div class="secondary-object-title">
+                        <h1>林嘉怡</h1>
+                        <el-tag type="success">正常</el-tag>
+                        <el-tag type="warning" effect="plain">金卡会员</el-tag>
+                      </div>
+                      <p>个人会员 · 138****2617 · 最近登录于 2026-08-07 09:42</p>
+                    </div>
+                  </div>
+                  <div class="secondary-object-actions">
+                    <el-button @click="showDemoAction('编辑会员资料')">编辑资料</el-button>
+                    <el-button type="warning" plain @click="showDemoAction('冻结会员账号')"
+                      >冻结账号</el-button
+                    >
+                  </div>
+                </section>
+
+                <section class="content-panel" data-block-id="member-profile" data-block-name="会员资料">
+                  <div class="secondary-panel-header">
+                    <h2>会员资料</h2>
+                  </div>
+                  <div class="secondary-panel-body">
+                    <el-descriptions :column="3" border>
+                      <el-descriptions-item label="手机号码">138 0000 2617</el-descriptions-item>
+                      <el-descriptions-item label="电子邮箱">jiayi.lin@example.com</el-descriptions-item>
+                      <el-descriptions-item label="注册来源">营运门店</el-descriptions-item>
+                      <el-descriptions-item label="储值余额">¥1,260.50</el-descriptions-item>
+                      <el-descriptions-item label="可用积分">8,420</el-descriptions-item>
+                      <el-descriptions-item label="累计订单">18 笔</el-descriptions-item>
+                    </el-descriptions>
+                  </div>
+                </section>
+              </template>
+
+              <template v-else>
+                <div class="secondary-form-layout">
+                  <section class="content-panel" data-block-id="order-form" data-block-name="订单表单">
+                    <div class="secondary-panel-body">
+                      <el-form :model="orderDraft" label-position="top">
+                        <section class="secondary-form-section">
+                          <h3>客户信息</h3>
+                          <div class="secondary-form-grid">
+                            <el-form-item label="客户姓名" required>
+                              <el-input
+                                v-model="orderDraft.customer"
+                                clearable
+                                placeholder="请输入姓名或会员编号"
+                              ></el-input>
+                            </el-form-item>
+                            <el-form-item label="客户类型">
+                              <el-radio-group v-model="orderDraft.customerType">
+                                <el-radio value="personal">个人客户</el-radio>
+                                <el-radio value="corporate">企业客户</el-radio>
+                              </el-radio-group>
+                            </el-form-item>
+                          </div>
+                        </section>
+
+                        <section class="secondary-form-section">
+                          <h3>租赁信息</h3>
+                          <div class="secondary-form-grid">
+                            <el-form-item label="取还门店" required>
+                              <el-select
+                                v-model="orderDraft.pickupStore"
+                                placeholder="请选择门店"
+                                style="width: 100%"
+                              >
+                                <el-option label="台北车站店" value="台北车站店"></el-option>
+                                <el-option label="新北总店" value="新北总店"></el-option>
+                              </el-select>
+                            </el-form-item>
+                            <el-form-item label="车辆组别" required>
+                              <el-select
+                                v-model="orderDraft.vehicleGroup"
+                                placeholder="请选择车辆组别"
+                                style="width: 100%"
+                              >
+                                <el-option label="经济车组" value="经济车组"></el-option>
+                                <el-option label="商务车组" value="商务车组"></el-option>
+                              </el-select>
+                            </el-form-item>
+                          </div>
+                          <el-form-item label="租赁时间" required>
+                            <el-date-picker
+                              v-model="orderDraft.rentalRange"
+                              type="datetimerange"
+                              start-placeholder="取车时间"
+                              end-placeholder="还车时间"
+                              range-separator="至"
+                              style="width: 100%"
+                            ></el-date-picker>
+                          </el-form-item>
+                          <el-form-item label="订单备注">
+                            <el-input
+                              v-model="orderDraft.note"
+                              type="textarea"
+                              :rows="3"
+                              maxlength="100"
+                              show-word-limit
+                              placeholder="填写交车要求或其他说明"
+                            ></el-input>
+                          </el-form-item>
+                        </section>
+                      </el-form>
+                    </div>
+                  </section>
+
+                  <aside
+                    class="content-panel secondary-summary-panel"
+                    data-block-id="order-summary"
+                    data-block-name="订单摘要"
+                  >
+                    <div class="secondary-panel-header">
+                      <h2>订单摘要</h2>
+                    </div>
+                    <div class="secondary-panel-body">
+                      <div class="secondary-order-summary">
+                        <div class="secondary-summary-row">
+                          <span>客户</span>
+                          <strong>{{ orderDraft.customer || '待选择' }}</strong>
                         </div>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="category" label="分类" min-width="150"></el-table-column>
-                    <el-table-column label="状态" width="110">
-                      <template #default="scope">
-                        <el-tag :type="scope.row.status === 'enabled' ? 'success' : 'info'">
-                          {{ scope.row.status === 'enabled' ? '启用' : '停用' }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="updatedAt" label="更新时间" width="170"></el-table-column>
-                    <el-table-column label="操作" width="150" align="right">
-                      <template #default="scope">
-                        <el-button link type="primary" @click="openEditDialog(scope.row)">编辑</el-button>
-                        <el-button link type="danger" @click="removeRow(scope.row)">删除</el-button>
-                      </template>
-                    </el-table-column>
-                  </el-table>
+                        <div class="secondary-summary-row">
+                          <span>门店</span>
+                          <strong>{{ orderDraft.pickupStore || '待选择' }}</strong>
+                        </div>
+                        <div class="secondary-summary-row">
+                          <span>车辆组别</span>
+                          <strong>{{ orderDraft.vehicleGroup || '待选择' }}</strong>
+                        </div>
+                        <div class="secondary-summary-row">
+                          <span>租赁时间</span>
+                          <strong>{{ rentalRangeSummary }}</strong>
+                        </div>
+                        <div class="secondary-summary-row">
+                          <span>预估金额</span>
+                          <strong>¥2,480.00</strong>
+                        </div>
+                      </div>
+                      <div class="secondary-summary-actions">
+                        <el-button @click="saveDemoDraft">保存草稿</el-button>
+                        <el-button type="primary" @click="submitDemoOrder">建立订单</el-button>
+                      </div>
+                    </div>
+                  </aside>
                 </div>
-
-                <div class="pagination-bar">
-                  <el-pagination
-                    v-model:current-page="pagination.page"
-                    v-model:page-size="pagination.pageSize"
-                    :page-sizes="[10, 20, 50]"
-                    :total="filteredRows.length"
-                    layout="total, sizes, prev, pager, next, jumper"
-                  ></el-pagination>
-                </div>
-              </section>
+              </template>
             </div>
             <!-- BUSINESS_CONTENT_END -->
           </section>
@@ -744,6 +1156,37 @@
       function pageSetup() {
         const { ref, reactive, computed, watch } = Vue;
         const { ElMessage, ElMessageBox } = ElementPlus;
+
+        const demoMode = ref('primary');
+        const demoModeOptions = [
+          { label: '一级列表', value: 'primary' },
+          { label: '二级详情', value: 'detail' },
+          { label: '二级新增/编辑', value: 'form' },
+        ];
+
+        const orderDraft = reactive({
+          customer: '林嘉怡',
+          customerType: 'personal',
+          pickupStore: '台北车站店',
+          vehicleGroup: '经济车组',
+          rentalRange: [new Date(2026, 7, 9, 9, 0), new Date(2026, 7, 10, 9, 0)],
+          note: '',
+        });
+
+        const rentalRangeSummary = computed(() => {
+          if (!Array.isArray(orderDraft.rentalRange) || orderDraft.rentalRange.length !== 2) {
+            return '待选择';
+          }
+          const format = (value) => {
+            const date = new Date(value);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${month}/${day} ${hour}:${minute}`;
+          };
+          return `${format(orderDraft.rentalRange[0])} 至 ${format(orderDraft.rentalRange[1])}`;
+        });
 
         const filters = reactive({ keyword: '', status: '' });
         const pagination = reactive({ page: 1, pageSize: 10 });
@@ -892,6 +1335,26 @@
           ElMessage.success('导出任务已创建');
         }
 
+        function handleDemoBack() {
+          ElMessage.info('返回上一页');
+        }
+
+        function showDemoAction(action) {
+          ElMessage.info(`${action}：结构示例未连接真实数据`);
+        }
+
+        function saveDemoDraft() {
+          ElMessage.success('草稿已保存');
+        }
+
+        function submitDemoOrder() {
+          if (!orderDraft.customer || !orderDraft.pickupStore || !orderDraft.vehicleGroup) {
+            ElMessage.warning('请先完成必填信息');
+            return;
+          }
+          ElMessage.success('订单已建立');
+        }
+
         return {
           Platform: ElementPlusIconsVue.Platform,
           Document: ElementPlusIconsVue.Document,
@@ -900,6 +1363,11 @@
           Refresh: ElementPlusIconsVue.Refresh,
           Plus: ElementPlusIconsVue.Plus,
           Download: ElementPlusIconsVue.Download,
+          ArrowLeft: ElementPlusIconsVue.ArrowLeft,
+          demoMode,
+          demoModeOptions,
+          orderDraft,
+          rentalRangeSummary,
           filters,
           pagination,
           dialogVisible,
@@ -916,6 +1384,10 @@
           submitForm,
           removeRow,
           exportRows,
+          handleDemoBack,
+          showDemoAction,
+          saveDemoDraft,
+          submitDemoOrder,
         };
       }
       /* PAGE_LOGIC_END */
