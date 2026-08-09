@@ -1,6 +1,7 @@
 import * as ElementIcons from '@element-plus/icons-vue';
 import htmlPrototypePages from 'virtual:project-html-pages';
 
+import { applyRouteOrder } from '../../packages/project-core/src/route-order.js';
 import HtmlPrototypeView from '../views/prototype/HtmlPrototypeView.vue';
 import { getProjectClientEntryPath } from '../services/project-navigation';
 
@@ -74,58 +75,6 @@ function mergeHtmlPages(existingPages, htmlPages) {
     resolvedPages.push({ ...page, path, name });
   }
   return resolvedPages;
-}
-
-function orderedIds(items, configuredIds, getId) {
-  const originalItems = items.map((item, index) => ({ item, index }));
-  const ranks = new Map(
-    (Array.isArray(configuredIds) ? configuredIds : []).map((id, index) => [String(id), index]),
-  );
-  return originalItems
-    .sort((left, right) => {
-      const leftRank = ranks.has(getId(left.item)) ? ranks.get(getId(left.item)) : Number.MAX_SAFE_INTEGER;
-      const rightRank = ranks.has(getId(right.item))
-        ? ranks.get(getId(right.item))
-        : Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || left.index - right.index;
-    })
-    .map(({ item }) => item);
-}
-
-function applyRouteOrder(definitions, routeOrder) {
-  const clientOrders = routeOrder?.clients || {};
-  return Object.fromEntries(
-    Object.entries(definitions || {}).map(([clientId, definition]) => {
-      const config = clientOrders[clientId] || {};
-      const sections = orderedIds(definition.sections || [], config.sectionOrder, (section) => section.id);
-      const sectionRanks = new Map(sections.map((section, index) => [section.id, index]));
-      const pageOrders = config.pageOrder || {};
-      const originalPages = (definition.pages || []).map((page, index) => ({ page, index }));
-
-      const pages = originalPages
-        .sort((left, right) => {
-          const leftSectionRank = sectionRanks.has(left.page.section)
-            ? sectionRanks.get(left.page.section)
-            : Number.MAX_SAFE_INTEGER;
-          const rightSectionRank = sectionRanks.has(right.page.section)
-            ? sectionRanks.get(right.page.section)
-            : Number.MAX_SAFE_INTEGER;
-          if (leftSectionRank !== rightSectionRank) return leftSectionRank - rightSectionRank;
-
-          const pageOrder = Array.isArray(pageOrders[left.page.section])
-            ? pageOrders[left.page.section]
-            : [];
-          const leftPageRank = pageOrder.indexOf(left.page.name);
-          const rightPageRank = pageOrder.indexOf(right.page.name);
-          const normalizedLeftRank = leftPageRank < 0 ? Number.MAX_SAFE_INTEGER : leftPageRank;
-          const normalizedRightRank = rightPageRank < 0 ? Number.MAX_SAFE_INTEGER : rightPageRank;
-          return normalizedLeftRank - normalizedRightRank || left.index - right.index;
-        })
-        .map(({ page }) => page);
-
-      return [clientId, { ...definition, sections, pages }];
-    }),
-  );
 }
 
 function normalizeProject(modulePath, manifest) {
@@ -228,9 +177,7 @@ export function createProjectPageRoutes(project, client) {
 export function getProjectEntryPath(project, entry) {
   if (entry.kind === 'client') {
     const client = project.clients.find((item) => item.id === entry.clientId);
-    return client
-      ? getProjectClientEntryPath(project.id, client)
-      : `/p/${project.id}/${entry.clientId}`;
+    return client ? getProjectClientEntryPath(project.id, client) : `/p/${project.id}/${entry.clientId}`;
   }
   if (entry.kind === 'mobile') return `/p/${project.id}/mobile`;
   if (entry.kind === 'docs') return `/p/${project.id}/docs`;

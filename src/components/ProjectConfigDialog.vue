@@ -123,7 +123,7 @@
                     v-model="form.name"
                     size="large"
                     maxlength="60"
-                    placeholder="例如：RIMO Rental"
+                    placeholder="例如：客户服务平台"
                     show-word-limit
                   />
                 </el-form-item>

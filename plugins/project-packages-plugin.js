@@ -1,6 +1,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+
+import {
+  normalizePagePrdLinks,
+  normalizePrdBindings,
+  scanProjectPackages as scanProjectPackagesCore,
+} from '../packages/project-core/src/index.js';
 
 const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 const PAGE_PATH_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -64,73 +69,6 @@ function isSafeRelativePath(value) {
   return Boolean(normalized) && !normalized.startsWith('/') && !normalized.split('/').includes('..');
 }
 
-function validateProjectManifest(manifest, folderName, projectRoot) {
-  const errors = [];
-  if (manifest.schemaVersion !== 1) errors.push('schemaVersion 必须为 1。');
-  if (!PROJECT_ID_PATTERN.test(manifest.id || '')) errors.push('id 必须使用小写 kebab-case。');
-  if (manifest.id && manifest.id !== folderName) errors.push('项目 id 必须与项目文件夹名称一致。');
-  if (!String(manifest.name || '').trim()) errors.push('缺少项目名称。');
-  if (!Array.isArray(manifest.clients)) errors.push('clients 必须是数组。');
-  if (!Array.isArray(manifest.entries)) errors.push('entries 必须是数组。');
-  for (const [name, value] of Object.entries(manifest.theme || {})) {
-    if (value && !/^#[a-f\d]{6}$/i.test(value)) errors.push(`主题颜色 ${name} 必须使用六位十六进制色值。`);
-  }
-  if (manifest.compatibility?.legacyViewRoot && manifest.compatibility.legacyViewRoot !== 'src/views') {
-    errors.push('兼容页面目录当前只允许使用 src/views。');
-  }
-
-  const clientIds = new Set();
-  for (const client of manifest.clients || []) {
-    if (!PROJECT_ID_PATTERN.test(client.id || '')) errors.push(`客户端 id 无效：${client.id || '空值'}。`);
-    if (clientIds.has(client.id)) errors.push(`客户端 id 重复：${client.id}。`);
-    clientIds.add(client.id);
-    if (!String(client.name || '').trim()) errors.push(`客户端 ${client.id || '未知'} 缺少名称。`);
-    if (client.entry?.mode && !CLIENT_ENTRY_MODES.has(client.entry.mode)) {
-      errors.push(`客户端 ${client.id || '未知'} 的进入方式无效：${client.entry.mode}。`);
-    }
-    if (client.entry?.mode === 'custom-page' && !String(client.entry.page || '').trim()) {
-      errors.push(`客户端 ${client.id || '未知'} 使用自定义入口时必须指定入口页面。`);
-    }
-    if (client.layout?.type && !CLIENT_LAYOUT_TYPES.has(client.layout.type)) {
-      errors.push(`客户端 ${client.id || '未知'} 的页面外壳无效：${client.layout.type}。`);
-    }
-    if (client.login?.background && !isSafeRelativePath(client.login.background)) {
-      errors.push(`客户端 ${client.id || '未知'} 的登录背景路径无效。`);
-    }
-  }
-
-  const entryIds = new Set();
-  for (const entry of manifest.entries || []) {
-    if (!PROJECT_ID_PATTERN.test(entry.id || '')) errors.push(`入口 id 无效：${entry.id || '空值'}。`);
-    if (entryIds.has(entry.id)) errors.push(`入口 id 重复：${entry.id}。`);
-    entryIds.add(entry.id);
-    if (!ENTRY_KINDS.has(entry.kind)) errors.push(`入口 ${entry.id || '未知'} 的 kind 无效。`);
-    if (entry.kind === 'client' && !clientIds.has(entry.clientId)) {
-      errors.push(`入口 ${entry.id} 引用了不存在的客户端：${entry.clientId}。`);
-    }
-    if (entry.kind === 'docs' && !manifest.docs?.enabled)
-      errors.push(`入口 ${entry.id} 已配置，但文档能力未启用。`);
-    if (entry.kind === 'mobile' && !manifest.mobile?.enabled) {
-      errors.push(`入口 ${entry.id} 已配置，但移动端能力未启用。`);
-    }
-  }
-
-  if (!isSafeRelativePath(manifest.pageDefinitions)) {
-    errors.push('pageDefinitions 必须是项目包内的相对路径。');
-  } else {
-    const definitionsPath = path.resolve(projectRoot, manifest.pageDefinitions);
-    if (!isInsideRoot(projectRoot, definitionsPath)) errors.push('pageDefinitions 超出项目包目录。');
-  }
-  if (manifest.pageDefinitions !== 'page-definitions.js') {
-    errors.push('pageDefinitions 当前必须固定为 page-definitions.js。');
-  }
-
-  for (const resourcePath of [manifest.branding?.logo, manifest.branding?.favicon, manifest.mobile?.entry]) {
-    if (resourcePath && !isSafeRelativePath(resourcePath)) errors.push(`项目资源路径无效：${resourcePath}。`);
-  }
-  return errors;
-}
-
 async function fileExists(filePath, type = 'file') {
   return fs
     .stat(filePath)
@@ -186,54 +124,6 @@ async function hasExternalPrototypePage(manifest, projectRoot, clientId, expecte
     if (await containsHtmlRoute(root)) return true;
   }
   return false;
-}
-
-async function validateProjectResources(manifest, projectRoot) {
-  const errors = [];
-  for (const [label, resourcePath] of [
-    ['项目 Logo', manifest.branding?.logo],
-    ['项目图标', manifest.branding?.favicon],
-    ['移动端入口', manifest.mobile?.enabled ? manifest.mobile?.entry : null],
-  ]) {
-    if (!resourcePath) continue;
-    const target = path.resolve(projectRoot, resourcePath);
-    if (!(await fileExists(target))) errors.push(`${label}不存在：${resourcePath}。`);
-  }
-  for (const client of manifest.clients || []) {
-    const background = client.login?.background;
-    if (!background) continue;
-    const target = path.resolve(projectRoot, background);
-    if (!(await fileExists(target))) errors.push(`客户端 ${client.id} 的登录背景不存在：${background}。`);
-  }
-  if (manifest.docs?.enabled) {
-    const docsRoot = path.resolve(projectRoot, manifest.docs.root || 'docs');
-    if (!(await fileExists(docsRoot, 'directory')))
-      errors.push(`文档目录不存在：${manifest.docs.root || 'docs'}。`);
-  }
-  if (manifest.prototype?.enabled) {
-    const configuredClients = manifest.prototype.clients;
-    const entries = Array.isArray(configuredClients)
-      ? configuredClients.map((item) => [item?.clientId || item?.id, item])
-      : configuredClients && typeof configuredClients === 'object'
-        ? Object.entries(configuredClients)
-        : [];
-    if (entries.length) {
-      for (const [clientId, item] of entries) {
-        if (item?.shellMode && !HTML_SHELL_MODES.has(item.shellMode)) {
-          errors.push(`客户端 ${item.clientId || clientId} 的 HTML 外壳处理方式无效：${item.shellMode}。`);
-        }
-        if (item?.enabled === false || !item?.root) continue;
-        const prototypeRoot = path.resolve(projectRoot, item.root);
-        if (!(await fileExists(prototypeRoot, 'directory')))
-          errors.push(`客户端 ${item.clientId || clientId} 的 HTML 原型目录不存在：${item.root}。`);
-      }
-    } else {
-      const prototypeRoot = path.resolve(projectRoot, manifest.prototype.root || 'prototype');
-      if (!(await fileExists(prototypeRoot, 'directory')))
-        errors.push(`HTML 原型目录不存在：${manifest.prototype.root || 'prototype'}。`);
-    }
-  }
-  return errors;
 }
 
 export async function validateProjectDefinitions(manifest, projectRoot, definitions, definitionsSource = '') {
@@ -349,57 +239,7 @@ function toPublicManifest(manifest) {
 }
 
 export async function scanProjectPackages(projectsRoot, { cache } = {}) {
-  const root = path.resolve(projectsRoot);
-  if (cache?.has(root)) return cache.get(root);
-  const projects = [];
-  const invalidProjects = [];
-  const entries = await fs.readdir(root, { withFileTypes: true }).catch((error) => {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  });
-
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    if (!entry.isDirectory()) continue;
-    const projectRoot = path.join(root, entry.name);
-    const manifestPath = path.join(projectRoot, 'project.json');
-    try {
-      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-      const errors = validateProjectManifest(manifest, entry.name, projectRoot);
-      const definitionsPath = path.resolve(projectRoot, manifest.pageDefinitions || '');
-      if (!errors.length) {
-        const definitionsExists = await fileExists(definitionsPath);
-        if (!definitionsExists) errors.push(`找不到页面定义文件：${manifest.pageDefinitions}。`);
-        else {
-          const definitionsSource = await fs.readFile(definitionsPath, 'utf8');
-          const definitionsUrl = pathToFileURL(definitionsPath);
-          definitionsUrl.searchParams.set('projectScan', `${Date.now()}-${entry.name}`);
-          const definitionsModule = await import(definitionsUrl.href);
-          errors.push(
-            ...(await validateProjectDefinitions(
-              manifest,
-              projectRoot,
-              definitionsModule.clientPageDefinitions || definitionsModule.default,
-              definitionsSource,
-            )),
-          );
-          errors.push(...(await validateProjectResources(manifest, projectRoot)));
-        }
-      }
-      if (errors.length) {
-        invalidProjects.push({
-          folder: entry.name,
-          project: toPublicManifest(manifest),
-          errors,
-        });
-      } else projects.push({ ...toPublicManifest(manifest), folder: entry.name });
-    } catch (error) {
-      invalidProjects.push({ folder: entry.name, errors: [`project.json 读取失败：${error.message}`] });
-    }
-  }
-
-  const result = { generatedAt: new Date().toISOString(), projects, invalidProjects };
-  cache?.set(root, result);
-  return result;
+  return scanProjectPackagesCore(projectsRoot, { cache });
 }
 
 async function walkPublicFiles(projectRoot) {
@@ -494,37 +334,11 @@ function readJsonBody(req) {
 }
 
 function normalizePrdBindingsPayload(projectId, payload) {
-  const bindings = Array.isArray(payload?.bindings) ? payload.bindings.slice(0, 1000) : [];
-  return {
-    schemaVersion: 1,
-    projectId,
-    bindings: bindings.filter((binding) => binding?.pagePath && binding?.target && binding?.prd),
-  };
+  return normalizePrdBindings(projectId, payload);
 }
 
 function normalizePagePrdLinksPayload(projectId, payload) {
-  const source = payload?.links && typeof payload.links === 'object' ? payload.links : {};
-  const links = {};
-
-  for (const [clientId, pages] of Object.entries(source)) {
-    if (!PROJECT_ID_PATTERN.test(clientId) || !pages || typeof pages !== 'object') continue;
-    for (const [pageName, value] of Object.entries(pages)) {
-      if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(pageName)) continue;
-      if (value === null || value === '') {
-        links[clientId] ||= {};
-        links[clientId][pageName] = null;
-        continue;
-      }
-      const documentPath = typeof value === 'string' ? value.trim() : String(value?.path || '').trim();
-      if (!documentPath || !isSafeRelativePath(documentPath) || !/\.md$/i.test(documentPath)) {
-        throw new Error(`页面 ${clientId}/${pageName} 的 PRD 路径无效。`);
-      }
-      links[clientId] ||= {};
-      links[clientId][pageName] = documentPath;
-    }
-  }
-
-  return { schemaVersion: 1, projectId, links };
+  return normalizePagePrdLinks(projectId, payload);
 }
 
 async function readPagePrdLinksFile(projectRoot, projectId) {

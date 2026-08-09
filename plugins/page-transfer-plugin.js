@@ -8,6 +8,7 @@ import vuePlugin from '@vitejs/plugin-vue';
 import prettier from 'prettier';
 import { build as viteBuild } from 'vite';
 
+import { normalizeRouteOrder, orderClientRouteData } from '../packages/project-core/src/route-order.js';
 import { scanHtmlPrototypePages } from './html-prototype-plugin.js';
 import { extractEmbeddedScript, isSupportedPlatformExportFormat } from './platform-export-format.js';
 
@@ -651,7 +652,10 @@ function replaceSectionDefinitions(source, clientId, updates) {
 function reorderSectionDefinitions(source, clientId, sections) {
   const range = findClientArrayRange(source, clientId, 'sections');
   const itemsById = new Map(
-    splitTopLevelArrayItems(source, range).map((item) => [readDefinitionProperty(item.source, 'id'), item.source]),
+    splitTopLevelArrayItems(source, range).map((item) => [
+      readDefinitionProperty(item.source, 'id'),
+      item.source,
+    ]),
   );
   const content = sections
     .map((section) => {
@@ -880,80 +884,6 @@ async function writeRouteOrderConfig(projectPackage, clientId, clientConfig) {
   await fsp.mkdir(path.dirname(configPath), { recursive: true });
   await fsp.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   return config;
-}
-
-function pageOrderKey(page) {
-  return page?.name || page?.path || '';
-}
-
-function orderClientRouteData(sections, pages, clientConfig = {}) {
-  const configuredSectionOrder = Array.isArray(clientConfig.sectionOrder)
-    ? clientConfig.sectionOrder.map((id) => String(id))
-    : [];
-  const originalSections = sections.map((section, index) => ({ section, index }));
-  const sectionRanks = new Map(configuredSectionOrder.map((id, index) => [id, index]));
-  const orderedSections = originalSections
-    .sort((left, right) => {
-      const leftRank = sectionRanks.has(left.section.id)
-        ? sectionRanks.get(left.section.id)
-        : Number.MAX_SAFE_INTEGER;
-      const rightRank = sectionRanks.has(right.section.id)
-        ? sectionRanks.get(right.section.id)
-        : Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || left.index - right.index;
-    })
-    .map(({ section }) => section);
-  const orderedSectionRanks = new Map(orderedSections.map((section, index) => [section.id, index]));
-  const pageOrders = clientConfig.pageOrder || {};
-  const originalPages = pages.map((page, index) => ({ page, index }));
-  const orderedPages = originalPages
-    .sort((left, right) => {
-      const leftSectionRank = orderedSectionRanks.has(left.page.section)
-        ? orderedSectionRanks.get(left.page.section)
-        : Number.MAX_SAFE_INTEGER;
-      const rightSectionRank = orderedSectionRanks.has(right.page.section)
-        ? orderedSectionRanks.get(right.page.section)
-        : Number.MAX_SAFE_INTEGER;
-      if (leftSectionRank !== rightSectionRank) return leftSectionRank - rightSectionRank;
-
-      const pageOrder = Array.isArray(pageOrders[left.page.section])
-        ? pageOrders[left.page.section]
-        : [];
-      const leftPageRank = pageOrder.indexOf(pageOrderKey(left.page));
-      const rightPageRank = pageOrder.indexOf(pageOrderKey(right.page));
-      const normalizedLeftRank = leftPageRank < 0 ? Number.MAX_SAFE_INTEGER : leftPageRank;
-      const normalizedRightRank = rightPageRank < 0 ? Number.MAX_SAFE_INTEGER : rightPageRank;
-      return normalizedLeftRank - normalizedRightRank || left.index - right.index;
-    })
-    .map(({ page }) => page);
-  return { sections: orderedSections, pages: orderedPages };
-}
-
-function normalizeRouteOrder({ sections, pages, sectionOrder, pageOrder }) {
-  const validSectionIds = sections.map((section) => section.id);
-  const requestedSections = Array.isArray(sectionOrder)
-    ? sectionOrder.map((id) => String(id)).filter((id) => validSectionIds.includes(id))
-    : [];
-  const normalizedSectionOrder = [...new Set([...requestedSections, ...validSectionIds])];
-  const pageOrderBySection = {};
-
-  for (const section of sections) {
-    const validPageNames = pages
-      .filter((page) => page.section === section.id)
-      .map(pageOrderKey)
-      .filter(Boolean);
-    const requestedPages = Array.isArray(pageOrder?.[section.id])
-      ? pageOrder[section.id].map((name) => String(name)).filter((name) => validPageNames.includes(name))
-      : [];
-    pageOrderBySection[section.id] = [
-      ...new Set([...requestedPages, ...validPageNames]),
-    ];
-  }
-
-  return {
-    sectionOrder: normalizedSectionOrder,
-    pageOrder: pageOrderBySection,
-  };
 }
 
 async function htmlPagesForProject(projectRoot, projectId) {

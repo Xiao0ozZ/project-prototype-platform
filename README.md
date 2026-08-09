@@ -35,6 +35,7 @@
 ```text
 项目资料原型工程/
 ├─ plugins/                    项目发现、PRD、导入导出及构建插件
+├─ packages/project-core/      项目包 Schema、扫描、校验、文档和关联领域核心
 ├─ projects/                   本地可插拔项目包目录（已加入 Git 忽略，不提交到本仓库）
 ├─ scripts/                    页面迁移和多语言审计脚本
 ├─ templates/                  新页面及可迁移 HTML 原型模板
@@ -50,6 +51,7 @@
 │  ├─ styles/                 设计变量、全局样式与 Tailwind 入口
 │  └─ views/                  首页、登录、文档、工具和错误页等平台页面
 ├─ COMPONENT_GUIDE.md          公共组件、Composables 和新增页面使用规范
+├─ ARCHITECTURE.md             工程分层、轻量外壳边界和后续拆分顺序
 ├─ HTML_PROTOTYPE_CREATION_PROMPT.md 需求阶段可迁移 HTML 原型创建提示词
 ├─ MIGRATION_GUIDE.md          HTML 原型迁移到本工程的执行规范
 ├─ PAGE_TRANSFER_GUIDE.md      HTML 原型导入与 Vue 页面演示包导出说明
@@ -92,6 +94,8 @@ npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
 ```powershell
 npm run dev                 # 本机开发预览，默认 127.0.0.1:5188
 npm run dev:lan             # 局域网预览，默认 0.0.0.0:5188
+npm run project -- help     # 查看项目包 CLI
+npm run project:validate    # 使用共享核心校验项目包
 npm run build               # 生产构建
 npm run audit:projects      # 项目包配置、页面、资源和文档完整性检查
 npm run audit:views         # 全页面迁移、路由、外壳、弹窗及 SFC 审计

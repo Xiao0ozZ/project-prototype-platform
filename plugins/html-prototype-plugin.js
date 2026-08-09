@@ -3,6 +3,14 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+  fileExists,
+  isInsideRoot,
+  normalizePrototypeSources,
+  toWebPath,
+  walkFiles as walkCoreFiles,
+} from '../packages/project-core/src/index.js';
+
+import {
   isHtmlPrototypeContentSource,
   isSupportedPlatformExportFormat,
   readPlatformExportManifest,
@@ -36,28 +44,12 @@ const PUBLIC_EXTENSIONS = new Set([
 const VIRTUAL_MODULE_ID = 'virtual:project-html-pages';
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
-function toWebPath(filePath) {
-  return filePath.split(path.sep).join('/');
-}
-
 function decodePathSegment(value) {
   try {
     return decodeURIComponent(value);
   } catch {
     return '';
   }
-}
-
-function isInsideRoot(root, target) {
-  const relative = path.relative(root, target);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
-function isDirectory(filePath) {
-  return fs
-    .stat(filePath)
-    .then((stats) => stats.isDirectory())
-    .catch(() => false);
 }
 
 function decodeHtmlEntities(value) {
@@ -133,25 +125,7 @@ function routePathFromPlatformExportManifest(manifest) {
 }
 
 async function walkFiles(root) {
-  const files = [];
-  async function walk(directory) {
-    const entries = await fs.readdir(directory, { withFileTypes: true }).catch((error) => {
-      if (error.code === 'ENOENT') return [];
-      throw error;
-    });
-    for (const entry of entries.sort((left, right) =>
-      left.name.localeCompare(right.name, 'zh-Hans-CN', { numeric: true }),
-    )) {
-      if (['node_modules', 'dist', 'exports'].includes(entry.name)) continue;
-      const absolutePath = path.join(directory, entry.name);
-      if (entry.isDirectory()) await walk(absolutePath);
-      else if (entry.isFile() && PUBLIC_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-        files.push(absolutePath);
-      }
-    }
-  }
-  await walk(root);
-  return files;
+  return walkCoreFiles(root, { extensions: PUBLIC_EXTENSIONS });
 }
 
 async function readProjectDefinition(projectRoot, manifest) {
@@ -187,40 +161,6 @@ function resolveClientId({ prototype, sourceClientId = '', manifestClientId = ''
   return '';
 }
 
-function normalizePrototypeSources(prototype = {}) {
-  const configuredClients = prototype.clients;
-  const entries = Array.isArray(configuredClients)
-    ? configuredClients.map((item) => [item?.clientId || item?.id, item])
-    : configuredClients && typeof configuredClients === 'object'
-      ? Object.entries(configuredClients)
-      : [];
-
-  if (entries.length) {
-    return entries
-      .map(([clientId, item]) => ({
-        clientId: String(item?.clientId || clientId || '').trim(),
-        root: String(item?.root || '').trim(),
-        section: String(item?.section || '').trim(),
-        icon: String(item?.icon || '').trim(),
-        shellMode: item?.shellMode === 'full' ? 'full' : 'auto',
-        enabled: item?.enabled !== false,
-      }))
-      .filter((item) => item.enabled && item.root);
-  }
-
-  if (!prototype.enabled || !prototype.root) return [];
-  return [
-    {
-      clientId: String(prototype.client || '').trim(),
-      root: String(prototype.root).trim(),
-      section: String(prototype.section || '').trim(),
-      icon: String(prototype.icon || '').trim(),
-      shellMode: prototype.shellMode === 'full' ? 'full' : 'auto',
-      enabled: true,
-    },
-  ];
-}
-
 function resolveSourceRelativePath(relativePath, clientId, clients) {
   const segments = relativePath.split('/').filter(Boolean);
   const firstSegment = segments[0] || '';
@@ -250,7 +190,7 @@ async function readProjectManifests(projectsRoot) {
       const sources = [];
       for (const source of normalizePrototypeSources(manifest.prototype)) {
         const prototypeRoot = path.resolve(projectRoot, source.root);
-        if (await isDirectory(prototypeRoot)) sources.push({ ...source, prototypeRoot });
+        if (await fileExists(prototypeRoot, 'directory')) sources.push({ ...source, prototypeRoot });
       }
       if (!sources.length) continue;
       manifests.push({ projectId: entry.name, projectRoot, manifest, sources });

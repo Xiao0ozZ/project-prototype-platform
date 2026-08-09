@@ -32,8 +32,11 @@ projects/{project-id}/
 可复制 `templates/project-package` 作为新项目起点。复制后先修改项目 ID 和配置，再执行：
 
 ```powershell
-npm run audit:projects
+npm run project -- init --id sample-project --name "示例项目"
+npm run project -- validate
 ```
+
+项目包机器可读契约位于 `packages/project-core/schemas`。`project.schema.json` 描述基础字段，运行时校验还会检查客户端与入口引用、默认页面、项目资源和外部 HTML/PRD 目录是否存在。
 
 ## 3. project.json
 
