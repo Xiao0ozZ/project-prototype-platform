@@ -162,7 +162,18 @@ npm run generate:page -- --project sample-project --client admin --path example-
 - 导出时只展示所选项目的页面，输出目录按项目隔离。
 - 单页输出独立 HTML，多页输出 ZIP；导出包不包含其他项目页面。
 
-## 9. 校验与边界
+## 10. AI 交付上下文
+
+“AI 上下文中心”只读取项目包现有配置和项目内容，不要求项目包增加新的必填文件：
+
+- 页面来源：`project.json`、`page-definitions.js` 和按客户端扫描得到的 HTML 直读页面。
+- 需求来源：`docs.root` 下的 Markdown，只读。
+- 页面级关联：`.platform/page-prd-links.json`，兼容历史 `page-prd-links.js`。
+- 组件级关联：`.platform/prd-bindings.json`。
+
+系统会生成页面覆盖率、失效关联、待确认关联建议和 PRD 变化影响。关联建议只有用户确认后才更新页面级关联配置；影响分析基线保存在当前浏览器，不写入项目包。导出的 JSON 上下文包是派生资料，可以交给 AI 或自动化工具使用，但不能替代项目包和 PRD 原文件作为事实来源。
+
+## 11. 校验与边界
 
 `npm run audit:projects` 会检查：
 

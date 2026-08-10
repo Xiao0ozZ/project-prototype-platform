@@ -796,9 +796,7 @@
           <!-- [AI-EDIT] SHELL_NAV_START: 默认只更新菜单文案和当前项状态；确认目标文件存在后再使用链接。 -->
           <div class="prototype-menu-group">核心工作区</div>
           <div class="prototype-menu-item" aria-disabled="true">
-            <el-icon class="prototype-menu-icon" aria-hidden="true"
-              ><component :is="Platform"></component
-            ></el-icon>
+            <span class="prototype-menu-icon" data-prototype-menu-icon="Platform" aria-hidden="true"></span>
             <span>工作台首页</span>
           </div>
           <div class="prototype-menu-group">业务管理</div>
@@ -808,15 +806,11 @@
             aria-current="page"
             aria-disabled="true"
           >
-            <el-icon class="prototype-menu-icon" aria-hidden="true"
-              ><component :is="Document"></component
-            ></el-icon>
+            <span class="prototype-menu-icon" data-prototype-menu-icon="Document" aria-hidden="true"></span>
             <span>资料管理</span>
           </div>
           <div class="prototype-menu-item" aria-disabled="true">
-            <el-icon class="prototype-menu-icon" aria-hidden="true"
-              ><component :is="Setting"></component
-            ></el-icon>
+            <span class="prototype-menu-icon" data-prototype-menu-icon="Setting" aria-hidden="true"></span>
             <span>业务配置</span>
           </div>
           <!-- SHELL_NAV_END -->
@@ -1189,6 +1183,28 @@
     <script src="https://unpkg.com/element-plus@2.8.0/dist/index.full.min.js"></script>
     <script src="https://unpkg.com/element-plus@2.8.0/dist/locale/zh-cn"></script>
     <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+    <script data-prototype-menu-icon-renderer>
+      (() => {
+        const renderMenuIcons = () => {
+          if (!window.Vue || !window.ElementPlusIconsVue) return;
+          document.querySelectorAll('[data-prototype-menu-icon]').forEach((host) => {
+            if (host.dataset.prototypeMenuIconReady === 'true') return;
+            const iconName = host.getAttribute('data-prototype-menu-icon') || 'Document';
+            const icon = window.ElementPlusIconsVue[iconName] || window.ElementPlusIconsVue.Document;
+            if (!icon) return;
+            window.Vue.render(window.Vue.h(icon), host);
+            host.dataset.prototypeMenuIconReady = 'true';
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(renderMenuIcons), {
+            once: true,
+          });
+        } else {
+          requestAnimationFrame(renderMenuIcons);
+        }
+      })();
+    </script>
     <!-- PROTOTYPE_SCRIPT_DEPENDENCIES_END -->
 
     <script data-page-script>

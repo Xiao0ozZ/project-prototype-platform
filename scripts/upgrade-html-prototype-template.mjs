@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'node-html-parser';
 import postcss from 'postcss';
 
+import { applyMenuIcons, PROTOTYPE_MENU_ICON_RENDERER } from './html-prototype-menu-icons.mjs';
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..');
 const DEFAULT_TEMPLATE = path.join(PROJECT_ROOT, 'templates', 'html-prototype-page.html');
@@ -17,6 +19,7 @@ const FIXED_SCRIPT_DEPENDENCIES = [
   '<script src="https://unpkg.com/element-plus@2.8.0/dist/index.full.min.js"></script>',
   '<script src="https://unpkg.com/element-plus@2.8.0/dist/locale/zh-cn"></script>',
   '<script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>',
+  PROTOTYPE_MENU_ICON_RENDERER,
 ];
 const SHELL_SELECTOR_PATTERN =
   /(?:^|[\s>+~,(])(?:html|body|#app|\*|\.prototype-(?:app|sidebar|brand|menu(?:-group|-item|-icon)?|workspace|topbar|breadcrumb|user|avatar|main)|\[v-cloak\])(?:$|[\s>+~.#:[,)])/u;
@@ -378,18 +381,32 @@ function dependencyReference(markup) {
   return String(markup || '').match(/\b(?:href|src)=["']([^"']+)["']/iu)?.[1] || String(markup || '').trim();
 }
 
-function repairCurrentManifest(source) {
+function repairCurrentManifest(source, menuIconByFile) {
   const manifest = extractManifest(source);
   const dependencies = Array.isArray(manifest.dependencies)
     ? [...new Set(manifest.dependencies.map(dependencyReference).filter(Boolean))]
     : [];
   const nextManifest = { ...manifest, dependencies };
-  const output = replaceHtmlRegion(
+  let output = replaceHtmlRegion(
     source,
     'PAGE_MANIFEST_START',
     'PAGE_MANIFEST_END',
     `<script id="prototype-page-manifest" type="application/json">\n${JSON.stringify(nextManifest, null, 2)}\n    </script>`,
   );
+  if (!output.includes('data-prototype-menu-icon-renderer')) {
+    const dependencies = extractHtmlRegion(
+      output,
+      'PROTOTYPE_SCRIPT_DEPENDENCIES_START',
+      'PROTOTYPE_SCRIPT_DEPENDENCIES_END',
+    );
+    output = replaceHtmlRegion(
+      output,
+      'PROTOTYPE_SCRIPT_DEPENDENCIES_START',
+      'PROTOTYPE_SCRIPT_DEPENDENCIES_END',
+      `${dependencies}\n${PROTOTYPE_MENU_ICON_RENDERER}`,
+    );
+  }
+  output = applyMenuIcons(output, menuIconByFile);
   return { output, manifest: nextManifest };
 }
 
@@ -620,6 +637,13 @@ function validateOutput({ output, root, theme, expectedMenu }) {
     errors.push('data-business-content 不唯一');
   }
   if (document.querySelectorAll('[data-page-overlay]').length !== 1) errors.push('data-page-overlay 不唯一');
+  const menuItems = document.querySelectorAll('.prototype-sidebar .prototype-menu-item');
+  if (menuItems.some((item) => !item.querySelector('[data-prototype-menu-icon]'))) {
+    errors.push('侧栏菜单存在缺失图标的项目');
+  }
+  if (menuItems.length && !document.querySelector('[data-prototype-menu-icon-renderer]')) {
+    errors.push('页面缺少菜单图标 CDN 渲染器');
+  }
   if (JSON.stringify(expectedMenu) !== JSON.stringify(menuContract(output))) {
     errors.push('菜单分组、顺序、文案、链接或当前项发生变化');
   }
@@ -656,6 +680,12 @@ async function main() {
         source: await fs.readFile(path.join(root, fileName), 'utf8'),
       })),
   );
+  const menuIconByFile = new Map(
+    sourceEntries.map(({ fileName, source }) => {
+      const manifest = extractManifest(source);
+      return [fileName.toLowerCase(), manifest.menuIcon || 'Document'];
+    }),
+  );
   const canonicalShell = selectCanonicalMenu(
     sourceEntries.map((entry) => entry.source),
     fallbackProjectName,
@@ -673,7 +703,7 @@ async function main() {
     if (!source) throw new Error(`无法读取 ${fileName}。`);
     if (source.includes('PROTOTYPE_AI_PROTOCOL_START') && source.includes('THEME_TOKENS_START')) {
       try {
-        const repaired = repairCurrentManifest(source);
+        const repaired = repairCurrentManifest(source, menuIconByFile);
         const changed = repaired.output !== source;
         const errors = validateOutput({
           output: repaired.output,

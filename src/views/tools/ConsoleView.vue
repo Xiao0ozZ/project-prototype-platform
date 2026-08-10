@@ -1,6 +1,14 @@
 <script setup>
 import { computed, onMounted } from 'vue';
-import { ArrowLeft, ArrowRight, FolderOpened, Menu, SetUp, Upload } from '@element-plus/icons-vue';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Connection,
+  FolderOpened,
+  Menu,
+  SetUp,
+  Upload,
+} from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 
 import {
@@ -48,6 +56,12 @@ const tools = [
     description: '维护项目页面、菜单分组和页面备份。',
     to: '/tools/project-routes',
     icon: Menu,
+  },
+  {
+    title: 'AI 上下文中心',
+    description: '检查页面与 PRD 关联，并导出机器可读的交付上下文。',
+    to: '/tools/ai-context',
+    icon: Connection,
   },
 ];
 </script>

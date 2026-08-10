@@ -177,7 +177,14 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item v-if="hasPlatformLogin" @click="logout">
+                <el-dropdown-item v-if="developerMode && !exportConfig" @click="openAiPageContext">
+                  AI 页面上下文
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="hasPlatformLogin"
+                  :divided="developerMode && !exportConfig"
+                  @click="logout"
+                >
                   {{ t('common.logout') }}
                 </el-dropdown-item>
                 <el-dropdown-item :divided="hasPlatformLogin" @click="goHome">回到首页</el-dropdown-item>
@@ -449,6 +456,15 @@ function logout() {
 
 function goHome() {
   router.push({ name: 'home' });
+}
+
+function openAiPageContext() {
+  if (typeof window === 'undefined' || exportConfig) return;
+  const target = router.resolve({
+    name: 'ai-context',
+    query: { project: props.projectId, page: route.path },
+  });
+  window.open(target.href, '_blank', 'noopener,noreferrer');
 }
 
 async function setDeveloperMode(enabled) {

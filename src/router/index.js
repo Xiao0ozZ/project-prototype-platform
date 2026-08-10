@@ -146,79 +146,79 @@ const routes = [
     path: '/variant-a',
     name: 'variant-a',
     component: () => import('../views/home-variants/HomeViewAppleGlass.vue'),
-    meta: { title: '方案 A：苹果液体玻璃', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-b',
     name: 'variant-b',
     component: () => import('../views/home-variants/HomeViewStageHub.vue'),
-    meta: { title: '方案 B：全屏展台舞台', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-c',
     name: 'variant-c',
     component: () => import('../views/home-variants/HomeViewSplitAccordion.vue'),
-    meta: { title: '方案 C：全屏双分屏手风琴', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-d',
     name: 'variant-d',
     component: () => import('../views/home-variants/HomeViewAlabasterGallery.vue'),
-    meta: { title: '方案 D：羊脂白艺术画廊', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-e',
     name: 'variant-e',
     component: () => import('../views/home-variants/HomeViewOrbitalCompass.vue'),
-    meta: { title: '方案 E：3D 环形星轨罗盘', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-f',
     name: 'variant-f',
     component: () => import('../views/home-variants/HomeViewParallaxTheater.vue'),
-    meta: { title: '方案 F：3D 视差胶囊巨幕', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-g',
     name: 'variant-g',
     component: () => import('../views/home-variants/HomeViewInterstellarWarp.vue'),
-    meta: { title: '方案 G：星际穿越', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-h',
     name: 'variant-h',
     component: () => import('../views/home-variants/HomeViewBlackHoleGravity.vue'),
-    meta: { title: '方案 H：黑洞引力场', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-i',
     name: 'variant-i',
     component: () => import('../views/home-variants/HomeViewQuantumCube.vue'),
-    meta: { title: '方案 I：3D 量子赛博魔方', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-j',
     name: 'variant-j',
     component: () => import('../views/home-variants/HomeViewYinYangOrbit.vue'),
-    meta: { title: '方案 J：太极双轨矩阵', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-k',
     name: 'variant-k',
     component: () => import('../views/home-variants/HomeViewCyberCockpit.vue'),
-    meta: { title: '方案 K：3D 赛博驾驶舱', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/variant-v',
     name: 'variant-v',
     component: () => import('../views/home-variants/HomeViewAppleVisionOS.vue'),
-    meta: { title: '方案 V：Apple VisionOS 空间计算', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
   {
     path: '/home-legacy',
     name: 'home-legacy',
     component: () => import('../views/HomeViewLegacy.vue'),
-    meta: { title: '旧版平台主页', transition: 'platform' },
+    meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
 
   {
@@ -246,6 +246,12 @@ const routes = [
     name: 'page-transfer',
     component: () => import('../views/tools/PageTransferView.vue'),
     meta: { title: '页面导入与导出', transition: 'platform', theme: 'platform' },
+  },
+  {
+    path: '/tools/ai-context',
+    name: 'ai-context',
+    component: () => import('../views/tools/AiContextView.vue'),
+    meta: { title: 'AI 上下文中心', transition: 'platform', theme: 'platform' },
   },
   {
     path: '/components',
@@ -297,7 +303,9 @@ router.afterEach((to) => {
   const queryProjectId = typeof to.query.project === 'string' ? to.query.project : '';
   const project = getProject(to.meta.projectId || queryProjectId);
   applyProjectTheme(to.meta.theme === 'platform' ? null : project);
-  document.title = `${to.meta.title || projectConfig.platformTitle} - ${project?.name || projectConfig.name}`;
+  const pageTitle = to.meta.title || projectConfig.platformTitle;
+  const scopeTitle = project?.name || projectConfig.name;
+  document.title = pageTitle === scopeTitle ? pageTitle : `${pageTitle} - ${scopeTitle}`;
 });
 
 export default router;

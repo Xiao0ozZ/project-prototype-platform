@@ -1,4 +1,5 @@
 export * from './bindings.js';
+export * from './ai-context.js';
 export * from './constants.js';
 export * from './documents.js';
 export * from './filesystem.js';

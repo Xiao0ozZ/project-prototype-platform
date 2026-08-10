@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parse } from 'node-html-parser';
 
+import { createMenuIconMarkup, PROTOTYPE_MENU_ICON_RENDERER } from './html-prototype-menu-icons.mjs';
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..');
 const SOURCE_ROOT = path.resolve(PROJECT_ROOT, '..', 'RIMORental', '02_原型和PRD', '原型');
@@ -387,7 +389,7 @@ function createShell({ client, title, activeFile, pages, isLogin, isLegacyDom })
         .filter((page) => (page.section || 'workspace') === section)
         .map(
           (page) =>
-            `<a class="prototype-menu-item${page.fileName === activeFile ? ' is-active' : ''}" href="./${escapeHtmlAttribute(page.fileName)}"${page.fileName === activeFile ? ' aria-current="page"' : ''}>${escapeHtmlAttribute(page.title)}</a>`,
+            `<a class="prototype-menu-item${page.fileName === activeFile ? ' is-active' : ''}" href="./${escapeHtmlAttribute(page.fileName)}"${page.fileName === activeFile ? ' aria-current="page"' : ''}>${createMenuIconMarkup(page.icon)}<span>${escapeHtmlAttribute(page.title)}</span></a>`,
         )
         .join('\n');
       return `<div class="prototype-menu-group">${escapeHtmlAttribute(sectionTitle)}</div>\n${items}`;
@@ -561,6 +563,7 @@ ${contentBlock}
     <script src="https://unpkg.com/element-plus@2.8.0/dist/index.full.min.js"></script>
     <script src="https://unpkg.com/element-plus@2.8.0/dist/locale/zh-cn"></script>
     <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+    ${PROTOTYPE_MENU_ICON_RENDERER}
 ${dependencies.earlyScripts.join('\n')}
     <!-- PROTOTYPE_DEPENDENCIES_END -->
 
@@ -727,6 +730,7 @@ async function main() {
       pageMetas.push({
         fileName: path.basename(sourcePath),
         title: page?.title || meta.title,
+        icon: page?.icon || 'Document',
         section: page?.section || 'workspace',
         sectionTitle:
           definitions[client.id]?.sections?.find((section) => section.id === page?.section)?.title ||
