@@ -9,6 +9,7 @@ import prettier from 'prettier';
 import { build as viteBuild } from 'vite';
 
 import { normalizeRouteOrder, orderClientRouteData } from '../packages/project-core/src/route-order.js';
+import { inspectHtmlPrototype } from '../packages/project-core/src/html-preflight.js';
 import { scanHtmlPrototypePages } from './html-prototype-plugin.js';
 import { extractEmbeddedScript, isSupportedPlatformExportFormat } from './platform-export-format.js';
 
@@ -304,6 +305,16 @@ export function inspectHtml(source) {
 
   validatePageManifest(manifest, errors);
 
+  const preflight = inspectHtmlPrototype(source, {
+    requireDocument: /<!doctype\s+html|<html\b/iu.test(source),
+  });
+  for (const item of preflight.errors) {
+    if (!errors.some((message) => message.includes(item.message))) errors.push(item.message);
+  }
+  for (const item of preflight.warnings.filter((warning) => warning.code !== 'external-resources')) {
+    if (!warnings.some((message) => message.includes(item.message))) warnings.push(item.message);
+  }
+
   const dialogs = (overlays.match(/<el-dialog\b/gi) || []).length;
   const drawers = (overlays.match(/<el-drawer\b/gi) || []).length;
 
@@ -329,27 +340,40 @@ function convertLogicToVueScript(source, scriptMode = 'composition-api') {
   const vueImports = new Set();
   const elementImports = new Set();
   const iconImports = new Set();
+  const vueNames = new Set();
+  const elementNames = new Set();
+  const iconNames = new Set();
+  const directIconNames = new Set();
 
   logic = logic.replace(/const\s*\{([\s\S]*?)\}\s*=\s*Vue\s*;?/g, (_match, names) => {
     names
       .split(',')
       .map((name) => name.trim().split(/\s+as\s+/)[0])
       .filter(Boolean)
-      .forEach((name) => vueImports.add(name));
+      .forEach((name) => vueNames.add(name));
     return '';
   });
 
-  logic = logic.replace(/const\s*\{([\s\S]*?)\}\s*=\s*ElementPlus\s*;?/g, (_match, names) => {
+  logic = logic.replace(/const\s*\{([\s\S]*?)\}\s*=\s*ElementPlusIconsVue\s*;?/g, (_match, names) => {
     names
       .split(',')
       .map((name) => name.trim().split(/\s+as\s+/)[0])
       .filter(Boolean)
-      .forEach((name) => elementImports.add(name));
+      .forEach((name) => iconNames.add(name));
+    return '';
+  });
+
+  logic = logic.replace(/const\s*\{([\s\S]*?)\}\s*=\s*ElementPlus(?!IconsVue)\b\s*;?/g, (_match, names) => {
+    names
+      .split(',')
+      .map((name) => name.trim().split(/\s+as\s+/)[0])
+      .filter(Boolean)
+      .forEach((name) => elementNames.add(name));
     return '';
   });
 
   logic = logic.replace(/ElementPlusIconsVue\.([A-Za-z0-9_]+)/g, (_match, name) => {
-    iconImports.add(name);
+    directIconNames.add(name);
     return name;
   });
 
@@ -363,6 +387,24 @@ function convertLogicToVueScript(source, scriptMode = 'composition-api') {
     logic = logic.replaceAll('Vue.nextTick', 'nextTick');
   }
 
+  // Names in string literals (for example icon="Refresh" or a status value
+  // like "Refresh") are resolved by the template/global icon registry and
+  // must not become JavaScript imports. Comments are not references either.
+  const referenceSource = maskJavaScriptNonCode(logic);
+  const isReferenced = (name) => new RegExp(`\\b${escapeRegExp(name)}\\b`).test(referenceSource);
+  vueNames.forEach((name) => {
+    if (isReferenced(name)) vueImports.add(name);
+  });
+  elementNames.forEach((name) => {
+    if (isReferenced(name)) elementImports.add(name);
+  });
+  iconNames.forEach((name) => {
+    if (isReferenced(name)) iconImports.add(name);
+  });
+  directIconNames.forEach((name) => {
+    if (isReferenced(name)) iconImports.add(name);
+  });
+
   const imports = [];
   if (vueImports.size) imports.push(`import { ${[...vueImports].join(', ')} } from 'vue';`);
   if (elementImports.size) imports.push(`import { ${[...elementImports].join(', ')} } from 'element-plus';`);
@@ -374,6 +416,70 @@ function convertLogicToVueScript(source, scriptMode = 'composition-api') {
       ? 'export default pageOptions;'
       : 'export default {\n  setup: pageSetup,\n};';
   return `${imports.join('\n')}\n\n${logic}\n\n${exportStatement}`;
+}
+
+function maskJavaScriptNonCode(source) {
+  const input = String(source || '');
+  const output = input.split('');
+  let state = 'code';
+  let quote = '';
+  let escaped = false;
+
+  const blank = (index) => {
+    if (output[index] !== '\n' && output[index] !== '\r') output[index] = ' ';
+  };
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    const next = input[index + 1];
+
+    if (state === 'line-comment') {
+      if (char === '\n' || char === '\r') state = 'code';
+      else blank(index);
+      continue;
+    }
+    if (state === 'block-comment') {
+      if (char === '*' && next === '/') {
+        blank(index);
+        blank(index + 1);
+        index += 1;
+        state = 'code';
+      } else {
+        blank(index);
+      }
+      continue;
+    }
+    if (state === 'string') {
+      if (char === '\\' && !escaped) {
+        blank(index);
+        escaped = true;
+        continue;
+      }
+      blank(index);
+      if (char === quote && !escaped) state = 'code';
+      escaped = false;
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      blank(index);
+      blank(index + 1);
+      index += 1;
+      state = 'line-comment';
+    } else if (char === '/' && next === '*') {
+      blank(index);
+      blank(index + 1);
+      index += 1;
+      state = 'block-comment';
+    } else if (char === '"' || char === "'" || char === '`') {
+      blank(index);
+      quote = char;
+      escaped = false;
+      state = 'string';
+    }
+  }
+
+  return output.join('');
 }
 
 async function loadDefinitions(definitionsPath) {
@@ -423,15 +529,136 @@ function parseRoutePath(manifest, requestedRoute) {
   return routePath;
 }
 
-export function buildVueSource(source, manifest) {
-  const content = cleanTemplateMarkup(
-    extractEditableBlock(source, '[AI-EDIT] PAGE_CONTENT_START', '<!-- PAGE_CONTENT_END -->'),
+function normalizeThemeHex(value) {
+  const match = String(value || '')
+    .trim()
+    .match(/^#([a-f\d]{6})$/i);
+  return match ? `#${match[1]}` : '';
+}
+
+function mixThemeHexWithWhite(value, whiteWeight) {
+  const normalized = normalizeThemeHex(value);
+  if (!normalized) return '';
+  const channels = normalized
+    .slice(1)
+    .match(/../g)
+    .map((channel) => Number.parseInt(channel, 16));
+  return `#${channels
+    .map((channel) =>
+      Math.round(channel + (255 - channel) * whiteWeight)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+function themeHexToRgbChannels(value) {
+  const normalized = normalizeThemeHex(value);
+  if (!normalized) return '';
+  return normalized
+    .slice(1)
+    .match(/../g)
+    .map((channel) => Number.parseInt(channel, 16))
+    .join(' ');
+}
+
+function readCssPropertyValue(source, property) {
+  const match = String(source || '').match(new RegExp(`${escapeRegExp(property)}\\s*:\\s*([^;{}]+)`, 'i'));
+  return match?.[1]?.trim() || '';
+}
+
+function extractThemeTokenStyle(source) {
+  const match = String(source || '').match(/<style\b[^>]*data-theme-tokens[^>]*>([\s\S]*?)<\/style>/i);
+  return match?.[1]?.trim() || '';
+}
+
+function replaceColorLiteral(source, original, replacement) {
+  const normalizedOriginal = normalizeThemeHex(original);
+  const normalizedReplacement = normalizeThemeHex(replacement);
+  if (!normalizedOriginal || !normalizedReplacement) return source;
+  return String(source || '').replace(
+    new RegExp(escapeRegExp(normalizedOriginal), 'gi'),
+    normalizedReplacement,
   );
-  const overlays = cleanTemplateMarkup(
-    extractEditableBlock(source, '[AI-EDIT] PAGE_OVERLAYS_START', '<!-- PAGE_OVERLAYS_END -->'),
+}
+
+function replaceCssPropertyValue(source, property, value) {
+  if (!value) return source;
+  return String(source || '').replace(
+    new RegExp(`(${escapeRegExp(property)}\\s*:\\s*)[^;{}]+`, 'gi'),
+    `$1${value}`,
   );
-  const logic = extractEditableBlock(source, '/* [AI-EDIT] PAGE_LOGIC_START', '/* PAGE_LOGIC_END */');
-  const style = extractPageStyle(source);
+}
+
+function applyProjectThemeToImportedBlocks(blocks, theme) {
+  const sourceTheme = `${blocks.themeTokens || ''}\n${blocks.style || ''}`;
+  const sourcePrimary = readCssPropertyValue(sourceTheme, '--app-color-primary') || '#00689E';
+  const sourceHover = readCssPropertyValue(sourceTheme, '--app-color-primary-hover');
+  const sourceActive = readCssPropertyValue(sourceTheme, '--app-color-primary-active');
+  const primary = normalizeThemeHex(theme?.primary);
+  if (!primary) return blocks;
+
+  const hover = normalizeThemeHex(theme.primaryHover) || primary;
+  const active = normalizeThemeHex(theme.primaryActive) || hover;
+  const lightColors = [
+    ['--app-color-primary-light-3', 0.3],
+    ['--app-color-primary-light-5', 0.5],
+    ['--app-color-primary-light-7', 0.7],
+    ['--app-color-primary-light-8', 0.8],
+    ['--app-color-primary-light-9', 0.9],
+  ].map(([property, whiteWeight]) => ({
+    property,
+    original: readCssPropertyValue(sourceTheme, property),
+    replacement: mixThemeHexWithWhite(primary, whiteWeight),
+  }));
+  const replacementPairs = [
+    [sourcePrimary, primary],
+    [sourceHover, hover],
+    [sourceActive, active],
+    ...lightColors.map(({ original, replacement }) => [original, replacement]),
+  ].filter(([original, replacement]) => normalizeThemeHex(original) && normalizeThemeHex(replacement));
+  const replaceBlockColors = (block) =>
+    replacementPairs.reduce(
+      (current, [original, replacement]) => replaceColorLiteral(current, original, replacement),
+      block,
+    );
+
+  let style = replaceBlockColors(sourceTheme);
+  style = replaceCssPropertyValue(style, '--app-color-primary', primary);
+  style = replaceCssPropertyValue(style, '--app-color-primary-hover', hover);
+  style = replaceCssPropertyValue(style, '--app-color-primary-active', active);
+  style = replaceCssPropertyValue(
+    style,
+    '--app-color-primary-shadow',
+    `rgb(${themeHexToRgbChannels(primary)} / 18%)`,
+  );
+  lightColors.forEach(({ property, replacement }) => {
+    style = replaceCssPropertyValue(style, property, replacement);
+  });
+
+  return {
+    content: replaceBlockColors(blocks.content),
+    overlays: replaceBlockColors(blocks.overlays),
+    logic: replaceBlockColors(blocks.logic),
+    style,
+  };
+}
+
+export function buildVueSource(source, manifest, theme = {}) {
+  const themedBlocks = applyProjectThemeToImportedBlocks(
+    {
+      content: extractEditableBlock(source, '[AI-EDIT] PAGE_CONTENT_START', '<!-- PAGE_CONTENT_END -->'),
+      overlays: extractEditableBlock(source, '[AI-EDIT] PAGE_OVERLAYS_START', '<!-- PAGE_OVERLAYS_END -->'),
+      logic: extractEditableBlock(source, '/* [AI-EDIT] PAGE_LOGIC_START', '/* PAGE_LOGIC_END */'),
+      style: extractPageStyle(source),
+      themeTokens: extractThemeTokenStyle(source),
+    },
+    theme,
+  );
+  const content = cleanTemplateMarkup(themedBlocks.content);
+  const overlays = cleanTemplateMarkup(themedBlocks.overlays);
+  const logic = themedBlocks.logic;
+  const style = themedBlocks.style;
   const scriptMode = manifest.scriptMode || 'composition-api';
 
   if (!content || !logic) throw new Error('页面内容或页面逻辑为空，无法生成 Vue 页面。');
@@ -886,8 +1113,10 @@ async function writeRouteOrderConfig(projectPackage, clientId, clientConfig) {
   return config;
 }
 
-async function htmlPagesForProject(projectRoot, projectId) {
-  const htmlPrototypeState = await scanHtmlPrototypePages(path.join(projectRoot, 'projects'));
+async function htmlPagesForProject(projectRoot, projectId, mounts = {}) {
+  const htmlPrototypeState = await scanHtmlPrototypePages(path.join(projectRoot, 'projects'), {
+    mounts,
+  });
   return htmlPrototypeState.projects[projectId] || {};
 }
 
@@ -897,9 +1126,9 @@ function clientRouteData(projectPackage, htmlPages, clientId, routeOrder) {
   return orderClientRouteData(definition?.sections || [], pages, routeOrder?.clients?.[clientId]);
 }
 
-export async function listProjectRoutes({ projectRoot, projectId }) {
+export async function listProjectRoutes({ projectRoot, projectId, mounts = {} }) {
   const projectPackage = await loadProjectPackage(projectRoot, projectId);
-  const htmlPages = await htmlPagesForProject(projectRoot, projectId);
+  const htmlPages = await htmlPagesForProject(projectRoot, projectId, mounts);
   const routeOrder = await readRouteOrderConfig(projectPackage);
   return {
     project: {
@@ -924,12 +1153,12 @@ export async function listProjectRoutes({ projectRoot, projectId }) {
   };
 }
 
-export async function updateProjectSections({ projectRoot, target }) {
+export async function updateProjectSections({ projectRoot, target, mounts = {} }) {
   const projectPackage = await loadProjectPackage(projectRoot, target.projectId);
   const client = String(target.client || '').trim();
   const clientDefinition = projectPackage.definitions[client];
   if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
-  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId);
+  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId, mounts);
   const allPages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
   const updates = Array.isArray(target.sections)
     ? target.sections.map((section) => ({
@@ -999,13 +1228,13 @@ export async function updateProjectSections({ projectRoot, target }) {
   return { backupId: backup.id, sections: updates, order: normalizedOrder, requiresReload: true };
 }
 
-export async function updateProjectRouteOrder({ projectRoot, target }) {
+export async function updateProjectRouteOrder({ projectRoot, target, mounts = {} }) {
   const projectPackage = await loadProjectPackage(projectRoot, target.projectId);
   const client = String(target.client || '').trim();
   const clientDefinition = projectPackage.definitions[client];
   if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
 
-  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId);
+  const htmlPages = await htmlPagesForProject(projectRoot, target.projectId, mounts);
   const pages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
   const currentConfig = await readRouteOrderConfig(projectPackage);
   const currentClientOrder = currentConfig.clients?.[client] || {};
@@ -1376,7 +1605,9 @@ export async function importPage({ projectRoot, source, target }) {
       ? replacePageDefinition(sourceDefinitions, client, originalPage.path, definition)
       : insertPageDefinition(sourceDefinitions, client, definition);
   const vueSource = await prettier.format(
-    inspection.roundTrip ? extractExportSource(source) : buildVueSource(source, manifest),
+    inspection.roundTrip
+      ? extractExportSource(source)
+      : buildVueSource(source, manifest, projectPackage.manifest.theme || {}),
     { parser: 'vue' },
   );
   const originalViewPath = originalPage
@@ -2496,6 +2727,7 @@ function resolveExportFile(projectRoot, requestPath) {
 
 export function pageTransferPlugin({
   projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+  loadMounts = async () => ({ projects: {} }),
 } = {}) {
   return {
     name: 'page-transfer',
@@ -2532,6 +2764,7 @@ export function pageTransferPlugin({
           const result = await listProjectRoutes({
             projectRoot,
             projectId: url.searchParams.get('projectId'),
+            mounts: await loadMounts(),
           });
           sendJson(res, 200, { ok: true, ...result });
         } catch (error) {
@@ -2568,7 +2801,11 @@ export function pageTransferPlugin({
         if (!requireLocalRequest(req, res)) return;
         try {
           const body = await readJsonBody(req);
-          const result = await updateProjectSections({ projectRoot, target: body });
+          const result = await updateProjectSections({
+            projectRoot,
+            target: body,
+            mounts: await loadMounts(),
+          });
           sendJson(res, 200, { ok: true, result });
         } catch (error) {
           sendJson(res, 400, { ok: false, error: error.message });
@@ -2580,7 +2817,11 @@ export function pageTransferPlugin({
         if (!requireLocalRequest(req, res)) return;
         try {
           const body = await readJsonBody(req);
-          const result = await updateProjectRouteOrder({ projectRoot, target: body });
+          const result = await updateProjectRouteOrder({
+            projectRoot,
+            target: body,
+            mounts: await loadMounts(),
+          });
           sendJson(res, 200, { ok: true, result });
         } catch (error) {
           sendJson(res, 400, { ok: false, error: error.message });

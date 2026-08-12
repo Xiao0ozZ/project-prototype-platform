@@ -37,6 +37,7 @@
 ├─ plugins/                    项目发现、PRD、导入导出及构建插件
 ├─ packages/project-core/      项目包 Schema、扫描、校验、文档和关联领域核心
 ├─ projects/                   本地可插拔项目包目录（已加入 Git 忽略，不提交到本仓库）
+├─ examples/                   可提交、脱敏、可运行的项目包样例
 ├─ scripts/                    页面迁移和多语言审计脚本
 ├─ templates/                  新页面及可迁移 HTML 原型模板
 ├─ tests/                      路由冒烟、关键交互及视觉截图基线
@@ -95,7 +96,10 @@ npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
 npm run dev                 # 本机开发预览，默认 127.0.0.1:5188
 npm run dev:lan             # 局域网预览，默认 0.0.0.0:5188
 npm run project -- help     # 查看项目包 CLI
+npm run project:example     # 将脱敏样例安装到本地 projects/sample-project
 npm run project:validate    # 使用共享核心校验项目包
+npm run project:health      # 检查项目、HTML 和需求关联健康状态
+npm run quality:core        # 只检查可提交的平台底座与样例，不读取 projects 业务源码
 npm run build               # 生产构建
 npm run audit:projects      # 项目包配置、页面、资源和文档完整性检查
 npm run audit:views         # 全页面迁移、路由、外壳、弹窗及 SFC 审计
@@ -109,6 +113,19 @@ npm run test:visual         # 关键页面视觉基线比较
 npm run test:ui             # 执行全部 Playwright 测试
 npm run test:unit           # 公共组件单元测试
 ```
+
+项目包、HTML 和 PRD 的日常维护命令：
+
+```powershell
+npm run project -- preflight --file D:\prototypes\page.html
+npm run project -- mount --project sample --docs D:\product\docs --prototype admin=D:\product\html
+npm run project -- mounts
+npm run project -- snapshot --project sample
+npm run project -- trace --project sample
+npm run project -- build-review --base /prototype/
+```
+
+`mount` 只写入被 Git 忽略的 `project-mounts.local.json`，不会改 `project.json`、PRD 或 HTML 原文件。生产构建会把挂载目录复制为本次发布的只读快照；服务器不能借此直接修改本机源资料。
 
 ## 新增页面
 
@@ -158,7 +175,10 @@ npm run generate:page -- --project sample-project --client admin --path vehicle-
 - “页面上下文”可选择任意 Vue 或 HTML 直读页面，复制该页面及其关联需求的 JSON 上下文；业务页面在开发模式下也可从账号菜单直接打开当前页面上下文。
 - “关联建议”根据页面标题、路由、源文件名、菜单分组和 PRD 文件信息生成候选，只有本机开发环境中由用户确认后才写入 `.platform/page-prd-links.json`。
 - “PRD 影响分析”把当前文档摘要与浏览器本地基线比较，并通过已有页面/组件关联列出潜在影响范围；基线只存入 `localStorage`，不写入 PRD 或项目包。
+- “追溯矩阵”按页面汇总页面来源、页面级 PRD、组件级章节关联和待处理问题，并支持导出 JSON。
 - “导出上下文包”提供索引 JSON 和包含 PRD 正文的完整 JSON，供 Codex、Claude 或其他工具读取。核心数据结构和分析函数位于 `packages/project-core/src/ai-context.js`，后续本地 MCP Server 可直接复用，不需要重新定义项目模型。
+
+需要把影响分析留给其他电脑或 CI 时，先用 `snapshot` 保存基线，再用 `trace --baseline <文件>` 生成可共享的追溯报告。报告会标出未关联页面、孤立 PRD、失效章节锚点和本次 PRD 变化影响到的页面。
 
 关联建议属于规则匹配结果，不等同于已理解业务语义的模型结论；低、中、高可信度都必须由项目负责人确认。静态生产包支持查看、分析和导出，但不允许修改页面关联。
 

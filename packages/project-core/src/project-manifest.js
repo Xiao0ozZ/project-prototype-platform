@@ -49,10 +49,11 @@ export function resolveProjectContentRoot(projectRoot, configuredRoot, fallback)
   return path.resolve(projectRoot, String(configuredRoot || fallback || '').trim());
 }
 
-export function prototypeRootsForClient(manifest, projectRoot, clientId) {
+export function prototypeRootsForClient(manifest, projectRoot, clientId, mounts = {}) {
+  const mountedRoots = mounts.projects?.[manifest.id]?.prototypes || {};
   return normalizePrototypeSources(manifest.prototype)
     .filter((source) => !source.clientId || source.clientId === clientId)
-    .map((source) => resolveProjectContentRoot(projectRoot, source.root));
+    .map((source) => mountedRoots[source.clientId] || resolveProjectContentRoot(projectRoot, source.root));
 }
 
 export function validateProjectManifest(manifest, folderName, projectRoot) {
@@ -136,13 +137,13 @@ export function validateProjectManifest(manifest, folderName, projectRoot) {
   return errors;
 }
 
-async function hasExternalPrototypePage(manifest, projectRoot, clientId, expectedPath) {
+async function hasExternalPrototypePage(manifest, projectRoot, clientId, expectedPath, mounts = {}) {
   const expected = String(expectedPath || '')
     .trim()
     .toLowerCase();
   if (!expected || !manifest.prototype?.enabled) return false;
 
-  for (const root of prototypeRootsForClient(manifest, projectRoot, clientId)) {
+  for (const root of prototypeRootsForClient(manifest, projectRoot, clientId, mounts)) {
     const files = await walkFiles(root, { extensions: HTML_EXTENSIONS });
     if (
       files.some((filePath) => path.basename(filePath, path.extname(filePath)).toLowerCase() === expected)
@@ -153,7 +154,7 @@ async function hasExternalPrototypePage(manifest, projectRoot, clientId, expecte
   return false;
 }
 
-export async function validateProjectResources(manifest, projectRoot) {
+export async function validateProjectResources(manifest, projectRoot, { mounts = {} } = {}) {
   const errors = [];
   for (const [label, resourcePath] of [
     ['项目 Logo', manifest.branding?.logo],
@@ -172,17 +173,21 @@ export async function validateProjectResources(manifest, projectRoot) {
     }
   }
   if (manifest.docs?.enabled) {
-    const docsRoot = resolveProjectContentRoot(projectRoot, manifest.docs.root, 'docs');
+    const docsRoot =
+      mounts.projects?.[manifest.id]?.docsRoot ||
+      resolveProjectContentRoot(projectRoot, manifest.docs.root, 'docs');
     if (!(await fileExists(docsRoot, 'directory'))) {
       errors.push(`文档目录不存在：${manifest.docs.root || 'docs'}。`);
     }
   }
   if (manifest.prototype?.enabled) {
+    const mountedRoots = mounts.projects?.[manifest.id]?.prototypes || {};
     for (const source of normalizePrototypeSources(manifest.prototype)) {
       if (source.shellMode && !HTML_SHELL_MODES.has(source.shellMode)) {
         errors.push(`客户端 ${source.clientId || '默认'} 的 HTML 外壳处理方式无效：${source.shellMode}。`);
       }
-      const prototypeRoot = resolveProjectContentRoot(projectRoot, source.root, 'prototype');
+      const prototypeRoot =
+        mountedRoots[source.clientId] || resolveProjectContentRoot(projectRoot, source.root, 'prototype');
       if (!(await fileExists(prototypeRoot, 'directory'))) {
         const prefix = source.clientId ? `客户端 ${source.clientId} 的 ` : '';
         errors.push(`${prefix}HTML 原型目录不存在：${source.root || 'prototype'}。`);

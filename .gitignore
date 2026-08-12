@@ -3,6 +3,7 @@ node_modules/
 dist/
 /projects/
 /platform-settings.json
+/project-mounts.local.json
 *.log
 vite.config.js.timestamp-*.mjs
 .DS_Store

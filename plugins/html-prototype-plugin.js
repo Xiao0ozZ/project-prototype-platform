@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import {
   fileExists,
   isInsideRoot,
-  normalizePrototypeSources,
+  resolveProjectPrototypeSources,
   toWebPath,
   walkFiles as walkCoreFiles,
 } from '../packages/project-core/src/index.js';
@@ -175,7 +175,7 @@ function resolveSourceRelativePath(relativePath, clientId, clients) {
   return client ? segments.slice(1).join('/') || segments.join('/') : relativePath;
 }
 
-async function readProjectManifests(projectsRoot) {
+async function readProjectManifests(projectsRoot, mounts = {}) {
   const entries = await fs.readdir(projectsRoot, { withFileTypes: true }).catch((error) => {
     if (error.code === 'ENOENT') return [];
     throw error;
@@ -188,8 +188,8 @@ async function readProjectManifests(projectsRoot) {
       const manifest = JSON.parse(await fs.readFile(path.join(projectRoot, 'project.json'), 'utf8'));
       if (manifest.id !== entry.name) continue;
       const sources = [];
-      for (const source of normalizePrototypeSources(manifest.prototype)) {
-        const prototypeRoot = path.resolve(projectRoot, source.root);
+      for (const source of resolveProjectPrototypeSources(manifest, projectRoot, mounts)) {
+        const prototypeRoot = source.root;
         if (await fileExists(prototypeRoot, 'directory')) sources.push({ ...source, prototypeRoot });
       }
       if (!sources.length) continue;
@@ -201,10 +201,10 @@ async function readProjectManifests(projectsRoot) {
   return manifests;
 }
 
-export async function scanHtmlPrototypePages(projectsRoot) {
+export async function scanHtmlPrototypePages(projectsRoot, { mounts = {} } = {}) {
   const projects = {};
   const roots = {};
-  const manifests = await readProjectManifests(path.resolve(projectsRoot));
+  const manifests = await readProjectManifests(path.resolve(projectsRoot), mounts);
 
   for (const item of manifests) {
     const definitions = await readProjectDefinition(item.projectRoot, item.manifest).catch(() => ({}));
@@ -240,7 +240,9 @@ export async function scanHtmlPrototypePages(projectsRoot) {
           ? routePathFromPlatformExportManifest(exportManifest)
           : readMetaValue(source, 'prototype-path');
         const pagePath = createRoutePath(sourcePath, explicitPath);
-        const sourceIdentity = `${clientId}/${prototypeSource.root}/${relativePath}`;
+        // 页面标识只依赖项目配置中的相对来源，不依赖本机挂载后的绝对路径。
+        // 这样移动外置目录或在另一台电脑重新挂载时，路由顺序和 PRD 关联仍能保持稳定。
+        const sourceIdentity = `${clientId}/${prototypeSource.configuredRoot || prototypeSource.root}/${relativePath}`;
         const manifestPageKey =
           isContentOnlyHtml && exportManifest?.pageKey ? normalizeSlug(exportManifest.pageKey) : '';
         const pageName = manifestPageKey
@@ -392,14 +394,19 @@ export function applyContentOnlyMode(source) {
   return `${CONTENT_ONLY_STYLE}${source}`;
 }
 
-export function htmlPrototypePlugin({ projectsRoot }) {
+export function htmlPrototypePlugin({
+  projectsRoot,
+  mountsPath = '',
+  loadMounts = async () => ({ projects: {} }),
+}) {
   const root = path.resolve(projectsRoot);
+  const localMountsPath = mountsPath ? path.resolve(mountsPath) : '';
   let isBuild = false;
   let scanState = { projects: {}, roots: {} };
   let refreshTimer = null;
 
   async function refreshState() {
-    scanState = await scanHtmlPrototypePages(root);
+    scanState = await scanHtmlPrototypePages(root, { mounts: await loadMounts() });
     return scanState;
   }
 
@@ -419,6 +426,7 @@ export function htmlPrototypePlugin({ projectsRoot }) {
     async configureServer(server) {
       await refreshState();
       server.watcher.add(root);
+      if (localMountsPath) server.watcher.add(localMountsPath);
       Object.values(scanState.roots)
         .flat()
         .forEach((source) => server.watcher.add(source.root));
@@ -427,10 +435,11 @@ export function htmlPrototypePlugin({ projectsRoot }) {
         const relativePath = toWebPath(path.relative(root, absolutePath));
         const isProjectConfigChange =
           absolutePath === root || /^([a-z][a-z0-9-]*)\/project\.json$/i.test(relativePath);
+        const isMountChange = Boolean(localMountsPath && absolutePath === localMountsPath);
         const isPrototypeChange = Object.values(scanState.roots)
           .flat()
           .some((source) => absolutePath === source.root || isInsideRoot(source.root, absolutePath));
-        if (!isProjectConfigChange && !isPrototypeChange) return;
+        if (!isProjectConfigChange && !isPrototypeChange && !isMountChange) return;
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(async () => {
           try {
@@ -439,10 +448,10 @@ export function htmlPrototypePlugin({ projectsRoot }) {
               .flat()
               .forEach((source) => server.watcher.add(source.root));
             const virtualModule = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
-            if (virtualModule && (isProjectConfigChange || isPrototypeChange)) {
+            if (virtualModule && (isProjectConfigChange || isPrototypeChange || isMountChange)) {
               server.moduleGraph.invalidateModule(virtualModule);
             }
-            if (isPrototypeChange) server.ws.send({ type: 'full-reload' });
+            if (isPrototypeChange || isMountChange) server.ws.send({ type: 'full-reload' });
           } catch (error) {
             server.config.logger.error(`[html-prototype] 原型目录刷新失败：${error.message}`);
           }

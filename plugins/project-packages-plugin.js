@@ -694,13 +694,19 @@ async function updateProjectPackage(projectsRoot, input) {
   return nextManifest;
 }
 
-export function projectPackagesPlugin({ projectsRoot }) {
+export function projectPackagesPlugin({
+  projectsRoot,
+  mountsPath = '',
+  loadMounts = async () => ({ projects: {} }),
+}) {
   const root = path.resolve(projectsRoot);
+  const localMountsPath = mountsPath ? path.resolve(mountsPath) : '';
   let isBuild = false;
   let refreshTimer;
   const scanCache = new Map();
 
-  const loadScanResult = () => scanProjectPackages(root, { cache: scanCache });
+  const loadScanResult = async () =>
+    scanProjectPackages(root, { cache: scanCache, mounts: await loadMounts() });
 
   return {
     name: 'project-packages',
@@ -709,9 +715,11 @@ export function projectPackagesPlugin({ projectsRoot }) {
     },
     configureServer(server) {
       server.watcher.add(root);
+      if (localMountsPath) server.watcher.add(localMountsPath);
       server.watcher.on('all', (_eventName, changedPath) => {
         const absolutePath = path.resolve(changedPath);
-        if (absolutePath !== root && !isInsideRoot(root, absolutePath)) return;
+        const mountChange = Boolean(localMountsPath && absolutePath === localMountsPath);
+        if (!mountChange && absolutePath !== root && !isInsideRoot(root, absolutePath)) return;
         const relativePath = toWebPath(path.relative(root, absolutePath));
         const projectEntryChange = absolutePath === root || /^[a-z][a-z0-9-]*$/i.test(relativePath);
         const bindingChange = /^([a-z][a-z0-9-]*)\/\.platform\/prd-bindings\.json$/i.exec(relativePath);
@@ -720,11 +728,11 @@ export function projectPackagesPlugin({ projectsRoot }) {
             relativePath,
           );
         const viewChange = /^([a-z][a-z0-9-]*)\/views\/.+\.vue$/i.test(relativePath);
-        if (!projectEntryChange && !manifestChange && !viewChange && !bindingChange) return;
-        if (projectEntryChange || manifestChange || viewChange) scanCache.delete(root);
+        if (!projectEntryChange && !manifestChange && !viewChange && !bindingChange && !mountChange) return;
+        if (projectEntryChange || manifestChange || viewChange || mountChange) scanCache.delete(root);
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
-          if (projectEntryChange || manifestChange) {
+          if (projectEntryChange || manifestChange || mountChange) {
             server.ws.send({ type: 'custom', event: 'project-packages:changed' });
           }
           if (bindingChange) {
@@ -923,7 +931,7 @@ export function projectPackagesPlugin({ projectsRoot }) {
     },
     async buildStart() {
       if (!isBuild) return;
-      const manifest = await scanProjectPackages(root);
+      const manifest = await scanProjectPackages(root, { mounts: await loadMounts() });
       if (manifest.invalidProjects.length) {
         const details = manifest.invalidProjects
           .flatMap((project) => project.errors.map((error) => `${project.folder}: ${error}`))

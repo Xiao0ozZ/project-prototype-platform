@@ -6,6 +6,7 @@ import {
   createContextExport,
   createPageContextPackage,
   createProjectContext,
+  createTraceabilityReport,
 } from '../../packages/project-core/src/index.js';
 
 function createFixture(overrides = {}) {
@@ -125,5 +126,50 @@ describe('AI project context', () => {
       path: '需求/控制台.md',
       linkedPageKeys: ['admin:dashboard'],
     });
+  });
+
+  it('creates an auditable page, PRD and component traceability matrix', () => {
+    const context = createFixture({
+      bindings: [
+        {
+          id: 'dashboard-filter',
+          pagePath: '/p/demo/admin/dashboard',
+          selector: '[data-filter]',
+          label: '数据筛选',
+          prd: { document: '需求/控制台.md', anchor: '数据范围' },
+        },
+      ],
+    });
+    const report = createTraceabilityReport(context);
+
+    expect(context.summary).toMatchObject({ pagesWithComponentBindings: 1, componentCoverage: 50 });
+    expect(report).toMatchObject({
+      kind: 'project-traceability-report',
+      rows: [
+        expect.objectContaining({
+          pageKey: 'admin:dashboard',
+          status: 'covered',
+          componentBindings: [expect.objectContaining({ id: 'dashboard-filter' })],
+        }),
+        expect.objectContaining({ pageKey: 'admin:newOrder', status: 'uncovered' }),
+      ],
+    });
+  });
+
+  it('reports stale component anchors and orphan PRDs separately', () => {
+    const context = createFixture({
+      bindings: [
+        {
+          id: 'stale-anchor',
+          pagePath: '/p/demo/admin/dashboard',
+          prd: { document: '需求/控制台.md', anchor: '不存在的章节' },
+        },
+      ],
+    });
+
+    expect(context.issues).toContainEqual(expect.objectContaining({ type: 'missing-binding-anchor' }));
+    expect(context.issues).toContainEqual(
+      expect.objectContaining({ type: 'document-without-page', documentPath: '需求/新增订单.md' }),
+    );
   });
 });

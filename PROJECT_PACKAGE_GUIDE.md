@@ -36,6 +36,12 @@ npm run project -- init --id sample-project --name "示例项目"
 npm run project -- validate
 ```
 
+仓库还提供脱敏样例，可直接安装到被忽略的本地项目目录：
+
+```powershell
+npm run project:example
+```
+
 项目包机器可读契约位于 `packages/project-core/schemas`。`project.schema.json` 描述基础字段，运行时校验还会检查客户端与入口引用、默认页面、项目资源和外部 HTML/PRD 目录是否存在。
 
 ## 3. project.json
@@ -116,6 +122,19 @@ npm run generate:page -- --project sample-project --client admin --path example-
 
 这仍是轻量方案。若未来要求服务器在不重新构建的情况下安装全新的 Vue 项目包，需要再引入独立预编译插件包和运行时模块加载机制，不属于当前范围。
 
+### 本地外置资料挂载
+
+项目包的配置、页面登记和 `.platform` 关联文件仍留在 `projects/{project-id}`，PRD 和 HTML 原型可以挂载到任意本机绝对目录：
+
+```powershell
+npm run project -- mount --project sample --docs D:\product\docs
+npm run project -- mount --project sample --prototype admin=D:\product\admin-html,client=D:\product\client-html
+npm run project -- mount --project sample --clear-docs --clear-prototype admin
+npm run project -- mounts
+```
+
+挂载写入根目录 `project-mounts.local.json`，该文件已加入 `.gitignore`。它优先于 `project.json` 内的 `docs.root` 和对应客户端原型目录，但不会修改项目包或外部源文件。路由菜单管理、文档中心、HTML 直读、健康检查和生产构建使用同一挂载解析规则。可复制 `project-mounts.example.json` 作为手工配置参考。
+
 ## 6. 项目包管理
 
 开发服务启动后，可在“项目包状态”页面直接管理项目基础资料：
@@ -173,6 +192,15 @@ npm run generate:page -- --project sample-project --client admin --path example-
 
 系统会生成页面覆盖率、失效关联、待确认关联建议和 PRD 变化影响。关联建议只有用户确认后才更新页面级关联配置；影响分析基线保存在当前浏览器，不写入项目包。导出的 JSON 上下文包是派生资料，可以交给 AI 或自动化工具使用，但不能替代项目包和 PRD 原文件作为事实来源。
 
+命令行可生成持久化基线和追溯报告：
+
+```powershell
+npm run project -- snapshot --project sample
+npm run project -- trace --project sample
+```
+
+追溯报告包含页面级 PRD、组件级章节、未覆盖页面、孤立文档、失效章节锚点和相对基线的影响范围。它只读取源资料并写入被 Git 忽略的 `output/`，不会修改 PRD。
+
 ## 11. 校验与边界
 
 `npm run audit:projects` 会检查：
@@ -181,6 +209,14 @@ npm run generate:page -- --project sample-project --client admin --path example-
 - 页面定义、菜单分组、重复路由和页面文件。
 - Logo、移动端入口和文档目录。
 - HTML 导入所需的生成器标记。
+
+单个 HTML 在导入、直读或独立交付前，可先执行：
+
+```powershell
+npm run project -- preflight --file D:\prototypes\page.html
+```
+
+项目级综合检查使用 `npm run project:health`，会同时报告挂载目录、HTML 基础契约、页面 PRD 覆盖率和失效关联。
 
 项目包不得修改外壳的 `src/components`、`src/layouts`、`src/router` 或公共主题底座。确实可跨项目复用的能力才进入公共组件；项目业务字段、模拟数据和专属资源留在项目包内。
 

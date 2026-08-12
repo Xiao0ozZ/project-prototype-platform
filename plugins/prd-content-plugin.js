@@ -38,15 +38,21 @@ function sendJson(res, payload, statusCode = 200) {
   res.end(JSON.stringify(payload));
 }
 
-export function prdContentPlugin({ projectsRoot }) {
+export function prdContentPlugin({
+  projectsRoot,
+  mountsPath = '',
+  loadMounts = async () => ({ projects: {} }),
+}) {
   const root = path.resolve(projectsRoot);
+  const localMountsPath = mountsPath ? path.resolve(mountsPath) : '';
   let isBuild = false;
   let documentRoots = new Map();
   let documentRootsLoading = null;
 
   async function refreshDocumentRoots() {
     if (!documentRootsLoading) {
-      documentRootsLoading = loadProjectDocumentRoots(root)
+      documentRootsLoading = loadMounts()
+        .then((mounts) => loadProjectDocumentRoots(root, { mounts }))
         .then((nextRoots) => {
           documentRoots = nextRoots;
           return nextRoots;
@@ -66,6 +72,7 @@ export function prdContentPlugin({ projectsRoot }) {
     async configureServer(server) {
       await refreshDocumentRoots();
       server.watcher.add(root);
+      if (localMountsPath) server.watcher.add(localMountsPath);
       documentRoots.forEach((docsRoot) => server.watcher.add(docsRoot));
       server.watcher.on('all', async (_eventName, changedPath) => {
         try {
@@ -73,7 +80,8 @@ export function prdContentPlugin({ projectsRoot }) {
           const relativePath = toWebPath(path.relative(root, absolutePath));
           const isProjectConfigChange =
             absolutePath === root || /^([a-z][a-z0-9-]*)\/project\.json$/iu.test(relativePath);
-          if (isProjectConfigChange) {
+          const isMountChange = Boolean(localMountsPath && absolutePath === localMountsPath);
+          if (isProjectConfigChange || isMountChange) {
             await refreshDocumentRoots();
             documentRoots.forEach((docsRoot) => server.watcher.add(docsRoot));
           }
@@ -130,7 +138,7 @@ export function prdContentPlugin({ projectsRoot }) {
     },
     async buildStart() {
       if (!isBuild) return;
-      documentRoots = await loadProjectDocumentRoots(root);
+      documentRoots = await loadProjectDocumentRoots(root, { mounts: await loadMounts() });
       for (const [projectId, docsRoot] of documentRoots) {
         const manifest = await createDocumentManifest(docsRoot);
         this.emitFile({

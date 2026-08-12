@@ -157,6 +157,46 @@ describe('page transfer', () => {
     ).toContain('export default pageOptions;');
   });
 
+  it('keeps Element Plus icon imports separate and maps imported primary colors to the project theme', () => {
+    const manifest = {
+      templateVersion: 1,
+      scriptMode: 'composition-api',
+      pageKey: 'themed-page',
+      pageTitle: '主题页面',
+      pageType: 'custom',
+      pageHeaderMode: 'standard',
+      client: 'admin',
+      routePath: '/admin/themed-page',
+      menuSection: 'workspace',
+      menuTitle: '主题页面',
+      menuIcon: 'Document',
+    };
+    const source = [
+      `<style data-page-style>:root { --app-color-primary: #00689E; --app-color-primary-hover: #005B8A; --app-color-primary-active: #004F78; } .page { color: #00689E; }</style>`,
+      '<!-- [AI-EDIT] PAGE_CONTENT_START -->',
+      '<section data-page-content><el-button color="#00689E"><Plus /></el-button></section>',
+      '<!-- PAGE_CONTENT_END -->',
+      '<!-- [AI-EDIT] PAGE_OVERLAYS_START -->',
+      '<div data-page-overlay="dialog"></div>',
+      '<!-- PAGE_OVERLAYS_END -->',
+      '<script>/* [AI-EDIT] PAGE_LOGIC_START */\nfunction pageSetup() {\n  const { createApp } = Vue;\n  const { Plus, Refresh } = ElementPlusIconsVue;\n  const { ElMessage } = ElementPlus;\n  const statusIcon = "Refresh";\n  return { createApp, ElMessage, statusIcon };\n}\n/* PAGE_LOGIC_END */</script>',
+    ].join('\n');
+
+    const generated = buildVueSource(source, manifest, {
+      primary: '#ba00c3',
+      primaryHover: '#a700b0',
+      primaryActive: '#8c0092',
+    });
+
+    expect(generated).toContain("import { ElMessage } from 'element-plus';");
+    expect(generated).not.toContain("import { Plus } from '@element-plus/icons-vue';");
+    expect(generated).not.toMatch(/import\s+\{\s*Plus\s*\}\s+from\s+['"]element-plus['"]/u);
+    expect(generated).not.toContain('IconsVue;');
+    expect(generated).toContain('color="#ba00c3"');
+    expect(generated).toContain('--app-color-primary: #ba00c3;');
+    expect(generated).not.toContain('#00689E');
+  });
+
   it('imports a valid HTML template into the selected project package', async () => {
     const source = await fs.readFile(path.join(projectRoot, 'templates', 'html-prototype-page.html'), 'utf8');
     expect(inspectHtml(source)).toMatchObject({ valid: true, warnings: [] });

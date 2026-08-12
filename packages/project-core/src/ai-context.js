@@ -221,6 +221,7 @@ function createSuggestions(pages, documents) {
 function createIssues({ project, pages, documents, bindings, documentLoadErrors }) {
   const issues = [];
   const documentPaths = new Set(documents.map((document) => document.path));
+  const documentByPath = new Map(documents.map((document) => [document.path, document]));
   const pagePaths = new Set(pages.map((page) => page.fullPath));
 
   if (project.docs?.enabled && !documents.length) {
@@ -253,6 +254,18 @@ function createIssues({ project, pages, documents, bindings, documentLoadErrors 
     }
   }
 
+  for (const document of documents) {
+    if (!document.archived && !document.linkedPageKeys.length && !document.componentBindingIds.length) {
+      issues.push({
+        severity: 'info',
+        type: 'document-without-page',
+        subject: document.title || document.path,
+        documentPath: document.path,
+        message: 'PRD 尚未被页面或页面组件使用。',
+      });
+    }
+  }
+
   for (const binding of bindings) {
     const prd = normalizeBindingPrd(binding);
     if (prd.document && !documentPaths.has(prd.document)) {
@@ -263,6 +276,25 @@ function createIssues({ project, pages, documents, bindings, documentLoadErrors 
         documentPath: prd.document,
         message: `组件关联的 PRD 不存在：${prd.document}`,
       });
+    } else if (prd.document && prd.anchor) {
+      const document = documentByPath.get(prd.document);
+      const anchorSource = String(prd.anchor).replace(/^#/, '').trim();
+      let anchor = anchorSource;
+      try {
+        anchor = decodeURIComponent(anchorSource);
+      } catch {
+        // 保留原始锚点，避免格式错误的百分号编码中断整个项目上下文生成。
+      }
+      const headingIds = new Set((document?.headings || []).map((heading) => heading.id));
+      if (document?.contentAvailable && anchor && !headingIds.has(anchor)) {
+        issues.push({
+          severity: 'warning',
+          type: 'missing-binding-anchor',
+          subject: binding.label || binding.id || binding.pagePath,
+          documentPath: prd.document,
+          message: `组件关联的 PRD 章节不存在：#${anchor}`,
+        });
+      }
     }
     if (binding.pagePath && !pagePaths.has(binding.pagePath)) {
       issues.push({
@@ -331,6 +363,7 @@ export function createProjectContext({
   const suggestions = createSuggestions(pages, documents);
   const linkedPages = pages.filter((page) => documentByPath.has(page.documentPath)).length;
   const linkedDocuments = documents.filter((document) => document.linkedPageKeys.length).length;
+  const pagesWithComponentBindings = pages.filter((page) => page.componentBindingIds?.length).length;
 
   return {
     schemaVersion: CONTEXT_SCHEMA_VERSION,
@@ -365,10 +398,66 @@ export function createProjectContext({
       linkedDocuments,
       unlinkedDocuments: documents.length - linkedDocuments,
       componentBindings: normalizedBindings.length,
+      pagesWithComponentBindings,
+      componentCoverage: pages.length ? Math.round((pagesWithComponentBindings / pages.length) * 100) : 0,
       errors: issues.filter((issue) => issue.severity === 'error').length,
       warnings: issues.filter((issue) => issue.severity === 'warning').length,
       suggestions: suggestions.length,
     },
+  };
+}
+
+export function createTraceabilityReport(context, { baseline = null } = {}) {
+  const documents = new Map(context.documents.map((document) => [document.path, document]));
+  const issuesByPage = new Map();
+  for (const issue of context.issues || []) {
+    if (!issue.pageKey) continue;
+    issuesByPage.set(issue.pageKey, [...(issuesByPage.get(issue.pageKey) || []), issue]);
+  }
+  const rows = context.pages.map((page) => {
+    const document = documents.get(page.documentPath);
+    const componentBindings = (page.componentBindingIds || [])
+      .map((bindingId) => context.bindings.find((binding) => binding.id === bindingId))
+      .filter(Boolean);
+    return {
+      pageKey: page.key,
+      client: { id: page.clientId, name: page.clientName },
+      page: {
+        name: page.name,
+        title: page.title,
+        path: page.fullPath,
+        section: page.sectionTitle || page.sectionId,
+        sourceType: page.sourceType,
+        source: page.source,
+      },
+      requirement: document
+        ? { path: document.path, title: document.title, archived: Boolean(document.archived) }
+        : null,
+      componentBindings: componentBindings.map((binding) => ({
+        id: binding.id,
+        label: binding.prd.label || binding.label || '',
+        target: binding.target || null,
+        document: binding.prd.document,
+        anchor: binding.prd.anchor || '',
+      })),
+      issues: issuesByPage.get(page.key) || [],
+      status: document ? 'covered' : 'uncovered',
+    };
+  });
+  return {
+    schemaVersion: CONTEXT_SCHEMA_VERSION,
+    kind: 'project-traceability-report',
+    generatedAt: new Date().toISOString(),
+    project: context.project,
+    summary: context.summary,
+    rows,
+    orphanDocuments: context.documents
+      .filter(
+        (document) =>
+          !document.archived && !document.linkedPageKeys.length && !document.componentBindingIds.length,
+      )
+      .map((document) => ({ path: document.path, title: document.title })),
+    impact: compareContextBaseline(context, baseline),
   };
 }
 

@@ -8,7 +8,11 @@
         </div>
       </div>
 
-      <nav class="side-section">
+      <nav
+        ref="sidebarNavigationRef"
+        class="side-section"
+        @scroll="saveSidebarScrollPosition"
+      >
         <template v-for="section in visibleMenus" :key="section.title">
           <div class="side-section-title">{{ translateStaticCopy(section.title, currentLocale) }}</div>
           <template v-for="item in section.items" :key="item.path">
@@ -262,7 +266,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   ArrowDown,
   ArrowLeft,
@@ -336,10 +340,14 @@ const prdLayoutMode = ref('split');
 const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const isNarrowViewport = ref(false);
+const sidebarNavigationRef = ref(null);
 const topNavigationRef = ref(null);
 const canScrollTopNavigationLeft = ref(false);
 const canScrollTopNavigationRight = ref(false);
 const sidebarStorageKey = computed(() => `platform-sidebar-collapsed:${props.projectId}`);
+const sidebarScrollStorageKey = computed(
+  () => `platform-sidebar-scroll:${props.projectId}:${props.client}`,
+);
 const hasSidebar = computed(() => props.layoutType === 'sidebar');
 const hasTopNavigation = computed(() => props.layoutType === 'topnav');
 const isBareLayout = computed(() => props.layoutType === 'bare');
@@ -356,6 +364,8 @@ const workspaceClasses = computed(() => ({
   'prd-panel-overlay-open': prdPanelReady.value && prdLayoutMode.value === 'overlay',
 }));
 let prdPanelReadyFrame = 0;
+let sidebarScrollFrame = 0;
+let sidebarRestoreFrame = 0;
 let topNavigationScrollFrame = 0;
 let topNavigationResizeObserver = null;
 
@@ -398,6 +408,7 @@ watch(
     prdTarget.value = null;
     closeMobileSidebar();
     if (!prdDocumentPath.value) closePrdPanel();
+    void nextTick().then(restoreSidebarScrollPosition);
   },
 );
 
@@ -531,6 +542,50 @@ function saveSidebarPreference() {
   }
 }
 
+function persistSidebarScrollPosition() {
+  const navigation = sidebarNavigationRef.value;
+  if (!hasSidebar.value || typeof window === 'undefined' || !navigation) return;
+  try {
+    window.localStorage.setItem(sidebarScrollStorageKey.value, String(navigation.scrollTop));
+  } catch {
+    // Sidebar scroll position is a local convenience and does not affect the project package.
+  }
+}
+
+function saveSidebarScrollPosition() {
+  if (!hasSidebar.value || typeof window === 'undefined') return;
+  window.cancelAnimationFrame(sidebarScrollFrame);
+  sidebarScrollFrame = window.requestAnimationFrame(() => {
+    persistSidebarScrollPosition();
+    sidebarScrollFrame = 0;
+  });
+}
+
+function restoreSidebarScrollPosition() {
+  if (!hasSidebar.value || typeof window === 'undefined') return;
+  window.cancelAnimationFrame(sidebarRestoreFrame);
+  sidebarRestoreFrame = window.requestAnimationFrame(() => {
+    const navigation = sidebarNavigationRef.value;
+    if (!navigation) return;
+
+    let savedPosition = null;
+    try {
+      const value = Number(window.localStorage.getItem(sidebarScrollStorageKey.value));
+      savedPosition = Number.isFinite(value) && value >= 0 ? value : null;
+    } catch {
+      savedPosition = null;
+    }
+
+    if (savedPosition !== null) {
+      const maximumScrollTop = Math.max(0, navigation.scrollHeight - navigation.clientHeight);
+      navigation.scrollTop = Math.min(savedPosition, maximumScrollTop);
+    } else {
+      navigation.querySelector('.side-link.router-link-active')?.scrollIntoView({ block: 'nearest' });
+    }
+    sidebarRestoreFrame = 0;
+  });
+}
+
 function updateViewportMode() {
   const narrow = window.matchMedia?.('(max-width: 760px)').matches ?? window.innerWidth <= 760;
   isNarrowViewport.value = narrow;
@@ -633,6 +688,7 @@ function handleDeveloperShortcut(event) {
 onMounted(() => {
   void loadPlatformSettings();
   loadSidebarPreference();
+  restoreSidebarScrollPosition();
   updateViewportMode();
   window.addEventListener('keydown', handleDeveloperShortcut);
   window.addEventListener('resize', updateViewportMode);
@@ -646,6 +702,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.cancelAnimationFrame(prdPanelReadyFrame);
+  window.cancelAnimationFrame(sidebarScrollFrame);
+  window.cancelAnimationFrame(sidebarRestoreFrame);
+  persistSidebarScrollPosition();
   window.cancelAnimationFrame(topNavigationScrollFrame);
   topNavigationResizeObserver?.disconnect();
   window.removeEventListener('keydown', handleDeveloperShortcut);

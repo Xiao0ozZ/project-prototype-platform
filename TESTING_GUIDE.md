@@ -38,6 +38,8 @@ npm run test:ui             # 执行全部 Playwright 测试
 npm run test:visual:update  # 重新生成视觉基线，仅限已确认的视觉变更
 npm run test:unit           # 公共组件 Props、Slots、事件和交互状态单元测试
 npm run test:unit:watch     # 开发时持续运行组件单元测试
+npm run project -- preflight --file <html> # HTML 独立交付与导入预检
+npm run project -- health [--project <id>] # 项目包、HTML 和追溯健康检查
 ```
 
 失败时的截图、Trace 和 HTML 报告输出到 `output/playwright/`，该目录不提交 Git。
@@ -107,11 +109,14 @@ npm run format:check
 npm run audit:all
 npm run quality:check
 npm run ci:check
+npm run quality:core
 ```
 
 `quality:check` 执行 ESLint、Prettier 检查、全部静态审计和生产构建；`ci:check` 在此基础上增加组件单元测试和浏览器冒烟测试。
 
-GitHub Actions 配置位于仓库根目录 `.github/workflows/prototype-quality.yml`。涉及原型工程或 PRD 的提交会自动执行质量检查、构建、组件单元测试和 Chromium 冒烟测试，失败时上传 Playwright 报告。
+`quality:core` 是开源仓库和平台底座的稳定门禁，只检查可提交的 `src`、`plugins`、`packages`、脚本、测试、模板和脱敏样例，不扫描被 Git 忽略的真实 `projects` 业务源码。真实项目包应另外执行 `npm run lint`、`npm run project:health` 和相应的业务验收；两类结果不能混为一谈。
+
+GitHub Actions 配置位于仓库根目录 `.github/workflows/prototype-quality.yml`，会执行 `quality:core`。由于真实项目包不提交到仓库，CI 不假定存在客户资料，也不会上传项目 PRD。
 
 历史营运端和企业端页面不执行 Prettier 批量格式化；ESLint 对历史目录采用兼容规则，对工程底座和新页面采用严格规则。
 
@@ -123,9 +128,9 @@ GitHub Actions 配置位于仓库根目录 `.github/workflows/prototype-quality.
 
 ## 版本记录
 
-| 版本 | 日期       | 内容                                                                   |
-| ---- | ---------- | ---------------------------------------------------------------------- |
-| v1.0 | 2026-07-11 | 建立路由、关键交互和视觉截图自动验收。                                 |
-| v1.1 | 2026-07-12 | 路由测试改为读取统一页面注册表，增加 ESLint、Prettier 和 CI 检查说明。 |
-| v1.2 | 2026-07-13 | 接入 Vitest 组件单元测试，并纳入本地 CI 聚合命令和 GitHub Actions。    |
+| 版本 | 日期       | 内容                                                                              |
+| ---- | ---------- | --------------------------------------------------------------------------------- |
+| v1.0 | 2026-07-11 | 建立路由、关键交互和视觉截图自动验收。                                            |
+| v1.1 | 2026-07-12 | 路由测试改为读取统一页面注册表，增加 ESLint、Prettier 和 CI 检查说明。            |
+| v1.2 | 2026-07-13 | 接入 Vitest 组件单元测试，并纳入本地 CI 聚合命令和 GitHub Actions。               |
 | v1.3 | 2026-07-16 | 路由冒烟改为扫描可插拔项目包，并增加项目 Manifest、页面文件和资源完整性单元测试。 |

@@ -17,6 +17,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
   createContextExport,
   createPageContextPackage,
+  createTraceabilityReport,
 } from '../../../packages/project-core/src/ai-context.js';
 import { installedProjects } from '../../config/project-packages';
 import { loadPagePrdLinks, savePagePrdLinks } from '../../services/page-prd-links';
@@ -70,6 +71,7 @@ const pageGroups = computed(() => {
   }));
 });
 const issueRows = computed(() => context.value?.issues || []);
+const traceability = computed(() => (context.value ? createTraceabilityReport(context.value).rows : []));
 const unlinkedDocumentCount = computed(
   () =>
     context.value?.documents.filter((document) => !document.linkedPageKeys.length && !document.archived)
@@ -194,6 +196,14 @@ function exportContext(command) {
     `${context.value.project.id}-context-${includeDocumentContent ? 'full' : 'index'}.json`,
   );
   ElMessage.success(includeDocumentContent ? '完整上下文包已导出。' : '上下文索引已导出。');
+}
+
+function exportTraceability() {
+  if (!context.value) return;
+  const payload = createTraceabilityReport(context.value);
+  payload.impact = impact.value;
+  downloadJson(payload, `${context.value.project.id}-traceability.json`);
+  ElMessage.success('需求追溯矩阵已导出。');
 }
 
 function updateBaseline() {
@@ -456,6 +466,52 @@ async function confirmSuggestion(suggestion) {
                   </p>
                 </section>
               </div>
+            </el-tab-pane>
+
+            <el-tab-pane :label="`追溯矩阵 ${context.summary.pages}`" name="traceability">
+              <div class="tab-heading">
+                <div>
+                  <h2>页面、PRD 与组件追溯矩阵</h2>
+                  <p>按客户端列出每个页面的来源、页面级 PRD、组件级关联和待处理问题。</p>
+                </div>
+                <el-button :icon="Download" @click="exportTraceability">导出矩阵</el-button>
+              </div>
+              <el-table :data="traceability" class="context-table" table-layout="fixed" max-height="560">
+                <el-table-column label="页面" min-width="230">
+                  <template #default="{ row }">
+                    <strong>{{ row.page.title }}</strong>
+                    <small>{{ row.client.name }} · {{ row.page.path }}</small>
+                  </template>
+                </el-table-column>
+                <el-table-column label="来源" min-width="190">
+                  <template #default="{ row }">
+                    <strong>{{ row.page.sourceType }}</strong>
+                    <small>{{ row.page.source || '未登记源文件' }}</small>
+                  </template>
+                </el-table-column>
+                <el-table-column label="页面 PRD" min-width="260">
+                  <template #default="{ row }">
+                    <template v-if="row.requirement">
+                      <strong>{{ row.requirement.title }}</strong>
+                      <small>{{ row.requirement.path }}</small>
+                    </template>
+                    <span v-else class="context-muted">未关联</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="组件关联" width="110" align="center">
+                  <template #default="{ row }">{{ row.componentBindings.length }}</template>
+                </el-table-column>
+                <el-table-column label="状态" width="110" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 'covered' ? 'success' : 'warning'" effect="light">
+                      {{ row.status === 'covered' ? '已覆盖' : '待关联' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="问题" width="90" align="center">
+                  <template #default="{ row }">{{ row.issues.length }}</template>
+                </el-table-column>
+              </el-table>
             </el-tab-pane>
 
             <el-tab-pane :label="`PRD 索引 ${context.summary.documents}`" name="documents">

@@ -10,7 +10,7 @@ import {
   validateProjectResources,
 } from './project-manifest.js';
 
-export async function scanProjectPackages(projectsRoot, { cache } = {}) {
+export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } = {}) {
   const root = path.resolve(projectsRoot);
   if (cache?.has(root)) return cache.get(root);
   const projects = [];
@@ -42,9 +42,10 @@ export async function scanProjectPackages(projectsRoot, { cache } = {}) {
               projectRoot,
               definitionsModule.clientPageDefinitions || definitionsModule.default,
               definitionsSource,
+              { mounts },
             )),
           );
-          errors.push(...(await validateProjectResources(manifest, projectRoot)));
+          errors.push(...(await validateProjectResources(manifest, projectRoot, { mounts })));
         }
       }
       if (errors.length) {

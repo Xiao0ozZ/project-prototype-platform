@@ -7,8 +7,11 @@ import { describe, expect, it } from 'vitest';
 import {
   migrateProjectManifest,
   normalizePagePrdLinks,
+  normalizeProjectMounts,
   normalizePrototypeSources,
   applyRouteOrder,
+  resolveProjectDocsRoot,
+  resolveProjectPrototypeSources,
   scanProjectPackages,
   validateProjectManifest,
   writeJsonAtomic,
@@ -35,6 +38,41 @@ describe('project core', () => {
       },
     ]);
     expect(normalizePrototypeSources({ enabled: true, root: 'prototype', client: 'admin' })).toHaveLength(1);
+  });
+
+  it('resolves local mount overrides without changing the project manifest', () => {
+    const projectRoot = path.join(os.tmpdir(), 'sample-project');
+    const docsRoot = path.join(os.tmpdir(), 'sample-docs');
+    const prototypeRoot = path.join(os.tmpdir(), 'sample-prototype');
+    const manifest = {
+      id: 'sample-project',
+      docs: { enabled: true, root: 'docs' },
+      prototype: {
+        enabled: true,
+        clients: { admin: { root: 'prototype/admin' } },
+      },
+    };
+    const mounts = normalizeProjectMounts({
+      schemaVersion: 1,
+      projects: {
+        'sample-project': {
+          docsRoot,
+          prototypes: { admin: prototypeRoot },
+        },
+      },
+    });
+
+    expect(resolveProjectDocsRoot(manifest, projectRoot, mounts)).toBe(path.resolve(docsRoot));
+    expect(resolveProjectPrototypeSources(manifest, projectRoot, mounts)).toEqual([
+      expect.objectContaining({
+        clientId: 'admin',
+        configuredRoot: 'prototype/admin',
+        root: path.resolve(prototypeRoot),
+        mounted: true,
+      }),
+    ]);
+    expect(manifest.docs.root).toBe('docs');
+    expect(manifest.prototype.clients.admin.root).toBe('prototype/admin');
   });
 
   it('keeps PRD link paths relative and strips invalid entries', () => {

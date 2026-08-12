@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "projects": {
+    "sample-project": {
+      "docsRoot": "D:/Product/sample-project/docs",
+      "prototypes": {
+        "admin": "D:/Product/sample-project/prototypes/admin"
+      }
+    }
+  }
+}

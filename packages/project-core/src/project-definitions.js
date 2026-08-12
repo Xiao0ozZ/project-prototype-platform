@@ -4,7 +4,13 @@ import { PAGE_PATH_PATTERN, PROJECT_ID_PATTERN } from './constants.js';
 import { fileExists, isSafeRelativePath } from './filesystem.js';
 import { hasExternalPrototypePage } from './project-manifest.js';
 
-export async function validateProjectDefinitions(manifest, projectRoot, definitions, definitionsSource = '') {
+export async function validateProjectDefinitions(
+  manifest,
+  projectRoot,
+  definitions,
+  definitionsSource = '',
+  { mounts = {} } = {},
+) {
   const errors = [];
   if (!definitions || typeof definitions !== 'object' || Array.isArray(definitions)) {
     return ['page-definitions.js 必须导出 clientPageDefinitions 对象。'];
@@ -70,7 +76,7 @@ export async function validateProjectDefinitions(manifest, projectRoot, definiti
     if (
       client.defaultPage &&
       !pagePaths.has(client.defaultPage) &&
-      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.defaultPage))
+      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.defaultPage, mounts))
     ) {
       errors.push(`客户端 ${client.id} 的 defaultPage 未登记：${client.defaultPage}。`);
     }
@@ -78,7 +84,7 @@ export async function validateProjectDefinitions(manifest, projectRoot, definiti
       client.entry?.mode === 'custom-page' &&
       client.entry.page &&
       !pagePaths.has(client.entry.page) &&
-      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.entry.page))
+      !(await hasExternalPrototypePage(manifest, projectRoot, client.id, client.entry.page, mounts))
     ) {
       errors.push(`客户端 ${client.id} 的自定义入口页面未登记：${client.entry.page}。`);
     }

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { PROJECT_ID_PATTERN } from './constants.js';
 import { fileExists, readJsonFile, toWebPath, walkFiles } from './filesystem.js';
-import { resolveProjectContentRoot } from './project-manifest.js';
+import { resolveProjectDocsRoot } from './project-mounts.js';
 
 export const DOCUMENT_PUBLIC_EXTENSIONS = new Set(['.md', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
 
@@ -29,7 +29,7 @@ export async function createDocumentManifest(root) {
   return { generatedAt: new Date().toISOString(), documents };
 }
 
-export async function loadProjectDocumentRoots(projectsRoot) {
+export async function loadProjectDocumentRoots(projectsRoot, { mounts = {} } = {}) {
   const root = path.resolve(projectsRoot);
   const roots = new Map();
   const entries = await fs.readdir(root, { withFileTypes: true }).catch((error) => {
@@ -42,7 +42,7 @@ export async function loadProjectDocumentRoots(projectsRoot) {
     try {
       const manifest = await readJsonFile(path.join(projectRoot, 'project.json'));
       if (manifest.id !== entry.name || !manifest.docs?.enabled) continue;
-      const docsRoot = resolveProjectContentRoot(projectRoot, manifest.docs.root, 'docs');
+      const docsRoot = resolveProjectDocsRoot(manifest, projectRoot, mounts);
       if (await fileExists(docsRoot, 'directory')) roots.set(entry.name, docsRoot);
     } catch {
       // Invalid project packages are reported by the project package scanner.
