@@ -51,7 +51,7 @@ const selectedProjectId = computed({
     } catch {
       // Local storage is optional
     }
-    router.replace({ path: '/variant-a', query: normalizedProjectId ? { project: normalizedProjectId } : {} });
+    router.replace({ path: '/', query: normalizedProjectId ? { project: normalizedProjectId } : {} });
   },
 });
 
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
       <div class="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         <!-- Logo & Dropdown -->
         <div class="flex items-center gap-4">
-          <RouterLink to="/variant-a" class="flex items-center gap-2.5 group">
+          <RouterLink to="/" class="flex items-center gap-2.5 group">
             <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
               <el-icon><Platform /></el-icon>
             </div>

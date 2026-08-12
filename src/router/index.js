@@ -125,99 +125,27 @@ function createLegacyProjectRedirects() {
 }
 
 const routes = [
-  // 默认平台首页：使用带多套皮肤的新首页
+  // 默认平台首页。历史首页与皮肤预览地址统一回到当前正式首页。
   {
     path: '/',
     name: 'home',
+    alias: [
+      '/home-skins',
+      '/home-legacy',
+      '/variant-a',
+      '/variant-b',
+      '/variant-c',
+      '/variant-d',
+      '/variant-e',
+      '/variant-f',
+      '/variant-g',
+      '/variant-h',
+      '/variant-i',
+      '/variant-j',
+      '/variant-k',
+      '/variant-v',
+    ],
     component: () => import('../views/HomeView.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-
-  // 新首页备用入口，保留原有地址兼容
-  {
-    path: '/home-skins',
-    name: 'home-skins',
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-
-  // 连续 A 至 K 独立皮肤/排版架构方案路由 (方案 A 确定为苹果液体玻璃)
-  {
-    path: '/variant-a',
-    name: 'variant-a',
-    component: () => import('../views/home-variants/HomeViewAppleGlass.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-b',
-    name: 'variant-b',
-    component: () => import('../views/home-variants/HomeViewStageHub.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-c',
-    name: 'variant-c',
-    component: () => import('../views/home-variants/HomeViewSplitAccordion.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-d',
-    name: 'variant-d',
-    component: () => import('../views/home-variants/HomeViewAlabasterGallery.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-e',
-    name: 'variant-e',
-    component: () => import('../views/home-variants/HomeViewOrbitalCompass.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-f',
-    name: 'variant-f',
-    component: () => import('../views/home-variants/HomeViewParallaxTheater.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-g',
-    name: 'variant-g',
-    component: () => import('../views/home-variants/HomeViewInterstellarWarp.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-h',
-    name: 'variant-h',
-    component: () => import('../views/home-variants/HomeViewBlackHoleGravity.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-i',
-    name: 'variant-i',
-    component: () => import('../views/home-variants/HomeViewQuantumCube.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-j',
-    name: 'variant-j',
-    component: () => import('../views/home-variants/HomeViewYinYangOrbit.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-k',
-    name: 'variant-k',
-    component: () => import('../views/home-variants/HomeViewCyberCockpit.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/variant-v',
-    name: 'variant-v',
-    component: () => import('../views/home-variants/HomeViewAppleVisionOS.vue'),
-    meta: { title: projectConfig.platformTitle, transition: 'platform' },
-  },
-  {
-    path: '/home-legacy',
-    name: 'home-legacy',
-    component: () => import('../views/HomeViewLegacy.vue'),
     meta: { title: projectConfig.platformTitle, transition: 'platform' },
   },
 
