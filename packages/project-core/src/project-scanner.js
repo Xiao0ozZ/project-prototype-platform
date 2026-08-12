@@ -10,6 +10,28 @@ import {
   validateProjectResources,
 } from './project-manifest.js';
 
+function summarizePageRuntime(manifest, definitions) {
+  const clients = {};
+  for (const client of manifest.clients || []) {
+    const pages = Array.isArray(definitions?.[client.id]?.pages) ? definitions[client.id].pages : [];
+    clients[client.id] = pages.reduce(
+      (summary, page) => {
+        if (page?.sourceType === 'html-template') summary.htmlTemplate += 1;
+        else if (
+          String(page?.view || '')
+            .toLowerCase()
+            .endsWith('.vue')
+        ) {
+          summary.vueSfc += 1;
+        }
+        return summary;
+      },
+      { htmlTemplate: 0, vueSfc: 0 },
+    );
+  }
+  return { clients };
+}
+
 export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } = {}) {
   const root = path.resolve(projectsRoot);
   if (cache?.has(root)) return cache.get(root);
@@ -28,6 +50,7 @@ export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } =
       const manifest = await readJsonFile(manifestPath);
       const errors = validateProjectManifest(manifest, entry.name, projectRoot);
       const definitionsPath = path.resolve(projectRoot, manifest.pageDefinitions || '');
+      let pageRuntime = summarizePageRuntime(manifest, {});
       if (!errors.length) {
         if (!(await fileExists(definitionsPath))) {
           errors.push(`找不到页面定义文件：${manifest.pageDefinitions}。`);
@@ -36,14 +59,12 @@ export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } =
           const definitionsUrl = pathToFileURL(definitionsPath);
           definitionsUrl.searchParams.set('projectScan', `${Date.now()}-${entry.name}`);
           const definitionsModule = await import(definitionsUrl.href);
+          const definitions = definitionsModule.clientPageDefinitions || definitionsModule.default;
+          pageRuntime = summarizePageRuntime(manifest, definitions);
           errors.push(
-            ...(await validateProjectDefinitions(
-              manifest,
-              projectRoot,
-              definitionsModule.clientPageDefinitions || definitionsModule.default,
-              definitionsSource,
-              { mounts },
-            )),
+            ...(await validateProjectDefinitions(manifest, projectRoot, definitions, definitionsSource, {
+              mounts,
+            })),
           );
           errors.push(...(await validateProjectResources(manifest, projectRoot, { mounts })));
         }
@@ -55,7 +76,7 @@ export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } =
           errors,
         });
       } else {
-        projects.push({ ...toPublicProjectManifest(manifest), folder: entry.name });
+        projects.push({ ...toPublicProjectManifest(manifest), folder: entry.name, pageRuntime });
       }
     } catch (error) {
       invalidProjects.push({ folder: entry.name, errors: [`project.json 读取失败：${error.message}`] });

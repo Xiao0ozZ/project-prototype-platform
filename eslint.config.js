@@ -1,7 +1,9 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import pluginVue from 'eslint-plugin-vue';
+import tseslint from 'typescript-eslint';
 
 export default [
   {
@@ -22,6 +24,38 @@ export default [
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   {
+    files: ['apps/platform-react/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      ...reactHooks.configs.flat.recommended.rules,
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['apps/platform-react/vite.config.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ['src/**/*.{js,vue}', 'projects/*/page-definitions.js', 'projects/*/views/**/*.{js,vue}'],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -37,7 +71,14 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.{js,cjs,mjs}', 'plugins/**/*.js', 'vite.config.js', 'playwright.config.js'],
+    files: [
+      'scripts/**/*.{js,cjs,mjs}',
+      'plugins/**/*.js',
+      'vite.config.js',
+      'vite.vue.config.js',
+      'playwright.config.js',
+      'playwright.react.config.js',
+    ],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

@@ -4,7 +4,7 @@
 
 ## 项目说明
 
-本工程是一套 Vue 3 项目资料与原型共用外壳。不同实际项目以 `projects/{project-id}` 可插拔项目包接入，每个项目独立保存自己的配置、客户端入口、页面、模拟数据、资源、文档和移动端内容，共用首页、路由外壳、公共组件、主题引擎和工程工具。
+本工程是一套 React 项目资料与原型共用外壳。不同实际项目以 `projects/{project-id}` 可插拔项目包接入，每个项目独立保存自己的配置、客户端入口、HTML 页面、模拟数据、资源、文档和移动端内容，共用首页、路由外壳、公共组件、主题引擎和工程工具。Vue 旧平台仅作为迁移观察期的内部回退入口。
 
 工程定位为可运行的前端原型，不连接真实后端。页面使用模拟数据呈现业务字段、页面布局、弹窗和主要交互，供产品评审、业务确认、客户演示和前端开发参考。
 
@@ -15,20 +15,21 @@
 - 本地没有项目包时，首页不显示业务项目入口；加入项目包并重新扫描后，才会出现对应项目和客户端入口。
 - 文档中心只读取各项目包 `projects/{project-id}/docs` 下的 Markdown，支持文件夹目录、搜索、Mermaid、相对图片和文档链接。
 - 客户端入口：每个客户端可直接进入默认页、先显示平台演示登录页或进入指定页面，并可选择左侧菜单或无侧栏外壳。
-- 多语言：保留现有简中、繁中和 English 切换框架；后续新页面默认只开发简体中文，仅在产品负责人明确指定页面后补充对应语言。
+- 语言：React 正式平台当前只提供简体中文；保留 i18n 基础设施，但不显示无法实际切换的语言入口。只有产品负责人明确提出后才扩展其他语言。
+- 界面主题：基于 Ant Design v6 `ConfigProvider`、Design Token 与 CSS Variables；默认主题采用官方 Light 视觉语言和浅蓝布局画布，另提供暗色、玻璃主题；支持跟随系统和独立紧凑密度，用户选择保存在本地浏览器。
 
 ## 技术栈
 
-- Vue 3 + Vite 6
-- Vue Router 4
-- Element Plus
-- Tailwind CSS（关闭 Preflight，由工程基础样式统一兜底）
-- Vue I18n
+- React 19 + TypeScript + Vite 6
+- React Router 7
+- Ant Design 6
+- TanStack Query
+- i18next（当前仅启用简体中文）
 - ECharts
 - Markdown It + Mermaid + DOMPurify
 - Lucide（移动端静态资源已本地化）
 - Playwright（路由、交互和视觉回归测试）
-- Vitest + Vue Test Utils（公共组件单元测试）
+- Vitest + Testing Library（React 平台单元测试）
 
 ## 目录结构
 
@@ -36,21 +37,14 @@
 项目资料原型工程/
 ├─ plugins/                    项目发现、PRD、导入导出及构建插件
 ├─ packages/project-core/      项目包 Schema、扫描、校验、文档和关联领域核心
+├─ packages/platform-client/  框架无关的平台数据访问层
+├─ apps/platform-react/       React 正式平台应用
 ├─ projects/                   本地可插拔项目包目录（已加入 Git 忽略，不提交到本仓库）
 ├─ examples/                   可提交、脱敏、可运行的项目包样例
 ├─ scripts/                    页面迁移和多语言审计脚本
 ├─ templates/                  新页面及可迁移 HTML 原型模板
 ├─ tests/                      路由冒烟、关键交互及视觉截图基线
-├─ src/
-│  ├─ components/             统一外壳及 ui 公共组件
-│  ├─ config/                 平台配置、项目包注册和主题配置
-│  ├─ i18n/                   多语言配置、词库及旧原型文案桥接
-│  ├─ composables/            分页、筛选、弹窗、统计选择和图表通用逻辑
-│  ├─ layouts/                客户端布局
-│  ├─ router/                 全局路由
-│  ├─ services/               文档读取等前端数据服务
-│  ├─ styles/                 设计变量、全局样式与 Tailwind 入口
-│  └─ views/                  首页、登录、文档、工具和错误页等平台页面
+├─ src/                       Vue 旧平台回退代码，观察期内保留
 ├─ COMPONENT_GUIDE.md          公共组件、Composables 和新增页面使用规范
 ├─ ARCHITECTURE.md             工程分层、轻量外壳边界和后续拆分顺序
 ├─ HTML_PROTOTYPE_CREATION_PROMPT.md 需求阶段可迁移 HTML 原型创建提示词
@@ -95,12 +89,15 @@ npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
 ```powershell
 npm run dev                 # 本机开发预览，默认 127.0.0.1:5188
 npm run dev:lan             # 局域网预览，默认 0.0.0.0:5188
+npm run dev:vue             # 内部 Vue 回退入口，默认 127.0.0.1:5189
 npm run project -- help     # 查看项目包 CLI
 npm run project:example     # 将脱敏样例安装到本地 projects/sample-project
 npm run project:validate    # 使用共享核心校验项目包
 npm run project:health      # 检查项目、HTML 和需求关联健康状态
 npm run quality:core        # 只检查可提交的平台底座与样例，不读取 projects 业务源码
+npm run quality:react       # React 类型、Lint、单测、迁移审计和正式构建
 npm run build               # 生产构建
+npm run build:vue           # 仅构建 Vue 回退版本到 dist-vue
 npm run audit:projects      # 项目包配置、页面、资源和文档完整性检查
 npm run audit:views         # 全页面迁移、路由、外壳、弹窗及 SFC 审计
 npm run audit:styles        # 样式隔离与外部样式资源审计
@@ -108,9 +105,10 @@ npm run audit:components    # 公共组件、Composables 和示例页审计
 npm run i18n:sync           # 扫描静态界面文案并同步三份词库键
 npm run i18n:traditional    # 使用 OpenCC 在本地生成繁体词库
 npm run audit:i18n          # 检查三份词库结构和未转换数量
-npm run test:smoke          # 全部路由和关键交互检查
-npm run test:visual         # 关键页面视觉基线比较
-npm run test:ui             # 执行全部 Playwright 测试
+npm run test:smoke          # React 正式入口浏览器冒烟测试
+npm run test:ui             # 同上，执行 React E2E 套件
+npm run test:vue:smoke      # 观察期 Vue 回退入口测试
+npm run test:visual         # 观察期 Vue 视觉基线比较
 npm run test:unit           # 公共组件单元测试
 ```
 
@@ -223,13 +221,13 @@ npm run generate:page -- --project sample-project --client admin --path vehicle-
 
 需求阶段先复制 [templates/html-prototype-page.html](./templates/html-prototype-page.html) 创建可迁移 HTML。模板内已经写明可编辑范围和迁移标记；旧页面可以用于对齐既有视觉与交互，但不能直接复制其外壳、全局样式和启动代码。
 
-页面定案后停止修改 HTML，再通过页面导入工具迁移到 Vue。HTML 原型仍是视觉和业务字段的核对来源。导出工具只生成客户演示运行包，不把运行包作为 Vue 源码再次导回。迁移页面必须：
+页面定案后可通过页面导入工具写入项目包的 `html-pages/{client-id}`，由 React 平台直接承载。HTML 仍是正式页面来源，导出文件可继续回导或交给其他 AI 修改。接入页面必须：
 
 - 只接入页面内容区及其同级弹窗、抽屉，不复制旧侧栏和旧顶栏。
 - 保留源页面字段、模拟数据、按钮、表格、弹窗和交互。
-- 使用统一 `AppShell`、路由和菜单。
-- 页面专属状态留在页面组件；新项目确需跨页面共享的数据放在该项目包的 `data` 或项目级模块内。
-- 页面写入前通过严格 SFC 编译，完成后运行 `npm run audit:views` 和 `npm run build`。
+- 使用统一 React 外壳、路由和菜单，不复制页面自有的旧外壳。
+- 页面专属状态保留在 HTML 内；项目级模拟数据放在项目包的 `data`。
+- 页面写入前通过 HTML 模板检查，完成后运行 `npm run audit:react-migration` 和 `npm run build`。
 
 详细规则见 [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)。
 
@@ -238,12 +236,13 @@ npm run generate:page -- --project sample-project --client admin --path vehicle-
 ## 代码质量与 CI
 
 ```powershell
-npm run lint          # ESLint：Vue 模板、脚本和工程底座
+npm run lint:react    # React 正式平台 ESLint
+npm run lint          # 全工程 ESLint；包含观察期 Vue 回退代码和本地项目包
 npm run format        # Prettier：仅格式化工程底座和公共组件
 npm run format:check  # 检查格式，不写文件
 npm run audit:all     # 页面、样式、组件、多语言和保真审计
 npm run quality:check # Lint、格式、审计和生产构建
-npm run ci:check      # 本地执行 CI 同级检查、组件单元测试和浏览器冒烟测试
+npm run ci:check      # React 静态门禁和专用浏览器冒烟测试
 ```
 
 历史迁移页面不执行 Prettier 批量格式化，ESLint 对其采用兼容规则；新页面和工程底座执行严格规则。仓库 CI 位于 `.github/workflows/prototype-quality.yml`，提交涉及本工程或 PRD 文档时会自动执行质量检查、构建、组件单元测试和浏览器冒烟测试。

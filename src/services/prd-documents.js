@@ -1,25 +1,4 @@
-const BASE_URL = import.meta.env.BASE_URL.endsWith('/')
-  ? import.meta.env.BASE_URL
-  : `${import.meta.env.BASE_URL}/`;
-
-function encodeDocumentPath(documentPath) {
-  return documentPath.split('/').map(encodeURIComponent).join('/');
-}
-
-async function fetchOrThrow(url, responseType = 'json') {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) {
-    let message = `请求失败（${response.status}）`;
-    try {
-      const payload = await response.json();
-      message = payload.message || message;
-    } catch {
-      // Keep the HTTP fallback message when the response is not JSON.
-    }
-    throw new Error(message);
-  }
-  return responseType === 'text' ? response.text() : response.json();
-}
+import { platformApi } from './platform-api';
 
 export function normalizeDocumentPath(value) {
   const segments = String(value || '')
@@ -50,21 +29,15 @@ export function resolveDocumentReference(currentDocumentPath, reference) {
 
 export function getDocumentAssetUrl(projectId, documentPath) {
   const normalizedPath = normalizeDocumentPath(documentPath);
-  if (import.meta.env.DEV) {
-    return `/__prd/file?project=${encodeURIComponent(projectId)}&path=${encodeURIComponent(normalizedPath)}`;
-  }
-  return `${BASE_URL}projects/${encodeURIComponent(projectId)}/docs/content/${encodeDocumentPath(normalizedPath)}`;
+  return platformApi.getDocumentAssetUrl(projectId, normalizedPath);
 }
 
 export function loadDocumentManifest(projectId) {
-  const url = import.meta.env.DEV
-    ? `/__prd/manifest?project=${encodeURIComponent(projectId)}`
-    : `${BASE_URL}projects/${encodeURIComponent(projectId)}/docs/manifest.json`;
-  return fetchOrThrow(url);
+  return platformApi.loadDocumentManifest(projectId);
 }
 
 export function loadDocument(projectId, documentPath) {
-  return fetchOrThrow(getDocumentAssetUrl(projectId, documentPath), 'text');
+  return platformApi.loadDocument(projectId, normalizeDocumentPath(documentPath));
 }
 
 export function onDocumentsChanged(projectId, callback) {

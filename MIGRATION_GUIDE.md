@@ -1,5 +1,7 @@
 # HTML 原型迁移到 Vue 3 工程规范
 
+> 本文件保留为 Vue 回退链路的历史规范。React 正式平台导入规范 HTML 时会保存为 `html-pages/{client-id}` 托管页面，不再生成 Vue SFC；新工作应以 `templates/html-prototype-page.html` 和 `PAGE_TRANSFER_GUIDE.md` 为准。
+
 ## 1. 适用范围
 
 本规范适用于将 `02_原型和PRD/原型/营运端`、`企业端`中的 HTML 原型接入当前 Vue 3 工程。旧 `02_原型和PRD/Vue3/CONVERSION_GUIDE.md` 面向单文件预览，不能直接作为本工程的接入方式。

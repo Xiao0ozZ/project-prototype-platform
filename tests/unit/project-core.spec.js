@@ -179,6 +179,9 @@ describe('project core', () => {
       const result = await scanProjectPackages(projectsRoot);
       expect(result.invalidProjects).toEqual([]);
       expect(result.projects.map((project) => project.id)).toEqual(['sample']);
+      expect(result.projects[0].pageRuntime).toEqual({
+        clients: { admin: { htmlTemplate: 0, vueSfc: 1 } },
+      });
     } finally {
       await fs.rm(projectsRoot, { recursive: true, force: true });
     }

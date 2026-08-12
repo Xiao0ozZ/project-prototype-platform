@@ -1,0 +1,836 @@
+:root {
+  --platform-blue: var(--ant-color-primary, #1677ff);
+  --platform-blue-soft: var(--ant-color-primary-bg, #e6f4ff);
+  --platform-text: var(--ant-color-text, rgb(0 0 0 / 88%));
+  --platform-text-secondary: var(--ant-color-text-secondary, rgb(0 0 0 / 65%));
+  --platform-border: var(--ant-color-border-secondary, #f0f0f0);
+  --platform-canvas: var(--ant-color-bg-layout, #f5f5f5);
+  --platform-surface: var(--ant-color-bg-container, #fff);
+  --platform-root-canvas: #f5f8ff;
+  --app-header-height: 56px;
+  --app-sider-width: 232px;
+}
+
+html[data-theme='dark'] {
+  --platform-root-canvas: #000;
+}
+
+html[data-theme='glass'] {
+  --platform-root-canvas: transparent;
+}
+
+html[data-density='compact'] {
+  --app-header-height: 48px;
+}
+
+html,
+body,
+#root {
+  background: var(--platform-root-canvas);
+}
+
+body {
+  color: var(--ant-color-text, rgb(0 0 0 / 88%));
+  background: var(--platform-root-canvas);
+}
+
+html[data-theme='glass'] body {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(117 185 255 / 34%), transparent 34rem),
+    radial-gradient(circle at 88% 18%, rgb(184 159 255 / 26%), transparent 30rem),
+    linear-gradient(145deg, #edf6ff 0%, #f6f3ff 48%, #edf8ff 100%);
+  background-attachment: fixed;
+}
+
+html[data-theme='glass'] #root,
+html[data-theme='glass'] .home-page--ant,
+html[data-theme='glass'] .platform-workspace,
+html[data-theme='glass'] .platform-workspace__main,
+html[data-theme='glass'] .platform-workspace__content,
+html[data-theme='glass'] .client-shell,
+html[data-theme='glass'] .client-shell .ant-layout,
+html[data-theme='glass'] .docs-center,
+html[data-theme='glass'] .docs-layout,
+html[data-theme='glass'] .system-result-page,
+html[data-theme='glass'] .client-login {
+  background: transparent;
+}
+
+html[data-theme='glass'] .platform-workspace__sider,
+html[data-theme='glass'] .platform-workspace__header,
+html[data-theme='glass'] .home-topbar--ant,
+html[data-theme='glass'] .home-project-picker,
+html[data-theme='glass'] .home-workspace--ant,
+html[data-theme='glass'] .platform-surface,
+html[data-theme='glass'] .client-sider,
+html[data-theme='glass'] .client-topbar,
+html[data-theme='glass'] .docs-header,
+html[data-theme='glass'] .docs-sidebar,
+html[data-theme='glass'] .docs-outline,
+html[data-theme='glass'] .prd-review-panel,
+html[data-theme='glass'] .client-bare-tools,
+html[data-theme='glass'] .client-login__card,
+html[data-theme='glass'] .system-result-page .ant-result {
+  background: color-mix(in srgb, var(--ant-color-bg-container) 92%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+html[data-theme='glass'] .platform-surface,
+html[data-theme='glass'] .home-project-picker,
+html[data-theme='glass'] .home-workspace--ant,
+html[data-theme='glass'] .client-login__card,
+html[data-theme='glass'] .system-result-page .ant-result {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 62%) inset,
+    0 16px 44px rgb(69 101 141 / 10%);
+}
+
+.theme-control.ant-btn {
+  min-width: 34px;
+  color: var(--ant-color-text-secondary);
+}
+
+.theme-control.ant-btn:hover {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+/* Ant Design v6 visual-language normalization */
+.console-page,
+.packages-page {
+  color: var(--ant-color-text);
+}
+
+.console-back-link,
+.console-status,
+.console-title-row .ant-typography-secondary,
+.packages-header__title .ant-typography-secondary,
+.developer-panel__copy .ant-typography-secondary,
+.developer-panel__copy small,
+.tool-link__copy small,
+.tools-panel__heading small,
+.packages-metric > .ant-typography,
+.packages-metric small,
+.packages-table-panel code,
+.invalid-project-panel code {
+  color: var(--ant-color-text-secondary) !important;
+}
+
+.console-back-link:hover {
+  color: var(--ant-color-primary) !important;
+}
+
+.console-title-icon,
+.packages-header__title > span,
+.project-config-title__icon,
+.tool-link__icon {
+  border-radius: var(--ant-border-radius, 6px);
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  box-shadow: none;
+}
+
+.console-eyebrow,
+.developer-panel__label,
+.tools-panel__heading > div > .ant-typography,
+.packages-summary__intro > .ant-typography,
+.packages-table-panel__heading > div > .ant-typography,
+.packages-header__code {
+  color: var(--ant-color-primary) !important;
+  font-weight: 600;
+}
+
+.console-title-row h1,
+.packages-header h1 {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal;
+}
+
+.developer-panel__copy h2,
+.tools-panel__heading h2,
+.packages-summary h2,
+.packages-table-panel h2,
+.invalid-project-panel h2,
+.tool-link__copy strong {
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.developer-toggle {
+  min-height: var(--ant-control-height, 32px);
+  border-color: var(--ant-color-border) !important;
+  border-radius: var(--ant-border-radius, 6px) !important;
+  color: var(--ant-color-text-secondary) !important;
+  background: var(--ant-color-bg-container) !important;
+  font-weight: 400 !important;
+}
+
+.developer-toggle.is-active {
+  color: var(--ant-color-text-light-solid) !important;
+  background: var(--ant-color-primary) !important;
+  box-shadow: none;
+}
+
+.tool-link {
+  min-height: 80px !important;
+  border-color: var(--ant-color-border-secondary) !important;
+  border-radius: var(--ant-border-radius-lg, 8px) !important;
+  color: var(--ant-color-text) !important;
+  background: var(--ant-color-fill-quaternary) !important;
+}
+
+.tool-link:hover {
+  border-color: var(--ant-color-primary-border) !important;
+  background: var(--ant-color-bg-container) !important;
+  box-shadow: var(--ant-box-shadow-tertiary);
+  transform: none;
+}
+
+.tool-link__arrow,
+.tool-link:hover .tool-link__arrow {
+  color: var(--ant-color-primary);
+}
+
+.packages-metric {
+  border-color: var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.packages-metric--success strong {
+  color: var(--ant-color-success-text);
+}
+
+.packages-metric--blue strong {
+  color: var(--ant-color-primary);
+}
+
+.packages-table-panel .ant-table-wrapper,
+.invalid-project-panel .ant-table-wrapper {
+  border-color: var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+}
+
+.project-config-modal .ant-modal-content {
+  border-radius: var(--ant-border-radius-lg, 8px);
+}
+
+.project-config-nav .ant-btn {
+  border-radius: var(--ant-border-radius, 6px);
+  color: var(--ant-color-text-secondary);
+}
+
+.project-config-nav .ant-btn.is-active {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  box-shadow: none;
+}
+
+.project-config-nav .ant-btn > span:first-child,
+.project-client-item > header > div:first-child > span {
+  border-radius: var(--ant-border-radius-sm, 4px);
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-secondary);
+}
+
+.project-config-nav .ant-btn.is-active > span:first-child {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg-hover);
+}
+
+.project-config-grid .ant-form-item-label > label,
+.project-client-grid .ant-form-item-label > label {
+  color: var(--ant-color-text-secondary);
+  font-weight: 600;
+}
+
+.project-config-grid small,
+.project-config-nav small,
+.project-client-item > small,
+.project-config-footer > small,
+.project-client-item__actions label {
+  color: var(--ant-color-text-tertiary);
+}
+
+.route-group,
+.gallery-overview {
+  border-radius: var(--ant-border-radius-lg, 8px);
+}
+
+/* Platform management shell */
+.platform-workspace,
+.platform-workspace__main,
+.platform-workspace__content {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-layout);
+}
+
+.platform-workspace__sider {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container) !important;
+}
+
+.platform-workspace__brand {
+  height: var(--app-header-height);
+  border-color: transparent;
+  transition: background-color 160ms ease;
+}
+
+.platform-workspace__brand:hover {
+  background: var(--ant-color-fill-tertiary);
+}
+
+.platform-workspace__brand > span {
+  color: #fff;
+  background: var(--ant-color-primary);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ant-color-primary) 22%, transparent);
+}
+
+.platform-workspace__brand strong {
+  color: var(--ant-color-text);
+}
+
+.platform-workspace__brand small,
+.platform-workspace__collapse {
+  color: var(--ant-color-text-secondary) !important;
+}
+
+.platform-workspace__menu .ant-menu-item-selected {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+.platform-workspace__collapse {
+  border-color: var(--ant-color-border-secondary) !important;
+}
+
+.platform-workspace__header {
+  height: var(--app-header-height);
+  padding: 0 24px;
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.platform-workspace__location,
+.platform-workspace__actions {
+  display: flex;
+  align-items: center;
+}
+
+.platform-workspace__actions {
+  gap: 4px;
+}
+
+.platform-workspace__route {
+  min-height: calc(100vh - var(--app-header-height));
+}
+
+.platform-page--ant {
+  width: min(1480px, 100%);
+  padding: 24px clamp(24px, 3vw, 40px) 48px;
+}
+
+.platform-page--ant .platform-page__heading {
+  min-height: 64px;
+  margin-bottom: 16px;
+}
+
+.platform-page--ant .platform-page__eyebrow {
+  color: var(--ant-color-primary);
+}
+
+.platform-page--ant .platform-page__heading h1 {
+  color: var(--ant-color-text);
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal;
+}
+
+.platform-workspace .platform-surface {
+  border-color: var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-bg-container);
+  box-shadow: none;
+}
+
+.platform-workspace .ant-table-wrapper .ant-table {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.platform-workspace .ant-table-thead > tr > th,
+.platform-workspace .project-target-row,
+.platform-workspace .transfer-upload-row,
+.platform-workspace .transfer-export-toolbar,
+.platform-workspace .transfer-export-submit,
+.platform-workspace .transfer-manifest-preview {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.platform-workspace .ant-table-tbody > tr > td,
+.platform-workspace .routes-panel__heading,
+.platform-workspace .transfer-panel__heading,
+.platform-workspace .surface-heading {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.platform-workspace .routes-metric,
+.platform-workspace .context-summary__metrics > div,
+.packages-summary__stats > .ant-statistic + .ant-statistic {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.console-tool-list__icon,
+.docs-header__identity > span {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+.project-config-modal .ant-modal-header,
+.project-config-modal .ant-modal-footer,
+.project-config-intro,
+.project-config-section__heading,
+.project-client-item,
+.project-config-nav {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.project-config-shell,
+.project-config-modal .ant-modal-content {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-container);
+}
+
+.project-config-nav {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.project-config-footer,
+.route-group > header,
+.route-order-hint,
+.prd-dialog-target,
+.transfer-header__context,
+.impact-toolbar,
+.context-page-detail .ant-descriptions {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.project-config-grid--divide,
+.project-visibility-row,
+.route-client-tabs,
+.transfer-form-heading,
+.context-page-detail,
+.context-page-detail section,
+.context-callouts,
+.context-callouts > div + div,
+.context-workspace .ant-table-wrapper,
+.backup-panel .ant-table-wrapper,
+.export-page-list section,
+.export-page-list header,
+.export-page-list .ant-checkbox-wrapper,
+.gallery-overview,
+.gallery-overview > div + div,
+.gallery-action-row,
+.gallery-form,
+.gallery-switch-row {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.route-group,
+.route-group .ant-collapse,
+.route-group .ant-collapse-content,
+.export-page-list section,
+.context-page-detail,
+.gallery-overview {
+  background: var(--ant-color-bg-container);
+}
+
+.route-group__toggle {
+  color: var(--ant-color-text) !important;
+}
+
+.route-group__toggle small,
+.route-group .ant-table code,
+.route-group .ant-table small,
+.route-table-actions > small,
+.route-order-hint,
+.transfer-header__context .ant-typography,
+.transfer-header__context small,
+.project-target-row > .ant-typography,
+.transfer-export-toolbar > div:last-child,
+.export-page-list .ant-checkbox + span small,
+.context-callouts > div,
+.context-workspace .ant-table small,
+.context-page-detail .ant-descriptions-item-label,
+.context-page-detail li,
+.impact-toolbar > .ant-typography,
+.table-secondary,
+.gallery-action-row > div > .ant-typography {
+  color: var(--ant-color-text-secondary);
+}
+
+.route-order-badge {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-secondary);
+}
+
+.route-order-hint b,
+.context-page-detail li:hover,
+.config-preview__icon {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+.home-project-heading__identity > .ant-avatar,
+.home-entry-card__icon {
+  color: var(--project-accent);
+  background: color-mix(in srgb, var(--project-accent) 11%, var(--ant-color-bg-container));
+}
+
+.route-group .ant-table-thead > tr > th,
+.export-page-list header,
+.transfer-upload-row,
+.transfer-export-toolbar,
+.transfer-manifest-preview {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.transfer-manifest-preview strong,
+.context-callouts strong,
+.context-page-detail li:hover {
+  color: var(--ant-color-text);
+}
+
+.transfer-upload-row {
+  border-color: var(--ant-color-border);
+}
+
+.inspection-summary {
+  border-color: var(--ant-color-success-border);
+  background: var(--ant-color-success-bg);
+}
+
+.inspection-summary.is-invalid,
+.project-config-error {
+  border-color: var(--ant-color-error-border);
+  color: var(--ant-color-error-text);
+  background: var(--ant-color-error-bg);
+}
+
+.invalid-project-panel,
+.packages-metric--warning {
+  border-color: var(--ant-color-warning-border);
+  background: var(--ant-color-warning-bg);
+}
+
+.context-callouts .anticon,
+.gallery-overview > div > .anticon,
+.gallery-kicker,
+.gallery-dialog-icon,
+.surface-heading__icon {
+  color: var(--ant-color-primary) !important;
+}
+
+/* Home */
+.home-page--ant,
+.home-loading--ant {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-layout);
+}
+
+.home-topbar--ant {
+  height: var(--app-header-height);
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.home-brand--ant.ant-btn,
+.home-hero--ant h1,
+.home-project-heading--ant h2,
+.home-entry-card__copy h4 {
+  color: var(--ant-color-text);
+}
+
+.home-brand__text small {
+  color: var(--ant-color-text-secondary);
+}
+
+.home-project-picker,
+.home-empty--ant,
+.home-workspace--ant,
+.home-entry-card--ant {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.home-project-picker,
+.home-workspace--ant,
+.home-empty--ant {
+  border-radius: var(--ant-border-radius-lg, 8px);
+}
+
+.home-project-picker {
+  box-shadow: var(
+    --ant-box-shadow-tertiary,
+    0 1px 2px 0 rgb(0 0 0 / 5%),
+    0 1px 6px -1px rgb(0 0 0 / 3%),
+    0 2px 4px 0 rgb(0 0 0 / 3%)
+  );
+}
+
+.home-workspace--ant {
+  box-shadow: none;
+}
+
+.home-entry-card--ant:hover,
+.home-entry-card--ant:focus-visible {
+  background: color-mix(in srgb, var(--project-accent) 4%, var(--ant-color-bg-container));
+}
+
+/* Client business shell */
+.client-shell,
+.client-bare,
+.client-shell .ant-layout,
+.client-page-workspace {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-layout);
+}
+
+.client-sider {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container) !important;
+}
+
+.client-sider .ant-layout-sider-children {
+  padding: 8px;
+}
+
+.client-sider .ant-menu,
+.client-topnav-menu {
+  background: transparent;
+}
+
+.client-sider .ant-menu-item-selected,
+.client-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+.client-topbar {
+  height: var(--app-header-height);
+  min-height: var(--app-header-height);
+  flex-basis: var(--app-header-height);
+  padding: 0 18px;
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container) !important;
+}
+
+.client-brand {
+  min-width: 0;
+  gap: 10px;
+  color: var(--ant-color-text);
+}
+
+.client-brand__mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff !important;
+  background: var(--ant-color-primary);
+  font-size: 14px !important;
+  font-weight: 700;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--ant-color-primary) 20%, transparent);
+}
+
+.client-brand__copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.client-brand__copy strong,
+.client-brand__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-brand__copy strong {
+  color: var(--ant-color-text);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.client-brand__copy small {
+  color: var(--ant-color-text-secondary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.client-actions {
+  gap: 4px;
+}
+
+.client-account {
+  margin-left: 2px;
+  border-left: 1px solid var(--ant-color-border-secondary) !important;
+  border-radius: 0 !important;
+  padding-left: 14px !important;
+}
+
+.client-content {
+  height: 100%;
+}
+
+.client-bare-tools {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+/* Documents and PRD */
+.docs-center,
+.docs-layout {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-layout);
+}
+
+.docs-header {
+  height: var(--app-header-height);
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container) !important;
+}
+
+.docs-header__actions,
+.mobile-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.docs-sidebar,
+.docs-outline,
+.docs-reader,
+.prd-review-panel {
+  border-color: var(--ant-color-border-secondary);
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-container) !important;
+}
+
+.docs-sidebar,
+.docs-outline,
+.docs-reader {
+  height: calc(100vh - var(--app-header-height));
+}
+
+.docs-sidebar__heading,
+.docs-outline__heading,
+.prd-review-panel__header,
+.prd-review-panel__toolbar,
+.prd-review-panel__search,
+.prd-review-panel__outline {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.docs-file-list .ant-list-item.is-active .ant-btn,
+.prd-review-panel__outline .ant-list-item.is-active .ant-btn {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+.prd-review-panel__toolbar,
+.prd-review-panel__search,
+.prd-review-panel__outline {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.prd-review-panel--overlay {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.markdown-body,
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  color: var(--ant-color-text);
+}
+
+.markdown-body h2,
+.markdown-body th,
+.markdown-body td {
+  border-color: var(--ant-color-border-secondary);
+}
+
+.markdown-body th,
+.markdown-body pre {
+  background: var(--ant-color-fill-quaternary);
+}
+
+/* Standalone states */
+.client-login,
+.system-result-page,
+.mobile-preview-page {
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-layout);
+}
+
+.client-login__card,
+.system-result-page .ant-result,
+.mobile-preview-header {
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.client-login__card {
+  border-radius: 16px;
+  box-shadow: 0 20px 56px rgb(0 0 0 / 10%);
+}
+
+.client-login__theme {
+  position: fixed;
+  z-index: 3;
+  top: 18px;
+  right: 18px;
+}
+
+.mobile-preview-header {
+  height: var(--app-header-height);
+  flex-basis: var(--app-header-height);
+}
+
+@media (max-width: 900px) {
+  .platform-workspace__header {
+    padding-inline: 16px;
+  }
+
+  .platform-workspace__location .ant-breadcrumb li:first-child {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .platform-workspace__actions .ant-btn > span:not(.anticon),
+  .client-actions .theme-control {
+    display: none;
+  }
+
+  .home-topbar--ant,
+  .docs-header {
+    height: var(--app-header-height);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .platform-workspace__brand,
+  .theme-control.ant-btn {
+    transition: none;
+  }
+}

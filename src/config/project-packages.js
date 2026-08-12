@@ -52,7 +52,10 @@ function mergeHtmlPrototypePages(definitions, pagesByClient = {}) {
       clientId,
       {
         ...definition,
-        pages: mergeHtmlPages(definition.pages || [], pagesByClient[clientId] || []),
+    pages: mergeHtmlPages(
+      (definition.pages || []).filter((page) => page.sourceType !== 'html-template'),
+      pagesByClient[clientId] || [],
+    ),
       },
     ]),
   );
@@ -127,7 +130,7 @@ export function resolveProjectView(project, view) {
 }
 
 function isHtmlPrototypePage(page) {
-  return page?.sourceType === 'html-direct' && page.source;
+  return ['html-direct', 'html-template'].includes(page?.sourceType) && page.source;
 }
 
 export function createProjectMenus(projectId, clientId) {
@@ -163,7 +166,7 @@ export function createProjectPageRoutes(project, client) {
       clientId: client.id,
       ...(page.view ? { source: `views/${String(page.view).replace(/^\/+/, '')}` } : {}),
       ...(isHtmlPrototypePage(page)
-        ? { sourceType: 'html-direct', htmlSource: page.source, htmlPrototype: true }
+        ? { sourceType: page.sourceType, htmlSource: page.source, htmlPrototype: true }
         : {}),
       ...(page.source === 'route-manager' ? { sourceType: 'route-manager', routeManagerPage: true } : {}),
       ...(project.pagePrdLinks?.[client.id]?.[page.name]

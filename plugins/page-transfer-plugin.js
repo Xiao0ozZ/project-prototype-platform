@@ -9,6 +9,7 @@ import prettier from 'prettier';
 import { build as viteBuild } from 'vite';
 
 import { normalizeRouteOrder, orderClientRouteData } from '../packages/project-core/src/route-order.js';
+import { isSafeRelativePath } from '../packages/project-core/src/index.js';
 import { inspectHtmlPrototype } from '../packages/project-core/src/html-preflight.js';
 import { scanHtmlPrototypePages } from './html-prototype-plugin.js';
 import { extractEmbeddedScript, isSupportedPlatformExportFormat } from './platform-export-format.js';
@@ -85,7 +86,9 @@ function extractSfcBlock(source, tagName) {
 }
 
 function extractSfcTag(source, tagName) {
-  const match = source.match(new RegExp(`<${tagName}\\b([^>]*)>([\\s\\S]*?)<\\/${tagName}>`, 'i'));
+  const match = String(source || '').match(
+    new RegExp(`<${tagName}\\b([^>]*)>([\\s\\S]*?)<\\/${tagName}>`, 'i'),
+  );
   if (!match) return null;
   return { attributes: match[1].trim(), content: match[2].trim() };
 }
@@ -982,15 +985,46 @@ function isPackageViewPath(projectPackage, filePath) {
   return absolute === packageViewsRoot || absolute.startsWith(`${packageViewsRoot}${path.sep}`);
 }
 
-async function createPageBackup(projectPackage, metadata, sourcePath) {
+function managedHtmlRoot(projectPackage, client) {
+  return path.join(projectPackage.packageRoot, 'html-pages', client);
+}
+
+function resolveManagedHtmlPath(projectPackage, client, source) {
+  const relative = String(source || '')
+    .replaceAll('\\', '/')
+    .replace(/^\/+/, '');
+  const root = managedHtmlRoot(projectPackage, client);
+  const target = path.resolve(root, ...relative.split('/'));
+  if (
+    !relative ||
+    !isSafeRelativePath(relative) ||
+    !['.html', '.htm'].includes(path.extname(relative).toLowerCase()) ||
+    !isPathInside(root, target)
+  ) {
+    throw new Error(`HTML 页面来源路径无效：${client}/${relative || '空值'}。`);
+  }
+  return { root, relative, target };
+}
+
+function managedHtmlPathForPage(projectPackage, page) {
+  if (page?.sourceType !== 'html-template' || !page.source) return null;
+  return resolveManagedHtmlPath(projectPackage, page.client, page.source).target;
+}
+
+function routeDefinitionPages(definition) {
+  return (definition?.pages || []).filter((page) => page.sourceType !== 'html-template');
+}
+
+async function createPageBackup(projectPackage, metadata, sourcePath, sourceKind = 'vue') {
   const id = backupIdFor(metadata.client, metadata.original.path);
   const directory = path.join(pageBackupRoot(projectPackage), id);
   await fsp.mkdir(directory, { recursive: true });
+  const backupFile = sourceKind === 'html' ? 'page.html' : 'page.vue';
   if (sourcePath && fs.existsSync(sourcePath))
-    await fsp.copyFile(sourcePath, path.join(directory, 'page.vue'));
+    await fsp.copyFile(sourcePath, path.join(directory, backupFile));
   await fsp.writeFile(
     path.join(directory, 'metadata.json'),
-    JSON.stringify({ ...metadata, id }, null, 2),
+    JSON.stringify({ ...metadata, id, sourceKind }, null, 2),
     'utf8',
   );
   return { id, directory };
@@ -1065,6 +1099,85 @@ function buildPlaceholderVue({ title, routePath }) {
 `;
 }
 
+function buildPlaceholderHtml({ client, title, routePath, section, icon }) {
+  const safeTitle = escapeHtmlAttribute(title);
+  const manifest = JSON.stringify(
+    {
+      templateVersion: 1,
+      pageKey: `${client}-${routePath}`,
+      client,
+      routePath: `/${client}/${routePath}`,
+      pageTitle: title,
+      menuTitle: title,
+      menuSection: section,
+      menuIcon: icon,
+      menu: true,
+      pageType: 'custom',
+      pageHeaderMode: 'standard',
+    },
+    null,
+    2,
+  ).replaceAll('<', '\\u003c');
+  return `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="prototype-title" content="${safeTitle}" />
+    <meta name="prototype-path" content="${routePath}" />
+    <meta name="prototype-section" content="${escapeHtmlAttribute(section)}" />
+    <meta name="prototype-icon" content="${escapeHtmlAttribute(icon)}" />
+    <title>${safeTitle}</title>
+    <style data-page-style>
+      :root {
+        color: #1f2329;
+        background: var(--app-color-page, #f5f7fb);
+        font-family: "PingFang SC", "SF Pro Display", "SF Pro Text", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--app-color-page, #f5f7fb); }
+      .prototype-app { min-height: 100vh; }
+      .prototype-main { padding: 24px 28px 32px; }
+      .placeholder-header h1 { margin: 0; font-size: 24px; line-height: 1.35; }
+      .placeholder-header p { margin: 8px 0 0; color: #86909c; font-size: 14px; }
+      .placeholder-panel {
+        margin-top: 20px;
+        padding: 56px 24px;
+        border: 1px solid #e5e6eb;
+        border-radius: 12px;
+        background: #fff;
+        color: #86909c;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-app">
+      <main class="prototype-main" data-page-content data-business-content>
+        <!-- [AI-EDIT] PAGE_CONTENT_START -->
+        <header class="placeholder-header">
+          <h1>${safeTitle}</h1>
+          <p>页面路由已建立，可通过页面导入功能替换为正式原型内容。</p>
+        </header>
+        <section class="placeholder-panel">页面内容待补充</section>
+        <!-- PAGE_CONTENT_END -->
+      </main>
+      <!-- [AI-EDIT] PAGE_OVERLAYS_START -->
+      <div data-page-overlay="placeholder" hidden></div>
+      <!-- PAGE_OVERLAYS_END -->
+    </div>
+    <script id="prototype-page-manifest" type="application/json">${manifest}</script>
+    <script>
+      /* [AI-EDIT] PAGE_LOGIC_START */
+      function pageSetup() { return {}; }
+      /* PAGE_LOGIC_END */
+    </script>
+  </body>
+</html>
+`;
+}
+
 function pageRecord({ client, routePath, pageTitle, view, section, icon, source = 'route-manager' }) {
   return {
     path: routePath,
@@ -1122,7 +1235,7 @@ async function htmlPagesForProject(projectRoot, projectId, mounts = {}) {
 
 function clientRouteData(projectPackage, htmlPages, clientId, routeOrder) {
   const definition = projectPackage.definitions[clientId];
-  const pages = [...(definition?.pages || []), ...(htmlPages[clientId] || [])];
+  const pages = [...routeDefinitionPages(definition), ...(htmlPages[clientId] || [])];
   return orderClientRouteData(definition?.sections || [], pages, routeOrder?.clients?.[clientId]);
 }
 
@@ -1159,7 +1272,7 @@ export async function updateProjectSections({ projectRoot, target, mounts = {} }
   const clientDefinition = projectPackage.definitions[client];
   if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
   const htmlPages = await htmlPagesForProject(projectRoot, target.projectId, mounts);
-  const allPages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
+  const allPages = [...routeDefinitionPages(clientDefinition), ...(htmlPages[client] || [])];
   const updates = Array.isArray(target.sections)
     ? target.sections.map((section) => ({
         id: String(section?.id || '').trim(),
@@ -1235,7 +1348,7 @@ export async function updateProjectRouteOrder({ projectRoot, target, mounts = {}
   if (!clientDefinition) throw new Error(`项目 ${target.projectId} 不存在客户端：${client}。`);
 
   const htmlPages = await htmlPagesForProject(projectRoot, target.projectId, mounts);
-  const pages = [...(clientDefinition.pages || []), ...(htmlPages[client] || [])];
+  const pages = [...routeDefinitionPages(clientDefinition), ...(htmlPages[client] || [])];
   const currentConfig = await readRouteOrderConfig(projectPackage);
   const currentClientOrder = currentConfig.clients?.[client] || {};
   const normalizedOrder = normalizeRouteOrder({
@@ -1312,17 +1425,45 @@ export async function createProjectRoute({ projectRoot, target }) {
   if (!allowedIcons.has(icon)) throw new Error(`不支持的菜单图标：${icon}。`);
   if (clientDefinition.pages.some((page) => page.path === routePath))
     throw new Error(`路由已存在：${routePath}。`);
+  const useManagedHtml = target.runtime === 'html';
   const relativeView = `${client}/${toPascalCase(routePath)}View.vue`;
-  const targetPath = path.join(projectPackage.packageRoot, 'views', relativeView);
-  if (fs.existsSync(targetPath)) throw new Error(`页面文件已存在：${relativeView}。`);
+  const fileName = normalizeHtmlFileName(target.fileName || pageTitle, `${routePath}.html`);
+  const managedSource = useManagedHtml ? resolveManagedHtmlPath(projectPackage, client, fileName) : null;
+  const targetPath = useManagedHtml
+    ? managedSource.target
+    : path.join(projectPackage.packageRoot, 'views', relativeView);
+  if (fs.existsSync(targetPath)) {
+    throw new Error(`页面文件已存在：${useManagedHtml ? fileName : relativeView}。`);
+  }
   const sourceDefinitions = await fsp.readFile(projectPackage.definitionsPath, 'utf8');
-  const page = pageRecord({ client, routePath, pageTitle, view: relativeView, section, icon });
+  const page = useManagedHtml
+    ? {
+        path: routePath,
+        name: `${client}-${routePath}`,
+        title: pageTitle,
+        sourceType: 'html-template',
+        source: fileName,
+        section,
+        icon,
+        prototype: {
+          fileName,
+          templateVersion: 1,
+          pageKey: `${client}-${routePath}`,
+          pageTitle,
+          pageType: 'custom',
+          pageHeaderMode: 'standard',
+        },
+      }
+    : pageRecord({ client, routePath, pageTitle, view: relativeView, section, icon });
   const updatedDefinitions = insertPageDefinition(sourceDefinitions, client, page);
   await fsp.mkdir(path.dirname(targetPath), { recursive: true });
-  await fsp.writeFile(targetPath, buildPlaceholderVue({ title: pageTitle, routePath }), {
-    encoding: 'utf8',
-    flag: 'wx',
-  });
+  await fsp.writeFile(
+    targetPath,
+    useManagedHtml
+      ? buildPlaceholderHtml({ client, title: pageTitle, routePath, section, icon })
+      : buildPlaceholderVue({ title: pageTitle, routePath }),
+    { encoding: 'utf8', flag: 'wx' },
+  );
   try {
     await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
   } catch (error) {
@@ -1429,7 +1570,11 @@ export async function deleteProjectRoute({ projectRoot, target }) {
   const manifestClient = projectPackage.manifest.clients?.find((item) => item.id === client);
   if (manifestClient?.defaultPage === page.path)
     throw new Error('当前页面是客户端默认页面，请先在项目配置中更换默认页面。');
-  const sourcePath = resolveProjectViewPath(projectRoot, projectPackage, page.view);
+  const sourceKind = page.sourceType === 'html-template' ? 'html' : 'vue';
+  const sourcePath =
+    sourceKind === 'html'
+      ? managedHtmlPathForPage(projectPackage, { ...page, client })
+      : resolveProjectViewPath(projectRoot, projectPackage, page.view);
   const sourceDefinitions = await fsp.readFile(projectPackage.definitionsPath, 'utf8');
   const updatedDefinitions = removePageDefinition(sourceDefinitions, client, page.path);
   const backup = await createPageBackup(
@@ -1443,10 +1588,12 @@ export async function deleteProjectRoute({ projectRoot, target }) {
       original: page,
     },
     sourcePath,
+    sourceKind,
   );
   try {
     await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
-    if (isPackageViewPath(projectPackage, sourcePath)) await fsp.rm(sourcePath, { force: true });
+    if (sourceKind === 'html' || isPackageViewPath(projectPackage, sourcePath))
+      await fsp.rm(sourcePath, { force: true });
   } catch (error) {
     await writeDefinitions(projectPackage.definitionsPath, sourceDefinitions).catch(() => {});
     throw error;
@@ -1487,22 +1634,31 @@ export async function restoreProjectRoute({ projectRoot, target }) {
   if (replacement)
     updatedDefinitions = removePageDefinition(updatedDefinitions, metadata.client, replacement.path);
   updatedDefinitions = insertPageDefinition(updatedDefinitions, metadata.client, original);
-  const backupVuePath = path.join(backupDirectory, 'page.vue');
-  if (!fs.existsSync(backupVuePath)) throw new Error('备份文件缺失，无法还原。');
-  const restoredViewPath = path.join(projectPackage.packageRoot, 'views', original.view);
-  await fsp.mkdir(path.dirname(restoredViewPath), { recursive: true });
-  await fsp.copyFile(backupVuePath, restoredViewPath);
-  if (replacement?.view && replacement.view !== original.view) {
-    const replacementViewPath = path.join(projectPackage.packageRoot, 'views', replacement.view);
-    if (isPackageViewPath(projectPackage, replacementViewPath))
-      await fsp.rm(replacementViewPath, { force: true });
-  }
-  try {
-    await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
-  } catch (error) {
-    await fsp.rm(restoredViewPath, { force: true });
-    throw error;
-  }
+  const sourceKind = metadata.sourceKind || (original.sourceType === 'html-template' ? 'html' : 'vue');
+  const backupSourcePath = path.join(backupDirectory, sourceKind === 'html' ? 'page.html' : 'page.vue');
+  if (!fs.existsSync(backupSourcePath)) throw new Error('备份文件缺失，无法还原。');
+  const restoredSourcePath =
+    sourceKind === 'html'
+      ? managedHtmlPathForPage(projectPackage, { ...original, client: metadata.client })
+      : path.join(projectPackage.packageRoot, 'views', original.view);
+  const replacementViewPath = replacement?.view
+    ? path.join(projectPackage.packageRoot, 'views', replacement.view)
+    : null;
+  const replacementHtmlPath =
+    replacement?.sourceType === 'html-template'
+      ? managedHtmlPathForPage(projectPackage, { ...replacement, client: metadata.client })
+      : null;
+  await fsp.mkdir(path.dirname(restoredSourcePath), { recursive: true });
+  await fsp.copyFile(backupSourcePath, restoredSourcePath);
+  await writeDefinitions(projectPackage.definitionsPath, updatedDefinitions);
+  if (
+    replacementViewPath &&
+    replacementViewPath !== restoredSourcePath &&
+    isPackageViewPath(projectPackage, replacementViewPath)
+  )
+    await fsp.rm(replacementViewPath, { force: true });
+  if (replacementHtmlPath && replacementHtmlPath !== restoredSourcePath)
+    await fsp.rm(replacementHtmlPath, { force: true });
   metadata.restoredAt = new Date().toISOString();
   await fsp.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
   return { routePath: `/p/${target.projectId}/${metadata.client}/${original.path}`, requiresReload: true };
@@ -1523,6 +1679,7 @@ export async function importPage({ projectRoot, source, target }) {
   const clientDefinition = projectPackage.definitions[client];
   if (!clientDefinition) throw new Error(`项目 ${projectPackage.projectId} 不存在客户端：${client}。`);
   const mode = target.mode === 'replace' ? 'replace' : 'create';
+  const useManagedHtml = target.runtime === 'html' && inspection.format === 'html-template';
   const originalPage =
     mode === 'replace'
       ? clientDefinition.pages.find(
@@ -1557,7 +1714,10 @@ export async function importPage({ projectRoot, source, target }) {
   }
   const componentName = `${toPascalCase(routePath)}View`;
   const relativeView = `${client}/${componentName}.vue`;
-  const targetPath = path.join(projectPackage.packageRoot, 'views', relativeView);
+  const managedSource = useManagedHtml ? resolveManagedHtmlPath(projectPackage, client, fileName) : null;
+  const targetPath = useManagedHtml
+    ? managedSource.target
+    : path.join(projectPackage.packageRoot, 'views', relativeView);
   const duplicate = clientDefinition.pages.find(
     (page) => page.path === routePath || page.name === `${client}-${routePath}` || page.view === relativeView,
   );
@@ -1568,7 +1728,14 @@ export async function importPage({ projectRoot, source, target }) {
   ) {
     throw new Error(`目标页面已存在：${clientDefinition.basePath}/${routePath}。请更换路由或先处理冲突。`);
   }
-  if (fs.existsSync(targetPath) && (!originalPage || originalPage.view !== relativeView)) {
+  const originalHtmlPath =
+    originalPage?.sourceType === 'html-template'
+      ? managedHtmlPathForPage(projectPackage, { ...originalPage, client })
+      : null;
+  if (
+    fs.existsSync(targetPath) &&
+    (!originalPage || (useManagedHtml ? originalHtmlPath !== targetPath : originalPage.view !== relativeView))
+  ) {
     throw new Error(`页面文件已存在：${relativeView}。请更换路由或先处理冲突。`);
   }
   if (!clientDefinition.sections.some((item) => item.id === section)) {
@@ -1582,10 +1749,12 @@ export async function importPage({ projectRoot, source, target }) {
     path: routePath,
     name: originalPage && routePath === originalPage.path ? originalPage.name : `${client}-${routePath}`,
     title: menuTitle,
-    view: relativeView,
     section,
     icon,
-    source: inspection.roundTrip && inspection.format === 'vue-sfc' ? 'html-export' : 'html-template',
+    ...(useManagedHtml ? { sourceType: 'html-template', source: fileName } : { view: relativeView }),
+    ...(!useManagedHtml
+      ? { source: inspection.roundTrip && inspection.format === 'vue-sfc' ? 'html-export' : 'html-template' }
+      : {}),
     prototype: {
       ...(originalPage?.prototype || {}),
       ...(target.sourceFile ? { sourceFile: target.sourceFile } : {}),
@@ -1600,19 +1769,27 @@ export async function importPage({ projectRoot, source, target }) {
       ...(typeof manifest.menu === 'boolean' ? { menu: manifest.menu } : {}),
     },
   };
+  if (useManagedHtml) delete definition.view;
+  else delete definition.sourceType;
   const updatedDefinitions =
     mode === 'replace'
       ? replacePageDefinition(sourceDefinitions, client, originalPage.path, definition)
       : insertPageDefinition(sourceDefinitions, client, definition);
-  const vueSource = await prettier.format(
-    inspection.roundTrip
-      ? extractExportSource(source)
-      : buildVueSource(source, manifest, projectPackage.manifest.theme || {}),
-    { parser: 'vue' },
-  );
+  const vueSource = useManagedHtml
+    ? null
+    : await prettier.format(
+        inspection.roundTrip
+          ? extractExportSource(source)
+          : buildVueSource(source, manifest, projectPackage.manifest.theme || {}),
+        { parser: 'vue' },
+      );
   const originalViewPath = originalPage
-    ? resolveProjectViewPath(projectRoot, projectPackage, originalPage.view)
+    ? originalPage.view
+      ? resolveProjectViewPath(projectRoot, projectPackage, originalPage.view)
+      : null
     : null;
+  const originalSourcePath = originalHtmlPath || originalViewPath;
+  const originalSourceKind = originalHtmlPath ? 'html' : 'vue';
   const backup =
     mode === 'replace'
       ? await createPageBackup(
@@ -1626,26 +1803,28 @@ export async function importPage({ projectRoot, source, target }) {
             original: originalPage,
             replacement: definition,
           },
-          originalViewPath,
+          originalSourcePath,
+          originalSourceKind,
         )
       : null;
 
   await fsp.mkdir(path.dirname(targetPath), { recursive: true });
   try {
-    await fsp.writeFile(targetPath, vueSource, 'utf8');
+    await fsp.writeFile(targetPath, useManagedHtml ? source : vueSource, 'utf8');
     if (
       mode === 'replace' &&
-      originalViewPath &&
-      originalViewPath !== targetPath &&
-      isPackageViewPath(projectPackage, originalViewPath)
+      originalSourcePath &&
+      originalSourcePath !== targetPath &&
+      (isPackageViewPath(projectPackage, originalSourcePath) || originalHtmlPath)
     ) {
-      await fsp.rm(originalViewPath, { force: true });
+      await fsp.rm(originalSourcePath, { force: true });
     }
     await fsp.writeFile(definitionsPath, updatedDefinitions, 'utf8');
   } catch (error) {
-    if (mode === 'replace' && backup && originalViewPath) {
-      await fsp.copyFile(path.join(backup.directory, 'page.vue'), originalViewPath).catch(() => {});
-      if (originalViewPath !== targetPath) await fsp.rm(targetPath, { force: true }).catch(() => {});
+    if (mode === 'replace' && backup && originalSourcePath) {
+      const backupFile = originalSourceKind === 'html' ? 'page.html' : 'page.vue';
+      await fsp.copyFile(path.join(backup.directory, backupFile), originalSourcePath).catch(() => {});
+      if (originalSourcePath !== targetPath) await fsp.rm(targetPath, { force: true }).catch(() => {});
     } else if (mode === 'create') {
       await fsp.rm(targetPath, { force: true });
     }
@@ -1657,11 +1836,20 @@ export async function importPage({ projectRoot, source, target }) {
     pageKey: manifest.pageKey,
     projectId: projectPackage.projectId,
     routePath: `/p/${projectPackage.projectId}/${client}/${routePath}`,
-    view: `projects/${projectPackage.projectId}/views/${relativeView}`,
+    ...(useManagedHtml
+      ? {
+          sourceType: 'html-template',
+          source: `projects/${projectPackage.projectId}/html-pages/${client}/${fileName}`,
+        }
+      : { view: `projects/${projectPackage.projectId}/views/${relativeView}` }),
     menuTitle,
     mode,
     backupId: backup?.id || null,
-    source: inspection.roundTrip && inspection.format === 'vue-sfc' ? 'html-export' : 'html-template',
+    sourceType: useManagedHtml
+      ? 'html-template'
+      : inspection.roundTrip && inspection.format === 'vue-sfc'
+        ? 'html-export'
+        : 'html-template',
     requiresReload: true,
   };
 }
@@ -1867,6 +2055,34 @@ async function findPrototypeHtmlSource(projectPackage, page, sourceIndex) {
         return { absolutePath: matched, root: source.root, source: await fsp.readFile(matched, 'utf8') };
       }
     }
+  }
+  return null;
+}
+
+async function findManagedHtmlSource(projectPackage, page) {
+  if (page?.sourceType !== 'html-template' || !page.source) return null;
+  const managed = resolveManagedHtmlPath(projectPackage, page.client, page.source);
+  if (!fs.existsSync(managed.target)) return null;
+  return {
+    absolutePath: managed.target,
+    root: managed.root,
+    source: await fsp.readFile(managed.target, 'utf8'),
+  };
+}
+
+async function findCatalogHtmlSource(projectPackage, page) {
+  if (page?.sourceType !== 'html-direct' || !page.source) return null;
+  const sources = configuredPrototypeSources(projectPackage.packageRoot, projectPackage.manifest).filter(
+    (item) => !item.clientId || item.clientId === page.client,
+  );
+  for (const source of sources) {
+    const candidate = path.resolve(source.root, page.source);
+    if (!isPathInside(source.root, candidate) || !fs.existsSync(candidate)) continue;
+    return {
+      absolutePath: candidate,
+      root: source.root,
+      source: await fsp.readFile(candidate, 'utf8'),
+    };
   }
   return null;
 }
@@ -2502,15 +2718,32 @@ async function buildExportPage({
   return inlineViteOutput(distDir);
 }
 
-export async function createExportPackage({ projectRoot, projectId, selectedPaths, packageName }) {
+export async function createExportPackage({
+  projectRoot,
+  projectId,
+  selectedPaths,
+  packageName,
+  mounts = {},
+}) {
   const projectPackage = await loadProjectPackage(projectRoot, projectId);
   const definitions = projectPackage.definitions;
-  const allPages = Object.keys(definitions).flatMap((client) =>
-    definitions[client].pages.map((page) => ({
+  const htmlPages = await htmlPagesForProject(projectRoot, projectId, mounts);
+  const definitionPages = Object.keys(definitions).flatMap((client) =>
+    routeDefinitionPages(definitions[client]).map((page) => ({
       ...page,
       client,
       fullPath: `/p/${projectPackage.projectId}/${client}/${page.path}`,
     })),
+  );
+  const prototypePages = Object.entries(htmlPages).flatMap(([client, pages]) =>
+    pages.map((page) => ({
+      ...page,
+      client,
+      fullPath: `/p/${projectPackage.projectId}/${client}/${page.path}`,
+    })),
+  );
+  const allPages = [...definitionPages, ...prototypePages].filter(
+    (page, index, pages) => pages.findIndex((candidate) => candidate.fullPath === page.fullPath) === index,
   );
   const selected = allPages.filter((page) => selectedPaths.includes(page.fullPath));
   if (!selected.length) throw new Error('至少选择一个可导出的页面。');
@@ -2531,13 +2764,18 @@ export async function createExportPackage({ projectRoot, projectId, selectedPath
   const sourceRecords = new Map();
   const prototypeSourceIndex = await createPrototypeSourceIndex(projectPackage, selectedWithFiles);
   for (const page of selectedWithFiles) {
-    if (!page.view) {
+    if (!page.view && !['html-template', 'html-direct'].includes(page.sourceType)) {
       throw new Error(`页面“${page.title}”没有 Vue 页面源文件，暂时无法生成可回导 HTML。`);
     }
-    const viewPath = resolveProjectViewPath(projectRoot, projectPackage, page.view);
-    const source = await fsp.readFile(viewPath, 'utf8');
-    roundTripSources.set(page.file, await prettier.format(source, { parser: 'vue' }));
-    const prototypeSource = await findPrototypeHtmlSource(projectPackage, page, prototypeSourceIndex);
+    if (page.view) {
+      const viewPath = resolveProjectViewPath(projectRoot, projectPackage, page.view);
+      const source = await fsp.readFile(viewPath, 'utf8');
+      roundTripSources.set(page.file, await prettier.format(source, { parser: 'vue' }));
+    }
+    const prototypeSource =
+      (await findManagedHtmlSource(projectPackage, page)) ||
+      (await findCatalogHtmlSource(projectPackage, page)) ||
+      (await findPrototypeHtmlSource(projectPackage, page, prototypeSourceIndex));
     if (prototypeSource) sourceRecords.set(page.file, prototypeSource);
   }
   const clients = [...new Set(selectedWithFiles.map((page) => page.client))];
@@ -2874,6 +3112,7 @@ export function pageTransferPlugin({
             projectId: body.projectId,
             selectedPaths: body.selectedPaths || [],
             packageName: body.packageName,
+            mounts: await loadMounts(),
           });
           sendJson(res, 200, { ok: true, result });
         } catch (error) {

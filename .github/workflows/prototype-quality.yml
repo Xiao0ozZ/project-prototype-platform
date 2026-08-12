@@ -19,4 +19,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run quality:core
+      - run: npm run quality:react
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:react:e2e

@@ -1,6 +1,8 @@
 node_modules/
 .vite/
 dist/
+dist-react/
+dist-vue/
 /projects/
 /platform-settings.json
 /project-mounts.local.json

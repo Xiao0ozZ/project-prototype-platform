@@ -9,8 +9,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   buildVueSource,
   createExportPackage,
+  createProjectRoute,
   importPage,
   inspectHtml,
+  listProjectRoutes,
+  restoreProjectRoute,
 } from '../../plugins/page-transfer-plugin.js';
 import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
 
@@ -225,6 +228,108 @@ describe('page transfer', () => {
     expect(await fs.readFile(path.join(packageRoot, 'page-definitions.js'), 'utf8')).toContain(
       '"fileName":"客户等级方案.html"',
     );
+  });
+
+  it('keeps React runtime HTML imports in a managed source directory and exports them again', async () => {
+    const source = await fs.readFile(path.join(projectRoot, 'templates', 'html-prototype-page.html'), 'utf8');
+    const { root, packageRoot } = await createPlatformFixture();
+
+    const result = await importPage({
+      projectRoot: root,
+      source,
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        routePath: 'managed-page',
+        menuSection: 'workspace',
+        menuTitle: '托管页面',
+        menuIcon: 'Document',
+        fileName: 'managed-page.html',
+        sourceFile: 'managed-page.html',
+        runtime: 'html',
+      },
+    });
+
+    expect(result).toMatchObject({ sourceType: 'html-template', mode: 'create' });
+    const managedPath = path.join(packageRoot, 'html-pages', 'admin', 'managed-page.html');
+    expect(await fs.readFile(managedPath, 'utf8')).toBe(source);
+
+    const catalog = await scanHtmlPrototypePages(path.join(root, 'projects'));
+    expect(catalog.projects['sample-project'].admin).toHaveLength(1);
+    expect(catalog.projects['sample-project'].admin[0]).toMatchObject({
+      path: 'managed-page',
+      sourceType: 'html-template',
+      source: 'managed-page.html',
+    });
+
+    const replacement = await importPage({
+      projectRoot: root,
+      source: source.replace('页面标题', '替换后的页面标题'),
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        mode: 'replace',
+        replacePagePath: 'managed-page',
+        routePath: 'managed-page',
+        menuSection: 'workspace',
+        menuTitle: '托管页面',
+        menuIcon: 'Document',
+        fileName: 'managed-page.html',
+        runtime: 'html',
+      },
+    });
+    expect(replacement.backupId).toBeTruthy();
+    await restoreProjectRoute({
+      projectRoot: root,
+      target: { projectId: 'sample-project', backupId: replacement.backupId },
+    });
+    expect(await fs.readFile(managedPath, 'utf8')).toBe(source);
+
+    const routes = await listProjectRoutes({ projectRoot: root, projectId: 'sample-project' });
+    expect(routes.clients[0].pages).toHaveLength(1);
+    expect(routes.clients[0].pages[0]).toMatchObject({ path: 'managed-page', sourceType: 'html-template' });
+
+    const exported = await createExportPackage({
+      projectRoot: root,
+      projectId: 'sample-project',
+      selectedPaths: ['/p/sample-project/admin/managed-page'],
+      packageName: '托管页面闭环测试',
+    });
+    const exportedHtml = await fs.readFile(path.join(root, exported.html.replace(/^\//u, '')), 'utf8');
+    expect(inspectHtml(exportedHtml)).toMatchObject({ valid: true, format: 'html-template' });
+    expect(exportedHtml).toContain('managed-page');
+  });
+
+  it('creates React route placeholders as reusable managed HTML pages', async () => {
+    const { root, packageRoot } = await createPlatformFixture();
+
+    const result = await createProjectRoute({
+      projectRoot: root,
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        routePath: 'new-route',
+        pageTitle: '新增页面',
+        menuSection: 'workspace',
+        menuIcon: 'Document',
+        runtime: 'html',
+      },
+    });
+
+    expect(result.page).toMatchObject({
+      path: 'new-route',
+      sourceType: 'html-template',
+      source: '新增页面.html',
+    });
+    const source = await fs.readFile(path.join(packageRoot, 'html-pages', 'admin', '新增页面.html'), 'utf8');
+    expect(inspectHtml(source)).toMatchObject({ valid: true, format: 'html-template' });
+
+    const catalog = await scanHtmlPrototypePages(path.join(root, 'projects'));
+    expect(catalog.projects['sample-project'].admin[0]).toMatchObject({
+      path: 'new-route',
+      title: '新增页面',
+      sourceType: 'html-template',
+    });
   });
 
   it('keeps the HTML template AI contract and page identity synchronized', async () => {

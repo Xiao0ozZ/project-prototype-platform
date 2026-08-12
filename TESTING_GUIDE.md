@@ -5,7 +5,7 @@
 自动化验收用于防止页面迁移、公共样式、组件化和批量修改造成以下回归：
 
 - 路由打开后白屏或内容区为空。
-- Vue 运行错误或浏览器控制台脚本错误。
+- React 运行错误、HTML iframe 错误或浏览器控制台脚本错误。
 - 主按钮文字、边框、卡片和布局异常。
 - 登录、客户端切换、退出登录、弹窗、抽屉和分页失效。
 - 文档中心无法读取 Markdown 或搜索目录。
@@ -19,7 +19,7 @@
 - 语言：简体中文
 - 时区：`Asia/Shanghai`
 - 固定时间：`2026-07-11 10:00`
-- 测试服务器：`http://127.0.0.1:4173`
+- React 专用测试服务器：`http://127.0.0.1:4174`
 
 运行测试时不需要提前启动 Vite，Playwright 会自动启动和关闭独立测试服务器。
 
@@ -32,11 +32,14 @@ npx playwright install chromium
 ## 3. 常用命令
 
 ```powershell
-npm run test:smoke          # 全部路由和关键交互
-npm run test:visual         # 与现有视觉截图基线比较
-npm run test:ui             # 执行全部 Playwright 测试
+npm run test:smoke          # React 正式入口浏览器冒烟测试
+npm run test:ui             # 同上，执行 React E2E 套件
+npm run test:vue:smoke      # 观察期 Vue 回退入口测试
+npm run test:visual         # 观察期 Vue 视觉截图基线比较
 npm run test:visual:update  # 重新生成视觉基线，仅限已确认的视觉变更
 npm run test:unit           # 公共组件 Props、Slots、事件和交互状态单元测试
+npm run test:react          # React 平台组件与纯逻辑测试
+npm run test:react:e2e      # React 正式入口专用浏览器冒烟测试
 npm run test:unit:watch     # 开发时持续运行组件单元测试
 npm run project -- preflight --file <html> # HTML 独立交付与导入预检
 npm run project -- health [--project <id>] # 项目包、HTML 和追溯健康检查
@@ -54,7 +57,7 @@ npm run project -- health [--project <id>] # 项目包、HTML 和追溯健康检
 
 ### 组件单元测试
 
-组件单元测试位于 tests/unit/，使用 Vitest、Vue Test Utils 和 jsdom 执行，不需要启动浏览器。当前覆盖 16 个公共组件，验证页面布局、筛选、表格、状态标签、提示、空状态、表单分区、弹窗底部及标准表单弹窗的 Props、Slots、事件和可见状态。
+React 单元测试位于 `apps/platform-react`，使用 Vitest、Testing Library 和 jsdom；框架无关核心测试位于 `tests/unit`。两类测试都不需要启动浏览器。Vue Test Utils 仅用于观察期回退代码。
 
 新增或调整公共组件时，必须补充对应测试并执行 npm run test:unit。业务页面的具体字段、模拟数据和视觉保真仍由 Playwright 冒烟与视觉基线覆盖。
 

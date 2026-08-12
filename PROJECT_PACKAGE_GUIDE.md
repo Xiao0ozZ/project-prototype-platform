@@ -19,7 +19,8 @@ projects/{project-id}/
 ├─ page-prd-links.js            历史兼容：原型页面与 PRD 文件关联
 ├─ .platform/
 │  └─ page-prd-links.json       页面级 PRD 文件关联配置（工具页维护）
-├─ views/{client-id}/           项目专属 Vue 页面
+├─ html-pages/{client-id}/      React 平台导入并管理的 HTML 页面
+├─ views/{client-id}/           可选：观察期遗留 Vue 页面，React 不执行
 ├─ assets/                      Logo、登录背景和项目图片
 ├─ data/                        可选的项目级模拟数据
 ├─ docs/                        可选的项目文档

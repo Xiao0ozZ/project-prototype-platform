@@ -10,7 +10,11 @@ packages/project-core     项目包领域规则与纯 Node 文件能力
 plugins/                  Vite 开发接口、热更新与生产构建适配
 scripts/project-cli.mjs   命令行入口
           ↑
-src/                      Vue 页面、路由、组件和浏览器状态
+packages/platform-client  框架无关的浏览器请求与响应归一化
+          ↑
+apps/platform-react/      React 正式平台、Ant Design、路由和浏览器状态
+
+src/                      观察期保留的 Vue 回退平台
 
 html-prototype-shell/     可整目录单独复制运行的独立 Node + HTML 工具
 ```
