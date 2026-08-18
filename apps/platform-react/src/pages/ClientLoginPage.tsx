@@ -54,44 +54,53 @@ export function ClientLoginPage() {
   return (
     <ConfigProvider theme={{ token: { colorPrimary: accent, colorInfo: accent } }}>
       <main className="client-login" style={{ '--project-accent': accent } as CSSProperties}>
-        <div className="client-login__theme">
-          <ThemeControl showLabel />
-        </div>
-        <Card className="client-login__card">
-          <Text className="home-kicker">{project.shortName || project.name}</Text>
-          <Title level={2}>{client.name}</Title>
-          <Text type="secondary">{client.description || '登录后进入客户端'}</Text>
-          {runtimeStatus.state === 'legacy-vue' ? (
-            <Alert
-              showIcon
-              type="info"
-              message="该客户端没有可运行页面"
-              description="旧 Vue 页面未启用，React 入口不会执行模拟登录。"
-            />
-          ) : runtimeStatus.state === 'index-missing' || runtimeStatus.state === 'empty' ? (
-            <Alert
-              showIcon
-              type={runtimeStatus.state === 'index-missing' ? 'error' : 'info'}
-              message={runtimeStatus.state === 'index-missing' ? 'HTML 页面索引异常' : '客户端暂无页面'}
-              description="请先在项目包中登记可运行的 HTML 页面。"
-            />
-          ) : (
-            <Form layout="vertical" onFinish={enterClient} initialValues={{ account: 'admin' }}>
-              <Form.Item label="账号" name="account" rules={[{ required: true, message: '请输入账号' }]}>
-                <Input />
-              </Form.Item>
-              <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
-                <Input.Password />
-              </Form.Item>
-              <Button block type="primary" htmlType="submit">
-                进入{client.name}
-              </Button>
-            </Form>
-          )}
-          <Button type="link" block onClick={() => navigate('/')}>
-            返回体验中心
+        <header className="client-login__header">
+          <Button className="client-login__brand" type="text" onClick={() => navigate('/')}>
+            <span>{(project.shortName || project.name).slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{project.name}</strong>
+              <small>{client.name}</small>
+            </div>
           </Button>
-        </Card>
+          <ThemeControl showLabel />
+        </header>
+        <div className="client-login__body">
+          <Card className="client-login__card">
+            <Text className="home-kicker">{project.shortName || project.name}</Text>
+            <Title level={2}>{client.name}</Title>
+            <Text type="secondary">{client.description || '登录后进入客户端'}</Text>
+            {runtimeStatus.state === 'legacy-vue' ? (
+              <Alert
+                showIcon
+                type="info"
+                message="该客户端没有可运行页面"
+                description="旧 Vue 页面未启用，React 入口不会执行模拟登录。"
+              />
+            ) : runtimeStatus.state === 'index-missing' || runtimeStatus.state === 'empty' ? (
+              <Alert
+                showIcon
+                type={runtimeStatus.state === 'index-missing' ? 'error' : 'info'}
+                message={runtimeStatus.state === 'index-missing' ? 'HTML 页面索引异常' : '客户端暂无页面'}
+                description="请先在项目包中登记可运行的 HTML 页面。"
+              />
+            ) : (
+              <Form layout="vertical" onFinish={enterClient} initialValues={{ account: 'admin' }}>
+                <Form.Item label="账号" name="account" rules={[{ required: true, message: '请输入账号' }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
+                  <Input.Password />
+                </Form.Item>
+                <Button block type="primary" htmlType="submit">
+                  进入{client.name}
+                </Button>
+              </Form>
+            )}
+            <Button type="link" block onClick={() => navigate('/')}>
+              返回体验中心
+            </Button>
+          </Card>
+        </div>
       </main>
     </ConfigProvider>
   );

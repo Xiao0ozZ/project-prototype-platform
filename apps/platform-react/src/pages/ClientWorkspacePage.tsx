@@ -12,7 +12,7 @@ import {
   useProjectManifest,
 } from '@/data/use-platform-data';
 import { PrdReviewPanel, type PrdPanelMode } from '@/features/docs/PrdReviewPanel';
-import { clearPrdBindingMarkers, installPrdBindingMarkers } from '@/features/docs/prd-binding-markers';
+import { PrototypeFrame } from '@/features/prototypes/PrototypeFrame';
 import {
   findClient,
   findProject,
@@ -34,7 +34,6 @@ import {
   Menu,
   Select,
   Spin,
-  Typography,
   type MenuProps,
 } from '@/ui/ant';
 import {
@@ -46,12 +45,12 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ProjectOutlined,
 } from '@/ui/ant/icons';
 import { ProjectIcon } from '@/ui/platform/ProjectIcon';
 import { ThemeControl } from '@/ui/platform/ThemeControl';
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
 
 function routeForPage(projectId: string, clientId: string, page: HtmlPrototypePage) {
   return `/p/${projectId}/${clientId}/${page.path}`;
@@ -296,6 +295,20 @@ function ClientWorkspace({
   const [frameUrl, setFrameUrl] = useState(desiredFrameUrl);
   const groups = useMemo(() => groupClientPages(pages, sections), [pages, sections]);
   const layoutType = client.layout?.type || 'sidebar';
+  const activeMenuSectionKey = useMemo(() => {
+    const activeGroup = groups.find((group) => group.pages.some((page) => page.path === selectedPage.path));
+    return activeGroup ? `section:${activeGroup.id}` : '';
+  }, [groups, selectedPage.path]);
+  const [menuDisclosure, setMenuDisclosure] = useState(() => ({
+    pagePath: selectedPage.path,
+    openKeys: activeMenuSectionKey ? [activeMenuSectionKey] : [],
+  }));
+  const openMenuKeys =
+    menuDisclosure.pagePath === selectedPage.path
+      ? menuDisclosure.openKeys
+      : activeMenuSectionKey
+        ? [activeMenuSectionKey]
+        : [];
 
   useEffect(() => {
     if (syncRouteRef.current === desiredFrameUrl) {
@@ -314,6 +327,11 @@ function ClientWorkspace({
   }
 
   function navigatePage(page: HtmlPrototypePage) {
+    const section = groups.find((group) => group.pages.some((candidate) => candidate.path === page.path));
+    setMenuDisclosure({
+      pagePath: page.path,
+      openKeys: section ? [`section:${section.id}`] : [],
+    });
     onNavigate(routeForPage(projectId, clientId, page));
   }
 
@@ -333,6 +351,13 @@ function ClientWorkspace({
       ) {
         return;
       }
+      const matchingGroup = groups.find((group) =>
+        group.pages.some((page) => page.path === matchingPage.path),
+      );
+      setMenuDisclosure({
+        pagePath: matchingPage.path,
+        openKeys: matchingGroup ? [`section:${matchingGroup.id}`] : [],
+      });
       const nextOuterUrl = `${routeForPage(projectId, clientId, matchingPage)}${current.search}${current.hash}`;
       syncRouteRef.current = `${current.pathname}${current.search}${current.hash}`;
       onNavigate(nextOuterUrl, { replace: true });
@@ -363,7 +388,7 @@ function ClientWorkspace({
   const bare = layoutType === 'none' || layoutType === 'bare';
   const workspaceStyle = {
     '--project-accent': project.theme?.primary || '#1677ff',
-    '--project-page-bg': project.theme?.pageBackground || '#f5f7fb',
+    '--project-page-bg': 'var(--ant-color-bg-layout)',
   } as CSSProperties;
   const pageWorkspace = (
     <div className={`client-page-workspace ${prdOpen ? `has-prd prd-${prdMode}` : ''}`}>
@@ -417,13 +442,15 @@ function ClientWorkspace({
   if (layoutType === 'topnav') {
     return (
       <Layout className="client-shell client-shell--topnav" style={workspaceStyle}>
-        <Header className="client-topbar">
-          <ClientBrand projectName={project.name} clientName={client.name} />
+        <Header className="client-topbar client-topbar--topnav">
+          <ClientBrand projectName={project.name} />
           <Menu
+            aria-label="客户端主导航"
             className="client-topnav-menu"
             mode="horizontal"
             selectedKeys={[selectedPage.path]}
             items={menuItems}
+            style={{ minWidth: 0, flex: 'auto' }}
           />
           <ClientActions
             clientId={clientId}
@@ -441,32 +468,48 @@ function ClientWorkspace({
   }
 
   return (
-    <Layout className="client-shell" style={workspaceStyle}>
-      <Sider className="client-sider" width={264} collapsedWidth={72} collapsed={collapsed} trigger={null}>
-        <ClientBrand projectName={project.name} clientName={client.name} compact={collapsed} />
-        <Menu mode="inline" selectedKeys={[selectedPage.path]} items={menuItems} />
-        <Button
-          className="client-sider-trigger"
-          type="text"
-          onClick={toggleCollapsed}
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-        >
-          {collapsed ? null : '收起菜单'}
-        </Button>
-      </Sider>
-      <Layout>
-        <Header className="client-topbar client-topbar--sidebar">
-          <Text>{selectedPage.title}</Text>
-          <ClientActions
-            clientId={clientId}
-            clientOptions={clientOptions}
-            prdPath={prdPath}
-            sourceDownloadUrl={sourceDownloadUrl}
-            accountItems={accountItems}
-            onClientChange={(value) => onNavigate(`/p/${projectId}/${value}`)}
-            onOpenPrd={onOpenPrd}
+    <Layout className="client-shell client-shell--sidebar" style={workspaceStyle}>
+      <Header className="client-topbar client-topbar--sidebar">
+        <ClientBrand projectName={project.name} />
+        <span className="client-topbar__spacer" aria-hidden="true" />
+        <ClientActions
+          clientId={clientId}
+          clientOptions={clientOptions}
+          prdPath={prdPath}
+          sourceDownloadUrl={sourceDownloadUrl}
+          accountItems={accountItems}
+          onClientChange={(value) => onNavigate(`/p/${projectId}/${value}`)}
+          onOpenPrd={onOpenPrd}
+        />
+      </Header>
+      <Layout className="client-shell__body">
+        <Sider className="client-sider" width={216} collapsedWidth={56} collapsed={collapsed} trigger={null}>
+          <Menu
+            aria-label="客户端导航"
+            mode="inline"
+            selectedKeys={[selectedPage.path]}
+            openKeys={collapsed ? undefined : openMenuKeys}
+            items={menuItems}
+            onOpenChange={(keys) => {
+              const latest = keys.find((key) => !openMenuKeys.includes(String(key)));
+              setMenuDisclosure({
+                pagePath: selectedPage.path,
+                openKeys: latest ? [String(latest)] : [],
+              });
+            }}
           />
-        </Header>
+          <div className="client-sider-footer">
+            <Button
+              block
+              className="client-sider-trigger"
+              type="text"
+              onClick={toggleCollapsed}
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            >
+              {collapsed ? null : '收起导航'}
+            </Button>
+          </div>
+        </Sider>
         {pageWorkspace}
       </Layout>
     </Layout>
@@ -480,8 +523,11 @@ function createMenuItems(
 ): MenuProps['items'] {
   return groups.map((group) => ({
     key: `section:${group.id}`,
+    icon:
+      layoutType === 'sidebar' && group.pages[0]?.icon ? (
+        <ProjectIcon name={group.pages[0].icon} />
+      ) : undefined,
     label: group.title,
-    type: layoutType === 'sidebar' ? 'group' : undefined,
     children: group.pages.map((page) => ({
       key: page.path,
       icon: <ProjectIcon name={page.icon} />,
@@ -491,24 +537,15 @@ function createMenuItems(
   }));
 }
 
-function ClientBrand({
-  projectName,
-  clientName,
-  compact = false,
-}: {
-  projectName: string;
-  clientName: string;
-  compact?: boolean;
-}) {
+function ClientBrand({ projectName }: { projectName: string }) {
   return (
     <a className="client-brand" href={import.meta.env.BASE_URL}>
-      <span className="client-brand__mark">{projectName.slice(0, 1).toUpperCase()}</span>
-      {compact ? null : (
-        <span className="client-brand__copy">
-          <strong>{projectName}</strong>
-          {clientName ? <small>{clientName}</small> : null}
-        </span>
-      )}
+      <span className="client-brand__mark" aria-hidden="true">
+        <ProjectOutlined />
+      </span>
+      <span className="client-brand__copy">
+        <strong>{projectName}</strong>
+      </span>
     </a>
   );
 }
@@ -544,70 +581,11 @@ function ClientActions({
       <ThemeControl />
       <Dropdown menu={{ items: accountItems }} trigger={['click']}>
         <Button type="text" className="client-account">
-          <Avatar size="small">A</Avatar>
+          <Avatar size={32}>A</Avatar>
           <strong>Admin</strong>
           <DownOutlined />
         </Button>
       </Dropdown>
     </div>
-  );
-}
-
-function PrototypeFrame({
-  page,
-  source,
-  theme,
-  prdBindings,
-  onOpenPrd,
-  onLoad,
-}: {
-  page: HtmlPrototypePage;
-  source: string;
-  theme: {
-    primary: string;
-    primaryHover?: string;
-    primaryActive?: string;
-    pageBackground?: string;
-  };
-  prdBindings: PrdBinding[];
-  onOpenPrd: (target: { documentPath: string; anchor?: string }) => void;
-  onLoad: (frame: HTMLIFrameElement) => void;
-}) {
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const [loadVersion, setLoadVersion] = useState(0);
-
-  useEffect(() => {
-    const frameDocument = frameRef.current?.contentDocument;
-    if (!frameDocument) return;
-    installPrdBindingMarkers(frameDocument, prdBindings, (binding) =>
-      onOpenPrd({ documentPath: binding.prd.document, anchor: binding.prd.anchor }),
-    );
-    return () => clearPrdBindingMarkers(frameDocument);
-  }, [loadVersion, onOpenPrd, prdBindings]);
-
-  function handleLoad(frame: HTMLIFrameElement) {
-    try {
-      const root = frame.contentDocument?.documentElement;
-      root?.style.setProperty('--app-color-primary', theme.primary);
-      root?.style.setProperty('--el-color-primary', theme.primary);
-      root?.style.setProperty('--prototype-color-primary', theme.primary);
-      if (theme.primaryHover) root?.style.setProperty('--app-color-primary-hover', theme.primaryHover);
-      if (theme.primaryActive) root?.style.setProperty('--app-color-primary-active', theme.primaryActive);
-      if (theme.pageBackground) root?.style.setProperty('--app-color-page', theme.pageBackground);
-    } catch {
-      // 同源页面会同步项目主题；跨域页面保持自己的主题，不阻塞加载。
-    }
-    setLoadVersion((version) => version + 1);
-    onLoad(frame);
-  }
-  return (
-    <iframe
-      className="prototype-frame"
-      ref={frameRef}
-      src={source}
-      title={page.title}
-      referrerPolicy="same-origin"
-      onLoad={(event) => handleLoad(event.currentTarget)}
-    />
   );
 }

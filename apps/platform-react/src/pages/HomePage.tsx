@@ -153,11 +153,11 @@ export function HomePage() {
 
         <Flex className="home-topbar__actions" gap={4} align="center">
           <ThemeControl />
-          <Button type="text" icon={<AppstoreOutlined />} onClick={() => navigate('/components')}>
-            组件规范
-          </Button>
           {showTools ? (
             <>
+              <Button type="text" icon={<AppstoreOutlined />} onClick={() => navigate('/components')}>
+                组件规范
+              </Button>
               <Button type="text" icon={<FolderOpenOutlined />} onClick={() => navigate('/tools/projects')}>
                 项目管理
               </Button>

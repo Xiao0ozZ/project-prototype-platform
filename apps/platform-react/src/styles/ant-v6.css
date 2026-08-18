@@ -32,6 +32,69 @@ body,
 body {
   color: var(--ant-color-text, rgb(0 0 0 / 88%));
   background: var(--platform-root-canvas);
+  overflow: hidden;
+}
+
+.app-frame-stage {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding: 6px;
+  overflow: hidden;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.app-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 14px;
+  background: var(--ant-color-bg-layout);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
+}
+
+.app-frame > .app-route-loading,
+.app-frame > .home-loading,
+.app-frame > .home-page--ant,
+.app-frame > .home-loading--ant,
+.app-frame > .client-empty,
+.app-frame > .platform-workspace,
+.app-frame > .client-shell,
+.app-frame > .client-bare,
+.app-frame > .docs-center,
+.app-frame > .client-login,
+.app-frame > .mobile-preview-page,
+.app-frame > .system-result-page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.app-frame > .home-page--ant,
+.app-frame > .home-loading,
+.app-frame > .home-loading--ant,
+.app-frame > .client-empty,
+.app-frame > .client-login,
+.app-frame > .system-result-page {
+  overflow: auto;
+}
+
+.app-frame > .docs-center,
+.app-frame > .mobile-preview-page,
+.app-frame > .client-shell,
+.app-frame > .client-bare,
+.app-frame > .platform-workspace {
+  overflow: hidden;
+}
+
+.app-frame .client-bare .client-page-workspace,
+.app-frame .client-bare .client-content,
+.app-frame .client-bare .prototype-frame {
+  height: 100%;
 }
 
 html[data-theme='glass'] body {
@@ -40,6 +103,17 @@ html[data-theme='glass'] body {
     radial-gradient(circle at 88% 18%, rgb(184 159 255 / 26%), transparent 30rem),
     linear-gradient(145deg, #edf6ff 0%, #f6f3ff 48%, #edf8ff 100%);
   background-attachment: fixed;
+}
+
+html[data-theme='glass'] .app-frame-stage {
+  background: transparent;
+}
+
+html[data-theme='glass'] .app-frame {
+  border-color: rgb(255 255 255 / 62%);
+  background: color-mix(in srgb, var(--ant-color-bg-layout) 72%, transparent);
+  box-shadow: 0 10px 34px rgb(69 101 141 / 14%);
+  backdrop-filter: blur(26px) saturate(145%);
 }
 
 html[data-theme='glass'] #root,
@@ -57,7 +131,7 @@ html[data-theme='glass'] .client-login {
 }
 
 html[data-theme='glass'] .platform-workspace__sider,
-html[data-theme='glass'] .platform-workspace__header,
+html[data-theme='glass'] .platform-workspace__global-header,
 html[data-theme='glass'] .home-topbar--ant,
 html[data-theme='glass'] .home-project-picker,
 html[data-theme='glass'] .home-workspace--ant,
@@ -93,6 +167,103 @@ html[data-theme='glass'] .system-result-page .ant-result {
 .theme-control.ant-btn:hover {
   color: var(--ant-color-primary);
   background: var(--ant-color-primary-bg);
+}
+
+.app-frame .ant-btn {
+  transform: translateZ(0);
+  transition:
+    color 160ms,
+    background-color 160ms,
+    border-color 160ms,
+    box-shadow 160ms,
+    transform 100ms ease-out !important;
+}
+
+.app-frame .ant-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.app-frame .ant-btn-circle,
+.app-frame .ant-btn.ant-btn-icon-only {
+  border-radius: 50%;
+}
+
+.platform-workspace .ant-card {
+  box-shadow: none;
+}
+
+.platform-workspace .ant-form-item-label > label {
+  color: var(--ant-color-text-secondary);
+  font-weight: 600;
+}
+
+.platform-workspace .ant-segmented {
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.platform-workspace .ant-segmented .ant-segmented-item,
+.platform-workspace .ant-segmented .ant-segmented-thumb {
+  border-radius: 999px;
+}
+
+.platform-workspace .ant-tabs .ant-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.platform-workspace .ant-tabs .ant-tabs-nav::before {
+  border-bottom: 0;
+}
+
+.platform-workspace .ant-tabs .ant-tabs-nav-list {
+  gap: 0;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.platform-workspace .ant-tabs .ant-tabs-tab {
+  min-height: 28px;
+  margin: 0 !important;
+  padding: 3px 18px;
+  border-radius: 999px;
+}
+
+.platform-workspace .ant-tabs .ant-tabs-tab-active {
+  background: var(--ant-color-bg-container);
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.platform-workspace .ant-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ant-color-text) !important;
+  font-weight: 600;
+}
+
+.platform-workspace .ant-tabs .ant-tabs-ink-bar {
+  display: none;
+}
+
+.platform-workspace .ant-table-wrapper .ant-table-thead > tr > th {
+  padding: 12px 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.platform-workspace .ant-table-wrapper .ant-table-tbody > tr > td {
+  padding: 12px 8px;
+}
+
+.ant-modal:not(.project-config-modal) .ant-modal-content,
+.ant-drawer .ant-drawer-content {
+  border: 1px solid var(--ant-color-border-secondary);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 14%);
+}
+
+.ant-modal:not(.project-config-modal) .ant-modal-title,
+.ant-drawer .ant-drawer-title {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 /* Ant Design v6 visual-language normalization */
@@ -272,7 +443,7 @@ html[data-theme='glass'] .system-result-page .ant-result {
 }
 
 .platform-workspace__brand {
-  height: var(--app-header-height);
+  height: 44px;
   border-color: transparent;
   transition: background-color 160ms ease;
 }
@@ -284,7 +455,7 @@ html[data-theme='glass'] .system-result-page .ant-result {
 .platform-workspace__brand > span {
   color: #fff;
   background: var(--ant-color-primary);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--ant-color-primary) 22%, transparent);
+  box-shadow: none;
 }
 
 .platform-workspace__brand strong {
@@ -305,11 +476,11 @@ html[data-theme='glass'] .system-result-page .ant-result {
   border-color: var(--ant-color-border-secondary) !important;
 }
 
-.platform-workspace__header {
+.platform-workspace__global-header {
   height: var(--app-header-height);
   padding: 0 24px;
   border-color: var(--ant-color-border-secondary);
-  background: var(--ant-color-bg-container);
+  background: var(--ant-color-bg-container) !important;
 }
 
 .platform-workspace__location,
@@ -323,16 +494,16 @@ html[data-theme='glass'] .system-result-page .ant-result {
 }
 
 .platform-workspace__route {
-  min-height: calc(100vh - var(--app-header-height));
+  min-height: 0;
 }
 
 .platform-page--ant {
-  width: min(1480px, 100%);
-  padding: 24px clamp(24px, 3vw, 40px) 48px;
+  width: 100%;
+  padding: 0;
 }
 
 .platform-page--ant .platform-page__heading {
-  min-height: 64px;
+  min-height: 34px;
   margin-bottom: 16px;
 }
 
@@ -544,8 +715,48 @@ html[data-theme='glass'] .system-result-page .ant-result {
 
 .home-topbar--ant {
   height: var(--app-header-height);
+  padding: 0 24px;
   border-color: var(--ant-color-border-secondary);
   background: var(--ant-color-bg-container);
+}
+
+.home-brand--ant.ant-btn {
+  height: 44px;
+  margin-left: -8px;
+  padding: 6px 8px;
+}
+
+.home-brand--ant .ant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.home-brand__text strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.home-brand__text small {
+  display: none;
+}
+
+.home-main {
+  width: 100%;
+  padding: 0 24px 24px;
+}
+
+.home-hero--ant {
+  min-height: 0;
+  align-items: center;
+  gap: 32px;
+  padding: 32px 0 24px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.home-hero--ant h1 {
+  font-size: clamp(30px, 4vw, 40px);
+  letter-spacing: -0.025em;
 }
 
 .home-brand--ant.ant-btn,
@@ -574,12 +785,7 @@ html[data-theme='glass'] .system-result-page .ant-result {
 }
 
 .home-project-picker {
-  box-shadow: var(
-    --ant-box-shadow-tertiary,
-    0 1px 2px 0 rgb(0 0 0 / 5%),
-    0 1px 6px -1px rgb(0 0 0 / 3%),
-    0 2px 4px 0 rgb(0 0 0 / 3%)
-  );
+  box-shadow: none;
 }
 
 .home-workspace--ant {
@@ -600,13 +806,64 @@ html[data-theme='glass'] .system-result-page .ant-result {
   background: var(--ant-color-bg-layout);
 }
 
+/* Keep the iframe viewport definite so fresh/LAN sessions can scroll its document. */
+.client-shell,
+.client-shell__body,
+.client-page-workspace,
+.client-page-workspace > .client-content {
+  min-height: 0;
+}
+
+.client-shell {
+  height: 100%;
+  overflow: hidden;
+}
+
+.client-shell__body,
+.client-shell--topnav > .client-page-workspace {
+  flex: 1 1 auto;
+}
+
+.client-shell__body {
+  width: 100%;
+  height: auto !important;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ant-color-bg-layout) !important;
+}
+
+.client-shell__body > .client-page-workspace,
+.client-shell--topnav > .client-page-workspace {
+  height: 100%;
+}
+
+.client-page-workspace > .client-content {
+  height: 100%;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* Client shell follows the same 56px Ant header rhythm as the reference workspace. */
+.client-shell {
+  --app-header-height: 56px;
+}
+
+html[data-density='compact'] .client-shell {
+  --app-header-height: 48px;
+}
+
 .client-sider {
+  height: 100%;
   border-color: var(--ant-color-border-secondary);
   background: var(--ant-color-bg-container) !important;
 }
 
 .client-sider .ant-layout-sider-children {
-  padding: 8px;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
 }
 
 .client-sider .ant-menu,
@@ -614,79 +871,193 @@ html[data-theme='glass'] .system-result-page .ant-result {
   background: transparent;
 }
 
-.client-sider .ant-menu-item-selected,
-.client-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
+.client-sider .ant-menu {
+  flex: 1;
+  padding: 4px 8px 16px;
+  overflow: hidden auto;
+  border-inline-end: 0 !important;
+  font-size: 14px;
+}
+
+.client-sider .ant-menu-submenu-title {
+  margin-block: 4px;
+  font-size: 14px;
+}
+
+.client-sider-footer {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.client-sider-trigger {
+  justify-content: flex-start;
+  color: var(--ant-color-text-secondary);
+  font-size: 14px;
+}
+
+.client-sider.ant-layout-sider-collapsed .client-sider-trigger {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.client-sider .ant-menu-item-selected {
   color: var(--ant-color-primary);
   background: var(--ant-color-primary-bg);
+}
+
+.client-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: var(--ant-color-primary);
 }
 
 .client-topbar {
   height: var(--app-header-height);
   min-height: var(--app-header-height);
   flex-basis: var(--app-header-height);
-  padding: 0 18px;
+  padding: 0 24px;
   border-color: var(--ant-color-border-secondary);
   background: var(--ant-color-bg-container) !important;
 }
 
-.client-brand {
+.client-topbar--topnav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  line-height: normal;
+}
+
+.client-topbar--topnav .client-brand {
+  max-width: 220px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.client-topbar--topnav .client-actions {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.client-topnav-menu {
+  width: 0;
+  height: 100%;
   min-width: 0;
-  gap: 10px;
+  flex: auto;
+  align-self: stretch;
+  border-bottom: 0 !important;
+  background: transparent !important;
+  font-size: 14px;
+}
+
+.client-topnav-menu.ant-menu-horizontal {
+  overflow: hidden;
+  line-height: calc(var(--app-header-height) - 2px);
+}
+
+.client-topnav-menu.ant-menu-horizontal::before {
+  display: none;
+}
+
+.client-topbar--sidebar {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: normal;
+  gap: 24px;
+}
+
+.client-brand {
+  display: inline-flex;
+  width: max-content;
+  height: 44px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-left: -8px;
+  padding: 6px 8px;
   color: var(--ant-color-text);
 }
 
 .client-brand__mark {
   display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--ant-border-radius, 6px);
   color: #fff !important;
   background: var(--ant-color-primary);
-  font-size: 14px !important;
-  font-weight: 700;
-  box-shadow: 0 5px 14px color-mix(in srgb, var(--ant-color-primary) 20%, transparent);
+  font-size: 16px !important;
+  box-shadow: none;
 }
 
 .client-brand__copy {
-  display: grid;
+  display: block;
   min-width: 0;
-  gap: 1px;
 }
 
-.client-brand__copy strong,
-.client-brand__copy small {
+.client-brand__copy strong {
+  display: block;
   overflow: hidden;
+  color: var(--ant-color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.client-brand__copy strong {
-  color: var(--ant-color-text);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.client-brand__copy small {
-  color: var(--ant-color-text-secondary);
-  font-size: 10px;
-  line-height: 15px;
-}
-
 .client-actions {
-  gap: 4px;
+  gap: 8px;
 }
 
 .client-account {
+  height: 44px !important;
   margin-left: 2px;
   border-left: 1px solid var(--ant-color-border-secondary) !important;
   border-radius: 0 !important;
-  padding-left: 14px !important;
+  padding: 6px 8px 6px 16px !important;
 }
 
 .client-content {
+  min-height: 0;
+}
+
+.prototype-frame-host {
+  position: relative;
+  width: 100%;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prototype-frame-host > .prototype-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: 0;
+}
+
+.prototype-frame-state {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-bg-layout);
+}
+
+.prototype-frame-state--error {
+  overflow: auto;
+  background: var(--ant-color-bg-layout);
+}
+
+.prototype-frame-state--error .ant-result {
+  padding: 32px;
 }
 
 .client-bare-tools {
@@ -727,7 +1098,7 @@ html[data-theme='glass'] .system-result-page .ant-result {
 .docs-sidebar,
 .docs-outline,
 .docs-reader {
-  height: calc(100vh - var(--app-header-height));
+  height: 100%;
 }
 
 .docs-sidebar__heading,
@@ -745,7 +1116,6 @@ html[data-theme='glass'] .system-result-page .ant-result {
   background: var(--ant-color-primary-bg);
 }
 
-.prd-review-panel__toolbar,
 .prd-review-panel__search,
 .prd-review-panel__outline {
   background: var(--ant-color-fill-quaternary);
@@ -782,6 +1152,70 @@ html[data-theme='glass'] .system-result-page .ant-result {
   background: var(--ant-color-bg-layout);
 }
 
+.client-login {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.client-login__header {
+  display: flex;
+  height: var(--app-header-height);
+  flex: 0 0 var(--app-header-height);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.client-login__brand {
+  display: inline-flex;
+  width: max-content;
+  height: 44px !important;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px !important;
+}
+
+.client-login__brand > span:first-child {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 6px;
+  color: #fff;
+  background: var(--project-accent, var(--ant-color-primary));
+  font-weight: 600;
+}
+
+.client-login__brand > div {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.client-login__brand strong {
+  color: var(--ant-color-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.client-login__brand small {
+  color: var(--ant-color-text-secondary);
+  font-size: 11px;
+}
+
+.client-login__body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  padding: 32px;
+  overflow: auto;
+  place-items: center;
+}
+
 .client-login__card,
 .system-result-page .ant-result,
 .mobile-preview-header {
@@ -790,15 +1224,8 @@ html[data-theme='glass'] .system-result-page .ant-result {
 }
 
 .client-login__card {
-  border-radius: 16px;
-  box-shadow: 0 20px 56px rgb(0 0 0 / 10%);
-}
-
-.client-login__theme {
-  position: fixed;
-  z-index: 3;
-  top: 18px;
-  right: 18px;
+  border-radius: var(--ant-border-radius-lg, 8px);
+  box-shadow: none;
 }
 
 .mobile-preview-header {
@@ -807,12 +1234,23 @@ html[data-theme='glass'] .system-result-page .ant-result {
 }
 
 @media (max-width: 900px) {
-  .platform-workspace__header {
+  .platform-workspace__global-header {
     padding-inline: 16px;
   }
 
-  .platform-workspace__location .ant-breadcrumb li:first-child {
-    display: none;
+  .home-hero--ant {
+    align-items: stretch;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-project-picker {
+    max-width: 560px;
+  }
+
+  .client-topbar--sidebar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
   }
 }
 
@@ -833,4 +1271,96 @@ html[data-theme='glass'] .system-result-page .ant-result {
   .theme-control.ant-btn {
     transition: none;
   }
+}
+
+/* Theme material overrides stay last so page-level white backgrounds cannot bypass the global theme. */
+html[data-theme='dark'] .platform-workspace__global-header,
+html[data-theme='dark'] .platform-workspace__sider,
+html[data-theme='dark'] .platform-workspace .platform-surface,
+html[data-theme='dark'] .platform-workspace .ant-card,
+html[data-theme='dark'] .route-group,
+html[data-theme='dark'] .route-group .ant-collapse,
+html[data-theme='dark'] .route-group .ant-collapse-content,
+html[data-theme='dark'] .export-page-list section,
+html[data-theme='dark'] .context-page-detail,
+html[data-theme='dark'] .gallery-overview,
+html[data-theme='dark'] .home-topbar--ant,
+html[data-theme='dark'] .home-project-picker,
+html[data-theme='dark'] .home-workspace--ant,
+html[data-theme='dark'] .home-empty--ant,
+html[data-theme='dark'] .client-sider,
+html[data-theme='dark'] .client-topbar,
+html[data-theme='dark'] .client-login__header,
+html[data-theme='dark'] .client-login__card,
+html[data-theme='dark'] .docs-header,
+html[data-theme='dark'] .docs-sidebar,
+html[data-theme='dark'] .docs-outline,
+html[data-theme='dark'] .docs-reader,
+html[data-theme='dark'] .prd-review-panel,
+html[data-theme='dark'] .mobile-preview-header,
+html[data-theme='dark'] .system-result-page .ant-result {
+  border-color: var(--ant-color-border-secondary) !important;
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-container) !important;
+}
+
+html[data-theme='glass'] {
+  --app-glass-surface: rgb(255 255 255 / 66%);
+  --app-glass-surface-strong: rgb(255 255 255 / 80%);
+  --app-glass-border: rgb(255 255 255 / 64%);
+}
+
+html[data-theme='glass'] .platform-workspace__global-header,
+html[data-theme='glass'] .platform-workspace__sider,
+html[data-theme='glass'] .home-topbar--ant,
+html[data-theme='glass'] .client-sider,
+html[data-theme='glass'] .client-topbar,
+html[data-theme='glass'] .client-login__header,
+html[data-theme='glass'] .docs-header,
+html[data-theme='glass'] .docs-sidebar,
+html[data-theme='glass'] .docs-outline,
+html[data-theme='glass'] .mobile-preview-header {
+  border-color: var(--app-glass-border) !important;
+  background: var(--app-glass-surface-strong) !important;
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+html[data-theme='glass'] .platform-workspace .platform-surface,
+html[data-theme='glass'] .platform-workspace .ant-card,
+html[data-theme='glass'] .route-group,
+html[data-theme='glass'] .route-group .ant-collapse,
+html[data-theme='glass'] .route-group .ant-collapse-content,
+html[data-theme='glass'] .export-page-list section,
+html[data-theme='glass'] .context-page-detail,
+html[data-theme='glass'] .gallery-overview,
+html[data-theme='glass'] .home-project-picker,
+html[data-theme='glass'] .home-workspace--ant,
+html[data-theme='glass'] .home-empty--ant,
+html[data-theme='glass'] .client-login__card,
+html[data-theme='glass'] .docs-reader,
+html[data-theme='glass'] .prd-review-panel,
+html[data-theme='glass'] .system-result-page .ant-result {
+  border-color: var(--app-glass-border) !important;
+  background: var(--app-glass-surface) !important;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 54%) inset,
+    0 10px 30px rgb(69 101 141 / 8%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+html[data-theme='glass'] .platform-workspace .ant-table,
+html[data-theme='glass'] .platform-workspace .ant-table-container,
+html[data-theme='glass'] .platform-workspace .ant-table-content,
+html[data-theme='glass'] .platform-workspace .ant-table-tbody > tr > td {
+  background: transparent !important;
+}
+
+html[data-theme='glass'] .platform-workspace .ant-table-thead > tr > th,
+html[data-theme='glass'] .platform-workspace .ant-table-tbody > tr:hover > td,
+html[data-theme='glass'] .project-target-row,
+html[data-theme='glass'] .transfer-upload-row,
+html[data-theme='glass'] .transfer-export-toolbar,
+html[data-theme='glass'] .transfer-export-submit,
+html[data-theme='glass'] .transfer-manifest-preview {
+  background: rgb(255 255 255 / 34%) !important;
 }

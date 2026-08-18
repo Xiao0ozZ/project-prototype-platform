@@ -46,59 +46,71 @@ export function PlatformShell() {
 
   return (
     <Layout className="platform-workspace">
-      <Sider
-        className="platform-workspace__sider"
-        width={232}
-        collapsedWidth={72}
-        collapsed={collapsed}
-        trigger={null}
-      >
+      <Header className="platform-workspace__global-header">
         <Button className="platform-workspace__brand" type="text" onClick={() => navigate('/')}>
           <span>
             <AppstoreOutlined />
           </span>
-          {collapsed ? null : (
-            <div>
-              <strong>产品功能体验中心</strong>
-              <small>平台管理工作台</small>
-            </div>
-          )}
+          <div>
+            <strong>产品功能体验中心</strong>
+          </div>
         </Button>
-        <Menu
-          className="platform-workspace__menu"
-          mode="inline"
-          selectedKeys={currentPath ? [currentPath] : []}
-          items={items}
-          onClick={({ key }) => navigate(key)}
-        />
-        <Button
-          className="platform-workspace__collapse"
-          type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={toggleCollapsed}
+        <div />
+        <div className="platform-workspace__actions">
+          <ThemeControl />
+          <Button type="text" icon={<HomeOutlined />} onClick={() => navigate('/')}>
+            返回首页
+          </Button>
+        </div>
+      </Header>
+      <Layout className="platform-workspace__body">
+        <Sider
+          className="platform-workspace__sider"
+          width={216}
+          collapsedWidth={56}
+          collapsed={collapsed}
+          trigger={null}
         >
-          {collapsed ? null : '收起导航'}
-        </Button>
-      </Sider>
-      <Layout className="platform-workspace__main">
-        <Header className="platform-workspace__header">
-          <div className="platform-workspace__location">
+          <Menu
+            className="platform-workspace__menu"
+            mode="inline"
+            selectedKeys={currentPath ? [currentPath] : []}
+            items={items}
+            onClick={({ key }) => navigate(key)}
+          />
+          <Button
+            className="platform-workspace__collapse"
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={toggleCollapsed}
+          >
+            {collapsed ? null : '收起导航'}
+          </Button>
+        </Sider>
+        <Layout className="platform-workspace__main">
+          <div className="platform-workspace__context">
             <Breadcrumb
-              items={[{ title: '产品功能体验中心' }, { title: routeMeta[currentPath || ''] || '公共页面' }]}
+              items={[
+                {
+                  title: (
+                    <HomeOutlined
+                      className="platform-workspace__home"
+                      aria-label="返回首页"
+                      onClick={() => navigate('/')}
+                    />
+                  ),
+                },
+                { title: '平台管理' },
+                { title: routeMeta[currentPath || ''] || '公共页面' },
+              ]}
             />
           </div>
-          <div className="platform-workspace__actions">
-            <ThemeControl />
-            <Button type="text" icon={<HomeOutlined />} onClick={() => navigate('/')}>
-              返回首页
-            </Button>
-          </div>
-        </Header>
-        <Content className="platform-workspace__content">
-          <div className="platform-workspace__route" key={location.pathname}>
-            <Outlet />
-          </div>
-        </Content>
+          <Content className="platform-workspace__content">
+            <div className="platform-workspace__route" key={location.pathname}>
+              <Outlet />
+            </div>
+          </Content>
+        </Layout>
       </Layout>
     </Layout>
   );

@@ -525,6 +525,8 @@ describe('page transfer', () => {
     expect(exportedHtml).toContain('PORTABLE HTML PROTOTYPE SOURCE');
     const contentOnlyHtml = applyContentOnlyMode(exportedHtml);
     expect(contentOnlyHtml).toContain('id="platform-html-content-only"');
+    expect(contentOnlyHtml).toContain('overflow-y: auto !important');
+    expect(contentOnlyHtml).toContain('height: auto !important');
     expect(applyContentOnlyMode(contentOnlyHtml)).toBe(contentOnlyHtml);
 
     const directRoot = path.join(root, 'direct-html');

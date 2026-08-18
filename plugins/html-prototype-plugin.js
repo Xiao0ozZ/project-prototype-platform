@@ -401,6 +401,10 @@ const CONTENT_ONLY_STYLE = `
   #app {
     width: 100% !important;
     min-width: 0 !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
   .app-shell {
     display: block !important;

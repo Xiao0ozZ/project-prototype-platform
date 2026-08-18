@@ -1,8 +1,6 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
-import { Flex, Typography } from '@/ui/ant';
-
-const { Title, Text } = Typography;
+import { Flex } from '@/ui/ant';
 
 interface PlatformPageProps {
   eyebrow?: string;
@@ -12,21 +10,22 @@ interface PlatformPageProps {
   children: ReactNode;
 }
 
-export function PlatformPage({ eyebrow, title, description, actions, children }: PlatformPageProps) {
+export function PlatformPage({ title, description, actions, children }: PlatformPageProps) {
+  useEffect(() => {
+    document.title = `${title} · 产品功能体验中心`;
+  }, [title]);
+
   return (
-    <main className="platform-page platform-page--ant">
-      <Flex className="platform-page__heading" align="center" justify="space-between" gap={24}>
-        <div>
-          {eyebrow ? <Text className="platform-page__eyebrow">{eyebrow}</Text> : null}
-          <Title level={1}>{title}</Title>
-          {description ? <Text type="secondary">{description}</Text> : null}
-        </div>
-        {actions ? (
-          <Flex className="platform-page__actions" gap={8} wrap="wrap">
-            {actions}
-          </Flex>
-        ) : null}
-      </Flex>
+    <main
+      className="platform-page platform-page--ant"
+      aria-label={title}
+      data-description={description || undefined}
+    >
+      {actions ? (
+        <Flex className="platform-page__heading" align="center" justify="flex-end" gap={8} wrap="wrap">
+          {actions}
+        </Flex>
+      ) : null}
       <div className="platform-page__content">{children}</div>
     </main>
   );

@@ -6,12 +6,16 @@ import { AppRoutes } from './AppRoutes';
 
 export function App() {
   return (
-    <ErrorBoundary>
-      <AppProviders>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <AppRoutes />
-        </BrowserRouter>
-      </AppProviders>
-    </ErrorBoundary>
+    <AppProviders>
+      <div className="app-frame-stage">
+        <div className="app-frame">
+          <ErrorBoundary>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <AppRoutes />
+            </BrowserRouter>
+          </ErrorBoundary>
+        </div>
+      </div>
+    </AppProviders>
   );
 }

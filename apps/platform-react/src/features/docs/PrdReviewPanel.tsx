@@ -9,12 +9,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import { platformApi } from '@/data/platform-api';
-import { Button, Empty, Flex, Input, List, Segmented, Select, Tag, Typography } from '@/ui/ant';
+import { Button, Empty, Flex, Input, List, Segmented, Select, Tag, Tooltip, Typography } from '@/ui/ant';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   CloseOutlined,
   DragOutlined,
+  FileTextOutlined,
   LinkOutlined,
   OrderedListOutlined,
   SearchOutlined,
@@ -73,6 +74,7 @@ export function PrdReviewPanel({
   const [requestedAnchor, setRequestedAnchor] = useState(documentAnchor || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchStatus, setSearchStatus] = useState({ index: 0, count: 0 });
+  const [dragging, setDragging] = useState(false);
   const [position, setPosition] = useState(() => {
     try {
       const value = JSON.parse(localStorage.getItem(`prd-review-position:${projectId}`) || 'null');
@@ -105,6 +107,37 @@ export function PrdReviewPanel({
     },
     [projectId],
   );
+
+  useEffect(() => {
+    if (!open || mode !== 'overlay') return;
+    function constrainOverlayPosition() {
+      const workspace = panelRef.current?.parentElement?.getBoundingClientRect();
+      const panel = panelRef.current?.getBoundingClientRect();
+      if (!workspace || !panel) return;
+      const current = positionRef.current;
+      const baseLeft = panel.left - current.x;
+      const baseTop = panel.top - current.y;
+      const nextPosition = {
+        x: Math.min(
+          Math.max(current.x, workspace.left + 8 - baseLeft),
+          workspace.right - panel.width - 8 - baseLeft,
+        ),
+        y: Math.min(
+          Math.max(current.y, workspace.top + 8 - baseTop),
+          workspace.bottom - panel.height - 8 - baseTop,
+        ),
+      };
+      if (nextPosition.x === current.x && nextPosition.y === current.y) return;
+      positionRef.current = nextPosition;
+      setPosition(nextPosition);
+    }
+    const frame = window.requestAnimationFrame(constrainOverlayPosition);
+    window.addEventListener('resize', constrainOverlayPosition);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', constrainOverlayPosition);
+    };
+  }, [mode, open]);
 
   useEffect(() => {
     if (!open || !readerRef.current || !headings.length) return;
@@ -229,6 +262,7 @@ export function PrdReviewPanel({
       originX: position.x,
       originY: position.y,
     };
+    setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -259,8 +293,13 @@ export function PrdReviewPanel({
   function finishDrag(event: ReactPointerEvent<HTMLElement>) {
     if (dragRef.current?.pointerId !== event.pointerId) return;
     dragRef.current = null;
+    setDragging(false);
     event.currentTarget.releasePointerCapture?.(event.pointerId);
-    localStorage.setItem(`prd-review-position:${projectId}`, JSON.stringify(positionRef.current));
+    try {
+      localStorage.setItem(`prd-review-position:${projectId}`, JSON.stringify(positionRef.current));
+    } catch {
+      // Position persistence is optional; dragging remains available for the active session.
+    }
   }
 
   const activeTitle =
@@ -270,7 +309,10 @@ export function PrdReviewPanel({
   return (
     <section
       ref={panelRef}
-      className={`prd-review-panel prd-review-panel--${mode}`}
+      className={`prd-review-panel prd-review-panel--${mode}${dragging ? ' is-dragging' : ''}`}
+      role={mode === 'overlay' ? 'dialog' : 'complementary'}
+      aria-label={`${pageTitle} PRD`}
+      aria-modal={mode === 'overlay' ? false : undefined}
       style={
         mode === 'overlay' ? { transform: `translate3d(${position.x}px, ${position.y}px, 0)` } : undefined
       }
@@ -282,41 +324,57 @@ export function PrdReviewPanel({
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}
       >
-        <Flex className="prd-review-panel__identity" align="center" gap={10}>
-          {mode === 'overlay' ? <DragOutlined /> : null}
+        <Flex className="prd-review-panel__identity" align="center" gap={12}>
+          <span className="prd-review-panel__document-icon" aria-hidden="true">
+            <FileTextOutlined />
+          </span>
           <div>
-            <Title level={4}>{pageTitle}</Title>
-            <Text ellipsis={{ tooltip: activeDocument }}>{activeTitle}</Text>
+            <Flex className="prd-review-panel__title-line" align="center" gap={6}>
+              <Title level={4}>{pageTitle}</Title>
+              {mode === 'overlay' ? <DragOutlined className="prd-review-panel__drag-hint" /> : null}
+            </Flex>
+            <Text className="prd-review-panel__document-name" ellipsis={{ tooltip: activeDocument }}>
+              {activeTitle}
+            </Text>
           </div>
         </Flex>
-        <Flex gap={2}>
-          <Button
-            type="text"
-            disabled={!activeDocument}
-            icon={<LinkOutlined />}
-            onClick={openDocumentWindow}
-            aria-label="新窗口打开"
-          />
-          <Button type="text" icon={<CloseOutlined />} onClick={onClose} aria-label="关闭 PRD" />
+        <Flex className="prd-review-panel__header-actions" gap={4}>
+          <Tooltip title="在文档中心打开">
+            <Button
+              type="text"
+              disabled={!activeDocument}
+              icon={<LinkOutlined />}
+              onClick={openDocumentWindow}
+              aria-label="在文档中心打开"
+            />
+          </Tooltip>
+          <Tooltip title="关闭">
+            <Button type="text" icon={<CloseOutlined />} onClick={onClose} aria-label="关闭 PRD" />
+          </Tooltip>
         </Flex>
       </header>
       <div className="prd-review-panel__toolbar">
-        <Segmented
-          size="small"
-          value={mode}
-          options={[
-            { label: '固定分屏', value: 'split' },
-            { label: '浮层', value: 'overlay' },
-          ]}
-          onChange={(value) => onModeChange(value as PrdPanelMode)}
-        />
+        <Flex className="prd-review-panel__mode" align="center" gap={8}>
+          <Text type="secondary">显示方式</Text>
+          <Segmented
+            size="small"
+            value={mode}
+            options={[
+              { label: '固定分屏', value: 'split' },
+              { label: '浮层', value: 'overlay' },
+            ]}
+            onChange={(value) => onModeChange(value as PrdPanelMode)}
+          />
+        </Flex>
         <Button
-          type={outlineVisible ? 'primary' : 'text'}
+          type={outlineVisible ? 'primary' : 'default'}
           size="small"
           icon={<OrderedListOutlined />}
           onClick={() => setOutlineVisible((current) => !current)}
+          aria-pressed={outlineVisible}
+          aria-label={outlineVisible ? '收起目录' : '查看目录'}
         >
-          目录
+          {outlineVisible ? '收起目录' : '查看目录'}
         </Button>
       </div>
       <div className="prd-review-panel__search">
@@ -324,6 +382,10 @@ export function PrdReviewPanel({
           <Select
             value={activeDocument}
             options={options.map((item) => ({ value: item.path, label: item.title || item.path }))}
+            showSearch
+            optionFilterProp="label"
+            popupMatchSelectWidth={false}
+            aria-label="选择 PRD 文档"
             onChange={(value) => {
               setActiveDocument(value);
               setActiveHeading('');
@@ -332,30 +394,39 @@ export function PrdReviewPanel({
             }}
           />
         ) : null}
-        <Input
-          value={searchTerm}
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="搜索本文"
-          onChange={(event) => updateSearch(event.target.value)}
-        />
-        <Text type="secondary">
-          {searchStatus.count ? `${searchStatus.index}/${searchStatus.count}` : '0/0'}
-        </Text>
-        <Button
-          size="small"
-          type="text"
-          disabled={!searchStatus.count}
-          icon={<ArrowUpOutlined />}
-          onClick={() => focusSearchMatch(searchStatus.index - 2)}
-        />
-        <Button
-          size="small"
-          type="text"
-          disabled={!searchStatus.count}
-          icon={<ArrowDownOutlined />}
-          onClick={() => focusSearchMatch(searchStatus.index)}
-        />
+        <div className="prd-review-panel__search-control">
+          <Input
+            value={searchTerm}
+            allowClear
+            prefix={<SearchOutlined />}
+            suffix={
+              <Text className="prd-review-panel__search-count" type="secondary">
+                {searchStatus.count ? `${searchStatus.index}/${searchStatus.count}` : '0/0'}
+              </Text>
+            }
+            placeholder="搜索当前文档"
+            aria-label="搜索当前 PRD 文档"
+            onChange={(event) => updateSearch(event.target.value)}
+          />
+          <Tooltip title="上一个结果">
+            <Button
+              type="text"
+              disabled={!searchStatus.count}
+              icon={<ArrowUpOutlined />}
+              onClick={() => focusSearchMatch(searchStatus.index - 2)}
+              aria-label="上一个搜索结果"
+            />
+          </Tooltip>
+          <Tooltip title="下一个结果">
+            <Button
+              type="text"
+              disabled={!searchStatus.count}
+              icon={<ArrowDownOutlined />}
+              onClick={() => focusSearchMatch(searchStatus.index)}
+              aria-label="下一个搜索结果"
+            />
+          </Tooltip>
+        </div>
       </div>
       <div className={`prd-review-panel__body ${outlineVisible ? 'has-outline' : ''}`}>
         <div ref={readerRef} className="prd-review-panel__reader">
@@ -376,10 +447,10 @@ export function PrdReviewPanel({
           )}
         </div>
         {outlineVisible ? (
-          <aside ref={outlineRef} className="prd-review-panel__outline">
-            <Flex align="center" justify="space-between">
+          <aside ref={outlineRef} className="prd-review-panel__outline" aria-label="PRD 本文目录">
+            <Flex className="prd-review-panel__outline-header" align="center" justify="space-between">
               <Text strong>本文目录</Text>
-              <Tag>{headings.length}</Tag>
+              <Tag bordered={false}>{headings.length}</Tag>
             </Flex>
             <List
               size="small"
@@ -390,7 +461,13 @@ export function PrdReviewPanel({
                   data-heading-id={heading.id}
                   style={{ paddingLeft: (heading.level - 1) * 8 }}
                 >
-                  <Button type="text" block onClick={() => scrollToHeading(heading.id)}>
+                  <Button
+                    type="text"
+                    block
+                    title={heading.text}
+                    aria-current={heading.id === activeHeading ? 'location' : undefined}
+                    onClick={() => scrollToHeading(heading.id)}
+                  >
                     {heading.text}
                   </Button>
                 </List.Item>
