@@ -1111,9 +1111,11 @@ html[data-density='compact'] .client-shell {
 }
 
 .docs-file-list .ant-list-item.is-active .ant-btn,
+.docs-outline .ant-list-item.is-active .ant-btn,
 .prd-review-panel__outline .ant-list-item.is-active .ant-btn {
   color: var(--ant-color-primary);
   background: var(--ant-color-primary-bg);
+  font-weight: 600;
 }
 
 .prd-review-panel__search,

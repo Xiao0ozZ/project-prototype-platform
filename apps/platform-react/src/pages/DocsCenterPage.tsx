@@ -31,10 +31,17 @@ export function DocsCenterPage() {
   const pagePrdLinksQuery = usePagePrdLinks(projectId, Boolean(project));
   const [filter, setFilter] = useState('');
   const [headings, setHeadings] = useState<MarkdownHeading[]>([]);
+  const [activeHeadingId, setActiveHeadingId] = useState('');
   const documents = useMemo(() => manifestQuery.data?.documents ?? [], [manifestQuery.data]);
   const selectedPath = searchParams.get('doc') || searchParams.get('file') || documents[0]?.path || '';
   const selectedAnchor = searchParams.get('anchor') || '';
   const selectedDocument = documents.find((document) => document.path === selectedPath) ?? null;
+  const activeOutlineHeadingId =
+    activeHeadingId && headings.some((heading) => heading.id === activeHeadingId)
+      ? activeHeadingId
+      : selectedAnchor && headings.some((heading) => heading.id === selectedAnchor)
+        ? selectedAnchor
+        : headings[0]?.id || '';
   const documentQuery = useQuery({
     queryKey: ['platform', 'document', projectId, selectedPath],
     queryFn: () => platformApi.loadDocument(projectId, selectedPath),
@@ -74,6 +81,7 @@ export function DocsCenterPage() {
   const openDocument = useCallback(
     (documentPath: string, anchor = '') => {
       setHeadings([]);
+      setActiveHeadingId('');
       const next = new URLSearchParams({ doc: documentPath });
       if (anchor) next.set('anchor', anchor);
       setSearchParams(next);
@@ -92,6 +100,35 @@ export function DocsCenterPage() {
   useEffect(() => {
     document.title = `${selectedDocument?.title || '产品文档'} - ${project?.name || '项目'}`;
   }, [project?.name, selectedDocument?.title]);
+
+  useEffect(() => {
+    const reader = document.querySelector<HTMLElement>('.docs-reader');
+    if (!reader || !headings.length) return;
+    const headingElements = headings
+      .map((heading) => reader.querySelector<HTMLElement>(`#${CSS.escape(heading.id)}`))
+      .filter((heading): heading is HTMLElement => Boolean(heading));
+    if (!headingElements.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleHeadings = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top);
+        const nextHeading = visibleHeadings[0]?.target as HTMLElement | undefined;
+        if (nextHeading) setActiveHeadingId(nextHeading.id);
+      },
+      { root: reader, rootMargin: '-12% 0px -70% 0px', threshold: [0, 1] },
+    );
+    headingElements.forEach((heading) => observer.observe(heading));
+    return () => observer.disconnect();
+  }, [headings, selectedPath]);
+
+  useEffect(() => {
+    if (!activeOutlineHeadingId) return;
+    document
+      .querySelector<HTMLElement>('.docs-outline .ant-list-item.is-active')
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [activeOutlineHeadingId]);
 
   useEffect(() => {
     const legacyPath = searchParams.get('file');
@@ -119,6 +156,7 @@ export function DocsCenterPage() {
 
   const selectDocument = (document: DocumentEntry) => openDocument(document.path);
   const scrollToHeading = (headingId: string) => {
+    setActiveHeadingId(headingId);
     document
       .querySelector('.docs-reader')
       ?.querySelector<HTMLElement>(`#${CSS.escape(headingId)}`)
@@ -190,8 +228,10 @@ export function DocsCenterPage() {
             renderItem={(document) => (
               <List.Item className={document.path === selectedPath ? 'is-active' : ''}>
                 <Button type="text" block onClick={() => selectDocument(document)}>
-                  <strong>{document.title || document.path.split('/').pop()}</strong>
-                  <small>{document.path}</small>
+                  <span className="docs-file-item__content">
+                    <strong>{document.title || document.path.split('/').pop()}</strong>
+                    <small>{document.path}</small>
+                  </span>
                 </Button>
               </List.Item>
             )}
@@ -222,7 +262,10 @@ export function DocsCenterPage() {
             size="small"
             dataSource={headings}
             renderItem={(heading) => (
-              <List.Item style={{ paddingLeft: (heading.level - 1) * 10 }}>
+              <List.Item
+                className={heading.id === activeOutlineHeadingId ? 'is-active' : ''}
+                style={{ paddingLeft: (heading.level - 1) * 10 }}
+              >
                 <Button type="text" block onClick={() => scrollToHeading(heading.id)}>
                   {heading.text}
                 </Button>
