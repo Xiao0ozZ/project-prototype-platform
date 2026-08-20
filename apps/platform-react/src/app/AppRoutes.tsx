@@ -22,6 +22,9 @@ const PageTransferPage = lazy(() =>
 const AiContextPage = lazy(() =>
   import('@/pages/AiContextPage').then((module) => ({ default: module.AiContextPage })),
 );
+const ProjectHealthPage = lazy(() =>
+  import('@/pages/ProjectHealthPage').then((module) => ({ default: module.ProjectHealthPage })),
+);
 const HomePage = lazy(() => import('@/pages/HomePage').then((module) => ({ default: module.HomePage })));
 const ClientLoginPage = lazy(() =>
   import('@/pages/ClientLoginPage').then((module) => ({ default: module.ClientLoginPage })),
@@ -96,6 +99,7 @@ export function AppRoutes() {
           <Route path="tools/project-routes" element={<ProjectRoutesPage />} />
           <Route path="tools/page-transfer" element={<PageTransferPage />} />
           <Route path="tools/ai-context" element={<AiContextPage />} />
+          <Route path="tools/project-health" element={<ProjectHealthPage />} />
           <Route path="projects" element={<Navigate to="/tools/projects" replace />} />
           <Route path="components" element={<ComponentGalleryPage />} />
         </Route>

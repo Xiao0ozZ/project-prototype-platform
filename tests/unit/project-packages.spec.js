@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { scanProjectPackages } from '../../plugins/project-packages-plugin.js';
-import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
+import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../packages/project-core/src/index.js';
+import { scanProjectPackages } from '../../packages/project-core/src/index.js';
 
 const temporaryRoots = [];
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');

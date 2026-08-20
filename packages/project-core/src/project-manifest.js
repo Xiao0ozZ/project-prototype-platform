@@ -9,7 +9,13 @@ import {
   HTML_SHELL_MODES,
   PROJECT_ID_PATTERN,
 } from './constants.js';
-import { fileExists, isInsideRoot, isSafeRelativePath, walkFiles } from './filesystem.js';
+import {
+  fileExists,
+  isInsideRoot,
+  isSafeRelativePath,
+  resolveExistingPathInsideRoot,
+  walkFiles,
+} from './filesystem.js';
 
 export function normalizePrototypeSources(prototype = {}) {
   const configuredClients = prototype?.clients;
@@ -162,13 +168,13 @@ export async function validateProjectResources(manifest, projectRoot, { mounts =
     ['移动端入口', manifest.mobile?.enabled ? manifest.mobile?.entry : null],
   ]) {
     if (!resourcePath) continue;
-    if (!(await fileExists(path.resolve(projectRoot, resourcePath)))) {
+    if (!(await resolveExistingPathInsideRoot(projectRoot, resourcePath))) {
       errors.push(`${label}不存在：${resourcePath}。`);
     }
   }
   for (const client of manifest.clients || []) {
     const background = client.login?.background;
-    if (background && !(await fileExists(path.resolve(projectRoot, background)))) {
+    if (background && !(await resolveExistingPathInsideRoot(projectRoot, background))) {
       errors.push(`客户端 ${client.id} 的登录背景不存在：${background}。`);
     }
   }

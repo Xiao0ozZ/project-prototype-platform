@@ -186,4 +186,24 @@ describe('project core', () => {
       await fs.rm(projectsRoot, { recursive: true, force: true });
     }
   });
+
+  it('scans an external project root from the local mounts file without copying it', async () => {
+    const projectsRoot = await fs.mkdtemp(path.join(process.cwd(), '.project-mount-root-test-'));
+    const externalParent = await fs.mkdtemp(path.join(os.tmpdir(), 'platform-external-project-'));
+    const externalRoot = path.join(externalParent, 'arbitrary-folder-name');
+    try {
+      await fs.cp(path.resolve(process.cwd(), 'examples/sample-project'), externalRoot, { recursive: true });
+      const mounts = normalizeProjectMounts({
+        schemaVersion: 1,
+        projects: { 'sample-project': { root: externalRoot } },
+      });
+      const result = await scanProjectPackages(projectsRoot, { mounts });
+      expect(result.invalidProjects).toEqual([]);
+      expect(result.projects[0]).toMatchObject({ id: 'sample-project', mounted: true });
+      expect(await fs.readdir(projectsRoot)).toEqual([]);
+    } finally {
+      await fs.rm(projectsRoot, { recursive: true, force: true });
+      await fs.rm(externalParent, { recursive: true, force: true });
+    }
+  });
 });

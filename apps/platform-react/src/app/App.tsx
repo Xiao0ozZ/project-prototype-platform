@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
 import { AppProviders } from './AppProviders';
 import { AppRoutes } from './AppRoutes';
+import { WorkspaceOnboarding } from '@/features/projects/WorkspaceOnboarding';
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
           <ErrorBoundary>
             <BrowserRouter basename={import.meta.env.BASE_URL}>
               <AppRoutes />
+              <WorkspaceOnboarding />
             </BrowserRouter>
           </ErrorBoundary>
         </div>

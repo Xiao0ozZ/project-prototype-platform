@@ -1,3 +1,4 @@
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import { PROJECT_ID_PATTERN } from './constants.js';
@@ -15,6 +16,7 @@ export function normalizeProjectMounts(payload = {}) {
   const projects = {};
   for (const [projectId, value] of Object.entries(payload.projects || {})) {
     if (!PROJECT_ID_PATTERN.test(projectId) || !value || typeof value !== 'object') continue;
+    const root = normalizeAbsolutePath(value.root);
     const docsRoot = normalizeAbsolutePath(value.docsRoot);
     const prototypes = {};
     for (const [clientId, root] of Object.entries(value.prototypes || {})) {
@@ -22,8 +24,12 @@ export function normalizeProjectMounts(payload = {}) {
       const normalizedRoot = normalizeAbsolutePath(root);
       if (normalizedRoot) prototypes[clientId] = normalizedRoot;
     }
-    if (docsRoot || Object.keys(prototypes).length) {
-      projects[projectId] = { ...(docsRoot ? { docsRoot } : {}), prototypes };
+    if (root || docsRoot || Object.keys(prototypes).length) {
+      projects[projectId] = {
+        ...(root ? { root } : {}),
+        ...(docsRoot ? { docsRoot } : {}),
+        prototypes,
+      };
     }
   }
   return { schemaVersion: PROJECT_MOUNTS_SCHEMA_VERSION, projects };
@@ -41,6 +47,35 @@ export async function loadProjectMounts(filePath) {
 
 export function getProjectMount(projectId, mounts = {}) {
   return mounts.projects?.[projectId] || null;
+}
+
+export function resolveProjectRoot(projectsRoot, projectId, mounts = {}) {
+  const mountedRoot = getProjectMount(projectId, mounts)?.root;
+  return mountedRoot || path.resolve(projectsRoot, projectId);
+}
+
+export async function listProjectLocations(projectsRoot, mounts = {}) {
+  const locations = [];
+  const root = path.resolve(projectsRoot);
+  const entries = await fs.readdir(root, { withFileTypes: true }).catch((error) => {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  });
+  for (const entry of entries) {
+    if (entry.isDirectory() && PROJECT_ID_PATTERN.test(entry.name)) {
+      locations.push({ projectId: entry.name, root: path.join(root, entry.name), mounted: false });
+    }
+  }
+  for (const [projectId, mount] of Object.entries(mounts.projects || {})) {
+    if (!mount.root) continue;
+    const existing = locations.find((item) => item.projectId === projectId);
+    if (existing) {
+      existing.duplicateMountedRoot = path.resolve(mount.root);
+      continue;
+    }
+    locations.push({ projectId, root: path.resolve(mount.root), mounted: true });
+  }
+  return locations.sort((left, right) => left.projectId.localeCompare(right.projectId));
 }
 
 export function resolveProjectDocsRoot(manifest, projectRoot, mounts = {}) {
@@ -62,6 +97,7 @@ export function describeProjectMounts(manifest, projectRoot, mounts = {}) {
   const projectMount = getProjectMount(manifest.id, mounts);
   return {
     projectId: manifest.id,
+    project: { root: projectRoot, mounted: Boolean(projectMount?.root) },
     docs: manifest.docs?.enabled
       ? {
           root: resolveProjectDocsRoot(manifest, projectRoot, mounts),

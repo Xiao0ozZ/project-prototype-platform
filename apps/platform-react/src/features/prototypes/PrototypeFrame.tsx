@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { HtmlPrototypePage, PrdBinding } from '../../../../../packages/platform-contracts/src/index.js';
 import { clearPrdBindingMarkers, installPrdBindingMarkers } from '@/features/docs/prd-binding-markers';
+import { installFrameSmoothScroll } from '@/features/motion/smooth-scroll';
 import { Button, Result, Spin, Typography } from '@/ui/ant';
 import { ReloadOutlined } from '@/ui/ant/icons';
 
@@ -50,7 +51,9 @@ export function PrototypeFrame({ page, source, theme, prdBindings, onOpenPrd, on
 
   function handleLoad(frame: HTMLIFrameElement) {
     try {
-      const root = frame.contentDocument?.documentElement;
+      const frameDocument = frame.contentDocument;
+      if (frameDocument) installFrameSmoothScroll(frameDocument);
+      const root = frameDocument?.documentElement;
       root?.style.setProperty('--app-color-primary', theme.primary);
       root?.style.setProperty('--el-color-primary', theme.primary);
       root?.style.setProperty('--prototype-color-primary', theme.primary);

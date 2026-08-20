@@ -5,11 +5,14 @@ import {
   createApiError,
   createStaticReadOnlyError,
   normalizeDocumentManifest,
+  normalizeBootstrapState,
   normalizeHtmlPageCatalog,
   normalizePagePrdLinks,
   normalizePlatformSettings,
   normalizePrdBindings,
   normalizeProjectScanResult,
+  normalizeProjectHealthReport,
+  normalizeProjectMountsPayload,
   normalizeRouteList,
 } from '../../platform-contracts/src/index.js';
 
@@ -41,9 +44,11 @@ export function createPlatformClient({
   fetchImpl = globalThis.fetch,
   baseUrl = '/',
   development = false,
+  apiMode = development ? 'development' : 'static',
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new TypeError('createPlatformClient 需要可用的 fetch。');
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  const useLocalApi = apiMode === 'development' || apiMode === 'local';
 
   async function requestJson(url, options = {}) {
     const { fallbackMessage = '平台请求失败。', normalize, ...requestOptions } = options;
@@ -93,25 +98,105 @@ export function createPlatformClient({
   function documentAssetUrl(projectId, documentPath) {
     const encodedProjectId = encodeURIComponent(projectId);
     const encodedPath = encodeFilePath(documentPath);
-    return development
+    return useLocalApi
       ? `/__prd/file?project=${encodedProjectId}&path=${encodeURIComponent(documentPath)}`
       : `${normalizedBaseUrl}projects/${encodedProjectId}/docs/content/${encodedPath}`;
   }
 
   return Object.freeze({
     development,
+    apiMode,
     baseUrl: normalizedBaseUrl,
 
     loadProjectManifest() {
-      const url = development ? '/__projects/manifest' : `${normalizedBaseUrl}projects/manifest.json`;
+      const url = useLocalApi ? '/__projects/manifest' : `${normalizedBaseUrl}projects/manifest.json`;
       return requestJson(url, {
         fallbackMessage: '项目包扫描失败。',
         normalize: normalizeProjectScanResult,
       });
     },
 
+    loadBootstrapState() {
+      requireDevelopment('静态部署不提供本机工作区状态。');
+      return requestJson('/__platform/bootstrap', {
+        fallbackMessage: '工作区状态读取失败。',
+        normalize: normalizeBootstrapState,
+      });
+    },
+
+    loadProjectMounts() {
+      requireDevelopment('静态部署不提供本机项目挂载。');
+      return requestJson('/__projects/mounts', {
+        fallbackMessage: '项目挂载读取失败。',
+        normalize: normalizeProjectMountsPayload,
+      });
+    },
+
+    loadProjectHealth() {
+      requireDevelopment('静态部署不提供实时健康检查。');
+      return requestJson('/__projects/health', {
+        fallbackMessage: '项目健康检查失败。',
+        normalize: normalizeProjectHealthReport,
+      });
+    },
+
+    selectProjectDirectory() {
+      requireDevelopment('静态部署不能打开本机文件夹选择器。');
+      return requestJson('/__platform/select-directory', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: '{}',
+        fallbackMessage: '文件夹选择器打开失败。',
+        normalize: (payload) => assertSuccessPayload(payload, '文件夹选择器打开失败。'),
+      });
+    },
+
+    inspectProjectMount(root) {
+      requireDevelopment('静态部署不能检查本机项目目录。');
+      return requestJson('/__projects/mount/inspect', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ root }),
+        fallbackMessage: '项目目录检查失败。',
+        normalize: (payload) => assertSuccessPayload(payload, '项目目录检查失败。'),
+      });
+    },
+
+    mountProject(root) {
+      requireDevelopment('静态部署不能挂载本机项目目录。');
+      return requestJson('/__projects/mount', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ root }),
+        fallbackMessage: '项目挂载失败。',
+        normalize: (payload) => assertSuccessPayload(payload, '项目挂载失败。'),
+      });
+    },
+
+    unmountProject(projectId) {
+      requireDevelopment('静态部署不能取消本机项目挂载。');
+      return requestJson('/__projects/unmount', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ projectId }),
+        fallbackMessage: '取消项目挂载失败。',
+        normalize: (payload) => assertSuccessPayload(payload, '取消项目挂载失败。'),
+      });
+    },
+
+    installExampleProject() {
+      requireDevelopment('静态部署不能创建示例项目。');
+      return requestJson('/__projects/install-example', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: '{}',
+        fallbackMessage: '示例项目创建失败。',
+        normalize: (payload) => assertSuccessPayload(payload, '示例项目创建失败。'),
+      });
+    },
+
     loadHtmlPageCatalog() {
-      const url = development ? '/__projects/html-pages' : `${normalizedBaseUrl}projects/html-pages.json`;
+      const url = useLocalApi ? '/__projects/html-pages' : `${normalizedBaseUrl}projects/html-pages.json`;
       return requestJson(url, {
         fallbackMessage: 'HTML 页面目录读取失败。',
         normalize: normalizeHtmlPageCatalog,
@@ -124,13 +209,13 @@ export function createPlatformClient({
       const encodedPath = encodeFilePath(sourcePath);
       if (!encodedProjectId || !encodedPath) return '';
       const hasSourceRoot = clientId && clientId !== '_';
-      return development
+      return useLocalApi
         ? `/__projects/html-content/${encodedProjectId}/${encodedClientId}/${encodedPath}`
         : `${normalizedBaseUrl}projects/${encodedProjectId}/prototype/${hasSourceRoot ? `${encodedClientId}/` : ''}${encodedPath}`;
     },
 
     getHtmlPrototypeSourceDownloadUrl(projectId, clientId, sourcePath) {
-      if (!development) return '';
+      if (!development && apiMode !== 'local') return '';
       const encodedProjectId = encodeURIComponent(projectId);
       const encodedClientId = encodeURIComponent(clientId || '_');
       const encodedPath = encodeFilePath(sourcePath);
@@ -142,7 +227,7 @@ export function createPlatformClient({
       const encodedProjectId = encodeURIComponent(projectId);
       const encodedPath = encodeFilePath(assetPath);
       if (!encodedProjectId || !encodedPath) return '';
-      return development
+      return useLocalApi
         ? `/__projects/file?project=${encodedProjectId}&path=${encodeURIComponent(assetPath)}`
         : `${normalizedBaseUrl}projects/${encodedProjectId}/${encodedPath}`;
     },
@@ -160,7 +245,7 @@ export function createPlatformClient({
 
     async loadPagePrdLinks(projectId) {
       const encodedProjectId = encodeURIComponent(projectId);
-      const url = development
+      const url = useLocalApi
         ? `/__projects/page-prd-links?project=${encodedProjectId}`
         : `${normalizedBaseUrl}projects/${encodedProjectId}/.platform/page-prd-links.json`;
       try {
@@ -188,7 +273,7 @@ export function createPlatformClient({
 
     async loadPrdBindings(projectId) {
       const encodedProjectId = encodeURIComponent(projectId);
-      const url = development
+      const url = useLocalApi
         ? `/__projects/prd-bindings?project=${encodedProjectId}`
         : `${normalizedBaseUrl}projects/${encodedProjectId}/.platform/prd-bindings.json`;
       try {
@@ -219,7 +304,7 @@ export function createPlatformClient({
 
     loadDocumentManifest(projectId) {
       const encodedProjectId = encodeURIComponent(projectId);
-      const url = development
+      const url = useLocalApi
         ? `/__prd/manifest?project=${encodedProjectId}`
         : `${normalizedBaseUrl}projects/${encodedProjectId}/docs/manifest.json`;
       return requestJson(url, {
@@ -235,7 +320,7 @@ export function createPlatformClient({
     },
 
     async loadPlatformSettings() {
-      const urls = development
+      const urls = useLocalApi
         ? ['/__platform/settings', `${normalizedBaseUrl}platform-settings.json`]
         : [`${normalizedBaseUrl}platform-settings.json`];
       for (const url of urls) {

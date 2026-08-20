@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { scanHtmlPrototypePages } from '../plugins/html-prototype-plugin.js';
+import { scanHtmlPrototypePages } from '../packages/project-core/src/index.js';
 import { loadProjectMounts, scanProjectPackages } from '../packages/project-core/src/index.js';
 
 const repositoryRoot = process.cwd();

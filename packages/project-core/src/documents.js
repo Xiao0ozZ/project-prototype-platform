@@ -1,9 +1,14 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { PROJECT_ID_PATTERN } from './constants.js';
-import { fileExists, readJsonFile, toWebPath, walkFiles } from './filesystem.js';
-import { resolveProjectDocsRoot } from './project-mounts.js';
+import {
+  fileExists,
+  readJsonFile,
+  resolveExistingPathInsideRoot,
+  toWebPath,
+  walkFiles,
+} from './filesystem.js';
+import { listProjectLocations, resolveProjectDocsRoot } from './project-mounts.js';
 
 export const DOCUMENT_PUBLIC_EXTENSIONS = new Set(['.md', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
 
@@ -32,18 +37,17 @@ export async function createDocumentManifest(root) {
 export async function loadProjectDocumentRoots(projectsRoot, { mounts = {} } = {}) {
   const root = path.resolve(projectsRoot);
   const roots = new Map();
-  const entries = await fs.readdir(root, { withFileTypes: true }).catch((error) => {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  });
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !PROJECT_ID_PATTERN.test(entry.name)) continue;
-    const projectRoot = path.join(root, entry.name);
+  for (const location of await listProjectLocations(root, mounts)) {
+    const projectRoot = location.root;
     try {
-      const manifest = await readJsonFile(path.join(projectRoot, 'project.json'));
-      if (manifest.id !== entry.name || !manifest.docs?.enabled) continue;
+      const manifestPath = await resolveExistingPathInsideRoot(projectRoot, 'project.json', {
+        allowedExtensions: new Set(['.json']),
+      });
+      if (!manifestPath) continue;
+      const manifest = await readJsonFile(manifestPath);
+      if (manifest.id !== location.projectId || !manifest.docs?.enabled) continue;
       const docsRoot = resolveProjectDocsRoot(manifest, projectRoot, mounts);
-      if (await fileExists(docsRoot, 'directory')) roots.set(entry.name, docsRoot);
+      if (await fileExists(docsRoot, 'directory')) roots.set(location.projectId, docsRoot);
     } catch {
       // Invalid project packages are reported by the project package scanner.
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -37,6 +37,7 @@ import {
   type MenuProps,
 } from '@/ui/ant';
 import {
+  AppstoreOutlined,
   BookOutlined,
   DatabaseOutlined,
   DownOutlined,
@@ -45,7 +46,6 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  ProjectOutlined,
 } from '@/ui/ant/icons';
 import { ProjectIcon } from '@/ui/platform/ProjectIcon';
 import { ThemeControl } from '@/ui/platform/ThemeControl';
@@ -326,14 +326,19 @@ function ClientWorkspace({
     });
   }
 
-  function navigatePage(page: HtmlPrototypePage) {
-    const section = groups.find((group) => group.pages.some((candidate) => candidate.path === page.path));
-    setMenuDisclosure({
-      pagePath: page.path,
-      openKeys: section ? [`section:${section.id}`] : [],
-    });
-    onNavigate(routeForPage(projectId, clientId, page));
-  }
+  const navigatePage = useCallback(
+    (page: HtmlPrototypePage) => {
+      const section = groups.find((group) =>
+        group.pages.some((candidate) => candidate.path === page.path),
+      );
+      setMenuDisclosure({
+        pagePath: page.path,
+        openKeys: section ? [`section:${section.id}`] : [],
+      });
+      onNavigate(routeForPage(projectId, clientId, page));
+    },
+    [clientId, groups, onNavigate, projectId],
+  );
 
   function syncIframeRoute(frame: HTMLIFrameElement) {
     try {
@@ -366,7 +371,10 @@ function ClientWorkspace({
     }
   }
 
-  const menuItems = createMenuItems(groups, layoutType, navigatePage);
+  const menuItems = useMemo(
+    () => createMenuItems(groups, layoutType, navigatePage),
+    [groups, layoutType, navigatePage],
+  );
   const accountItems: MenuProps['items'] = [
     { key: 'home', icon: <HomeOutlined />, label: '回到首页', onClick: () => onNavigate('/') },
     ...(developerMode
@@ -541,7 +549,7 @@ function ClientBrand({ projectName }: { projectName: string }) {
   return (
     <a className="client-brand" href={import.meta.env.BASE_URL}>
       <span className="client-brand__mark" aria-hidden="true">
-        <ProjectOutlined />
+        <AppstoreOutlined />
       </span>
       <span className="client-brand__copy">
         <strong>{projectName}</strong>

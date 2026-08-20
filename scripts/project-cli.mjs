@@ -3,16 +3,17 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import {
   PROJECT_ID_PATTERN,
   createContextBaseline,
   createDocumentManifest,
+  createProjectHealthReport,
   createProjectContext,
   createTraceabilityReport,
-  describeProjectMounts,
   inspectHtmlPrototype,
+  importJavaScriptFile,
   loadProjectMounts,
   migrateProjectManifest,
   normalizeProjectMounts,
@@ -20,12 +21,11 @@ import {
   normalizePrdBindings,
   readJsonFile,
   resolveProjectDocsRoot,
-  resolveProjectPrototypeSources,
+  resolveProjectRoot,
   scanProjectPackages,
-  walkFiles,
   writeJsonAtomic,
 } from '../packages/project-core/src/index.js';
-import { scanHtmlPrototypePages } from '../plugins/html-prototype-plugin.js';
+import { scanHtmlPrototypePages } from '../packages/project-core/src/index.js';
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -61,7 +61,7 @@ function printHelp() {
   npm run project -- install-example [--id sample-project] [--projects-root projects]
   npm run project -- migrate --project sample [--write]
   npm run project -- mounts [--json]
-  npm run project -- mount --project sample [--docs D:\\docs] [--prototype admin=D:\\html]
+  npm run project -- mount --project sample [--root D:\\project] [--docs D:\\docs] [--prototype admin=D:\\html]
   npm run project -- health [--project sample] [--json]
   npm run project -- preflight --file prototypes/page.html [--json]
   npm run project -- snapshot --project sample [--output output/context-baseline.json]
@@ -75,7 +75,7 @@ function printHelp() {
   install-example 安装仓库内置的可运行示例，目标目录存在时拒绝覆盖。
   migrate       预览项目配置迁移；只有 --write 才写回 project.json。
   mounts        查看仅保存在本机的项目资料挂载。
-  mount         设置或清除项目的外部 PRD/HTML 目录，不修改项目包。
+  mount         设置或清除完整项目、PRD 或 HTML 外部目录，不修改源文件。
   health        检查项目包、挂载目录、HTML 原型和需求关联健康状态。
   preflight     检查单个 HTML 是否符合独立预览、直读和导入的基础契约。
   snapshot      保存项目 PRD 上下文基线，用于后续差异和影响分析。
@@ -94,9 +94,7 @@ async function loadWorkspaceMounts() {
 
 async function readDefinitions(projectRoot, manifest) {
   const definitionsPath = path.resolve(projectRoot, manifest.pageDefinitions || 'page-definitions.js');
-  const url = pathToFileURL(definitionsPath);
-  url.searchParams.set('cli', String(Date.now()));
-  const module = await import(url.href);
+  const module = await importJavaScriptFile(definitionsPath, { cacheKey: `cli-${Date.now()}` });
   return module.clientPageDefinitions || module.default;
 }
 
@@ -134,16 +132,14 @@ async function readLegacyPageLinks(projectRoot) {
     .then(() => true)
     .catch(() => false);
   if (!exists) return {};
-  const url = pathToFileURL(filePath);
-  url.searchParams.set('cli', String(Date.now()));
-  const module = await import(url.href);
+  const module = await importJavaScriptFile(filePath, { cacheKey: `legacy-links-${Date.now()}` });
   return module.default || module.pagePrdLinks || {};
 }
 
 async function loadContextInput(projectsRoot, projectId) {
-  const projectRoot = path.join(projectsRoot, projectId);
-  const manifest = await readJsonFile(path.join(projectRoot, 'project.json'));
   const mounts = await loadWorkspaceMounts();
+  const projectRoot = resolveProjectRoot(projectsRoot, projectId, mounts);
+  const manifest = await readJsonFile(path.join(projectRoot, 'project.json'));
   const definitions = mergeClientPages(
     await readDefinitions(projectRoot, manifest),
     (await scanHtmlPrototypePages(projectsRoot, { mounts })).projects[projectId],
@@ -198,60 +194,28 @@ async function preflightCommand(args) {
 
 async function healthCommand(args) {
   const projectsRoot = resolveFromWorkspace(args['projects-root'], 'projects');
-  const scan = await scanProjectPackages(projectsRoot, { mounts: await loadWorkspaceMounts() });
+  const report = await createProjectHealthReport(projectsRoot, { mounts: await loadWorkspaceMounts() });
   const selectedId = String(args.project || '').trim();
-  const projects = selectedId ? scan.projects.filter((project) => project.id === selectedId) : scan.projects;
+  const projects = selectedId
+    ? report.projects.filter((project) => project.project.id === selectedId)
+    : report.projects;
   if (selectedId && !projects.length) throw new Error(`找不到可用项目：${selectedId}`);
-  const details = [];
-  const mounts = await loadWorkspaceMounts();
-  for (const project of projects) {
-    const projectRoot = path.join(projectsRoot, project.folder);
-    const manifest = await readJsonFile(path.join(projectRoot, 'project.json'));
-    const html = [];
-    for (const source of resolveProjectPrototypeSources(manifest, projectRoot, mounts)) {
-      for (const filePath of await walkFiles(source.root, { extensions: new Set(['.html', '.htm']) })) {
-        html.push(
-          inspectHtmlPrototype(await fs.readFile(filePath, 'utf8'), {
-            fileName: path.relative(source.root, filePath).split(path.sep).join('/'),
-          }),
-        );
-      }
-    }
-    const context = await loadContextInput(projectsRoot, project.id);
-    details.push({
-      project: { id: project.id, name: project.name },
-      mounts: describeProjectMounts(manifest, projectRoot, mounts),
-      html: {
-        files: html.length,
-        invalid: html.filter((item) => !item.valid).length,
-        warnings: html.reduce((sum, item) => sum + item.warnings.length, 0),
-        results: html,
-      },
-      traceability: context.summary,
-      issues: context.issues,
-    });
-  }
-  const result = {
-    generatedAt: new Date().toISOString(),
-    invalidProjects: scan.invalidProjects,
-    projects: details,
-  };
+  const result = { ...report, projects };
   if (args.json) console.log(JSON.stringify(result, null, 2));
   else {
-    for (const item of details) {
+    for (const item of projects) {
       console.log(`\n${item.project.name}（${item.project.id}）`);
       console.log(
-        `  HTML ${item.html.files} 个，失败 ${item.html.invalid} 个，提醒 ${item.html.warnings} 条`,
+        `  状态 ${item.summary.status}，错误 ${item.summary.errors} 个，提醒 ${item.summary.warnings} 个`,
       );
       console.log(
-        `  页面 PRD 覆盖 ${item.traceability.pageCoverage}%（${item.traceability.linkedPages}/${item.traceability.pages}）`,
+        `  路由 ${item.summary.routes} 个，HTML ${item.summary.htmlFiles} 个，PRD ${item.summary.documents} 个`,
       );
-      console.log(`  关联错误 ${item.traceability.errors} 个，待检查 ${item.traceability.warnings} 个`);
+      for (const problem of item.issues)
+        console.log(`  ${problem.severity === 'error' ? '✗' : '!'} [${problem.category}] ${problem.message}`);
     }
-    for (const project of scan.invalidProjects)
-      console.error(`\n✗ ${project.folder}: ${project.errors.join('；')}`);
   }
-  if (scan.invalidProjects.length || details.some((item) => item.html.invalid || item.traceability.errors)) {
+  if (projects.some((item) => item.summary.errors)) {
     process.exitCode = 1;
   }
 }
@@ -307,6 +271,7 @@ async function mountsCommand(args) {
   else {
     for (const [projectId, mount] of Object.entries(mounts.projects)) {
       console.log(`\n${projectId}`);
+      if (mount.root) console.log(`  项目：${mount.root}`);
       if (mount.docsRoot) console.log(`  PRD：${mount.docsRoot}`);
       for (const [clientId, root] of Object.entries(mount.prototypes || {})) {
         console.log(`  HTML ${clientId}：${root}`);
@@ -319,7 +284,10 @@ async function mountCommand(args) {
   const projectId = String(args.project || '').trim();
   if (!PROJECT_ID_PATTERN.test(projectId)) throw new Error('mount 需要有效的 --project。');
   const projectsRoot = resolveFromWorkspace(args['projects-root'], 'projects');
-  const projectRoot = path.join(projectsRoot, projectId);
+  const requestedRoot = args.root ? path.resolve(String(args.root)) : '';
+  if (args.root && !path.isAbsolute(String(args.root))) throw new Error('--root 必须使用绝对目录。');
+  const mounts = await loadWorkspaceMounts();
+  const projectRoot = requestedRoot || resolveProjectRoot(projectsRoot, projectId, mounts);
   if (
     !(await fs
       .stat(path.join(projectRoot, 'project.json'))
@@ -329,9 +297,16 @@ async function mountCommand(args) {
     throw new Error(`项目包不存在：${projectId}`);
   }
 
-  const mounts = await loadWorkspaceMounts();
+  if (requestedRoot) {
+    const manifest = await readJsonFile(path.join(requestedRoot, 'project.json'));
+    if (manifest.id !== projectId)
+      throw new Error(`所选项目的 id 为 ${manifest.id || '空值'}，与 --project 不一致。`);
+  }
+
   const current = mounts.projects[projectId] || { prototypes: {} };
   const next = { ...current, prototypes: { ...(current.prototypes || {}) } };
+  if (requestedRoot) next.root = requestedRoot;
+  if (args['clear-root']) delete next.root;
   if (args.docs) {
     if (!path.isAbsolute(String(args.docs))) throw new Error('--docs 必须使用绝对目录。');
     next.docsRoot = path.resolve(String(args.docs));
@@ -344,7 +319,7 @@ async function mountCommand(args) {
     .filter(Boolean)) {
     delete next.prototypes[clientId];
   }
-  for (const target of [next.docsRoot, ...Object.values(next.prototypes)]) {
+  for (const target of [next.root, next.docsRoot, ...Object.values(next.prototypes)]) {
     if (!target) continue;
     const isDirectory = await fs
       .stat(target)
@@ -354,7 +329,7 @@ async function mountCommand(args) {
   }
 
   const projects = { ...mounts.projects };
-  if (next.docsRoot || Object.keys(next.prototypes).length) projects[projectId] = next;
+  if (next.root || next.docsRoot || Object.keys(next.prototypes).length) projects[projectId] = next;
   else delete projects[projectId];
   const normalized = normalizeProjectMounts({ schemaVersion: 1, projects });
   await writeJsonAtomic(mountsPath(), normalized);

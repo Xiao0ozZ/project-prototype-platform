@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import { PAGE_PATH_PATTERN, PROJECT_ID_PATTERN } from './constants.js';
-import { fileExists, isSafeRelativePath } from './filesystem.js';
+import { isSafeRelativePath, resolveExistingPathInsideRoot } from './filesystem.js';
 import { hasExternalPrototypePage } from './project-manifest.js';
 
 export async function validateProjectDefinitions(
@@ -62,11 +62,15 @@ export async function validateProjectDefinitions(
       }
       if (page.sourceType === 'html-template') {
         const source = String(page.source || '').replaceAll('\\', '/');
-        const sourcePath = path.resolve(projectRoot, 'html-pages', client.id, source);
+        const sourcePath = await resolveExistingPathInsideRoot(
+          path.resolve(projectRoot, 'html-pages', client.id),
+          source,
+          { allowedExtensions: new Set(['.html', '.htm']) },
+        );
         if (
           !isSafeRelativePath(source) ||
           !['.html', '.htm'].includes(path.extname(source).toLowerCase()) ||
-          !(await fileExists(sourcePath))
+          !sourcePath
         ) {
           errors.push(`HTML 页面文件不存在或路径无效：${client.id}/${source || '空值'}。`);
         }
@@ -76,11 +80,18 @@ export async function validateProjectDefinitions(
         errors.push(`页面 ${client.id}/${page.path || '未知'} 的 view 路径无效。`);
         continue;
       }
-      const packageView = path.resolve(projectRoot, 'views', page.view);
-      const compatibilityView = manifest.compatibility?.legacyViewRoot
-        ? path.resolve(projectRoot, '..', '..', manifest.compatibility.legacyViewRoot, page.view)
+      const packageView = await resolveExistingPathInsideRoot(path.resolve(projectRoot, 'views'), page.view, {
+        allowedExtensions: new Set(['.vue']),
+      });
+      const compatibilityRoot = manifest.compatibility?.legacyViewRoot
+        ? path.resolve(projectRoot, '..', '..', manifest.compatibility.legacyViewRoot)
+        : '';
+      const compatibilityView = compatibilityRoot
+        ? await resolveExistingPathInsideRoot(compatibilityRoot, page.view, {
+            allowedExtensions: new Set(['.vue']),
+          })
         : null;
-      if (!(await fileExists(packageView)) && !(compatibilityView && (await fileExists(compatibilityView)))) {
+      if (!packageView && !compatibilityView) {
         errors.push(`页面文件不存在：${page.view}。`);
       }
     }

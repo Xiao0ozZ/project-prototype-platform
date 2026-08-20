@@ -866,17 +866,37 @@ html[data-density='compact'] .client-shell {
   padding: 0;
 }
 
-.client-sider .ant-menu,
+.client-sider .ant-layout-sider-children > .ant-menu-root,
 .client-topnav-menu {
   background: transparent;
 }
 
-.client-sider .ant-menu {
+.client-sider .ant-layout-sider-children > .ant-menu-root {
   flex: 1;
+  min-height: 0;
   padding: 4px 8px 16px;
   overflow: hidden auto;
   border-inline-end: 0 !important;
   font-size: 14px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+/* 子菜单属于根菜单的内容流，不能再次成为 flex 滚动容器。 */
+.client-sider .ant-menu-sub.ant-menu-inline {
+  flex: none;
+  max-height: none;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.client-sider .ant-menu-sub.ant-menu-inline::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ant 的折叠运动需要计算高度；隔离绘制，避免牵连右侧原型重绘。 */
+.client-sider .ant-motion-collapse {
+  contain: layout paint;
 }
 
 .client-sider .ant-menu-submenu-title {
@@ -985,9 +1005,16 @@ html[data-density='compact'] .client-shell {
   place-items: center;
   border-radius: var(--ant-border-radius, 6px);
   color: #fff !important;
-  background: var(--ant-color-primary);
+  background: var(--project-accent, var(--ant-color-primary));
   font-size: 16px !important;
   box-shadow: none;
+}
+
+.client-brand__mark .anticon,
+.client-brand__mark svg {
+  color: #fff !important;
+  fill: currentcolor;
+  font-size: 18px;
 }
 
 .client-brand__copy {

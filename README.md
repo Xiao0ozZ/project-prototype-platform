@@ -4,7 +4,7 @@
 
 ## 项目说明
 
-本工程是一套 React 项目资料与原型共用外壳。不同实际项目以 `projects/{project-id}` 可插拔项目包接入，每个项目独立保存自己的配置、客户端入口、HTML 页面、模拟数据、资源、文档和移动端内容，共用首页、路由外壳、公共组件、主题引擎和工程工具。Vue 旧平台仅作为迁移观察期的内部回退入口。
+本工程是一套 React 项目资料与原型共用外壳。实际项目可以放在本地 `projects/{project-id}`，也可以通过被 Git 忽略的 `project-mounts.local.json` 原地挂载外部项目文件夹。每个项目独立保存自己的配置、客户端入口、HTML 页面、模拟数据、资源、文档和移动端内容，共用首页、路由外壳、公共组件、主题引擎和工程工具。Vue 旧平台仅作为迁移观察期的内部回退入口。
 
 工程定位为可运行的前端原型，不连接真实后端。页面使用模拟数据呈现业务字段、页面布局、弹窗和主要交互，供产品评审、业务确认、客户演示和前端开发参考。
 
@@ -58,7 +58,7 @@
 
 ## 项目包配置
 
-共用外壳不硬编码实际项目。每个项目放在 `projects/{project-id}`，至少包含 `project.json`、`page-definitions.js` 和业务页面。移出项目文件夹后，开发环境重新扫描时该项目入口会消失；移回后恢复。生产环境是构建快照，项目包变化后必须重新构建发布。
+共用外壳不硬编码实际项目。每个项目至少包含 `project.json`、`page-definitions.js` 和业务页面；既可直接放在 `projects/{project-id}`，也可在项目包管理页选择外部项目文件夹完成本机挂载。外部挂载不复制、不移动、不改写源项目，取消挂载只移除本机记录。生产环境是构建快照，项目包变化后必须重新构建发布。
 
 新项目从 `templates/project-package` 复制，完整字段和边界见 [PROJECT_PACKAGE_GUIDE.md](./PROJECT_PACKAGE_GUIDE.md)。
 
@@ -89,6 +89,7 @@ npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
 ```powershell
 npm run dev                 # 本机开发预览，默认 127.0.0.1:5188
 npm run dev:lan             # 局域网预览，默认 0.0.0.0:5188
+npm run serve:local         # 使用独立 Node 本地服务读取已构建的 dist
 npm run dev:vue             # 内部 Vue 回退入口，默认 127.0.0.1:5189
 npm run project -- help     # 查看项目包 CLI
 npm run project:example     # 将脱敏样例安装到本地 projects/sample-project
@@ -112,6 +113,17 @@ npm run test:visual         # 观察期 Vue 视觉基线比较
 npm run test:unit           # 公共组件单元测试
 ```
 
+独立本地服务当前支持“本机可写、局域网只读”：先执行 `npm run build`，再执行 `npm run serve:local -- --host 0.0.0.0 --port 5188`；服务会为构建后的 React 页面注入本地运行标记，页面继续通过 `platform-client` 读取本地文件。本机可以保存平台设置、项目配置、页面级 PRD 关联、组件级 PRD 关联、路由菜单，并执行 HTML 检查、导入和导出；其他局域网设备只能查看项目、原型、PRD、路由和已生成的导出演示文件。页面传输逻辑位于独立 `platform-transfer` 包，Vue/Vite 编译器只在导出必须编译的 Vue 页面时加载；多页面 ZIP 导出继续要求 Windows。
+
+```powershell
+npm run serve:local -- --help
+npm run serve:local -- --port 6200
+npm run serve:local -- --host 0.0.0.0 --port 5188
+npm run serve:local -- --read-only
+```
+
+正式本地入口会在监听端口前检查构建目录、`dist/index.html`、项目目录和本地挂载配置。全新仓库没有被 Git 跟踪的 `projects/` 时会创建空目录；缺少构建会提示执行 `npm run build`；端口冲突会提示使用 `--port` 更换端口。监听 `0.0.0.0` 时会分别输出本机地址和可用的局域网只读地址，`Ctrl+C` 或 `SIGTERM` 会等待服务正常关闭。
+
 项目包、HTML 和 PRD 的日常维护命令：
 
 ```powershell
@@ -123,7 +135,7 @@ npm run project -- trace --project sample
 npm run project -- build-review --base /prototype/
 ```
 
-`mount` 只写入被 Git 忽略的 `project-mounts.local.json`，不会改 `project.json`、PRD 或 HTML 原文件。生产构建会把挂载目录复制为本次发布的只读快照；服务器不能借此直接修改本机源资料。
+`mount` 和项目包管理页的“挂载项目”只写入被 Git 忽略的 `project-mounts.local.json`，不会改 `project.json`、PRD 或 HTML 原文件。挂载项既可指向完整项目根目录，也可只覆盖 PRD 或某个客户端的 HTML 目录。项目健康检查页会集中列出 Manifest、Schema、路由、HTML、PRD、关联、资源和挂载问题。生产构建会把挂载目录复制为本次发布的只读快照；服务器不能借此直接修改本机源资料。
 
 ## 新增页面
 
@@ -149,6 +161,7 @@ npm run generate:page -- --project sample-project --client admin --path vehicle-
 - `/components`：公共组件、设计变量与交互示例页。
 - `/tools/page-transfer`：本机 HTML 原型导入与独立页面导出工具；单页直接下载 HTML，多页才生成 ZIP。
 - `/tools/projects`：查看有效和无效项目包及校验结果，并管理项目资料与首页项目选择显示状态。
+- `/tools/project-health`：集中查看项目配置、Schema、路由、HTML、PRD、关联、资源和挂载问题及修复建议。
 - `/tools/project-routes`：管理客户端菜单、页面顺序和页面级 PRD 关联。
 - `/tools/ai-context`：检查项目交付上下文、确认关联建议、分析 PRD 变化并导出机器可读上下文包。
 - `/tools/console`：内部开发控制台，集中管理工程工具并开启开发模式。

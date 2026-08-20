@@ -102,6 +102,23 @@ describe('platform client', () => {
     );
   });
 
+  it('uses the independent local service API while remaining read-only', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ projects: [], invalidProjects: [] }));
+    const client = createPlatformClient({ fetchImpl, development: false, apiMode: 'local' });
+
+    await expect(client.loadProjectManifest()).resolves.toMatchObject({ projects: [], invalidProjects: [] });
+    expect(fetchImpl).toHaveBeenCalledWith('/__projects/manifest', expect.anything());
+    expect(client.getHtmlPrototypeUrl('demo', 'admin', 'overview.html')).toBe(
+      '/__projects/html-content/demo/admin/overview.html',
+    );
+    expect(client.getHtmlPrototypeSourceDownloadUrl('demo', 'admin', 'overview.html')).toContain(
+      '?download=source',
+    );
+    await expect(client.savePagePrdLinks('demo', {})).rejects.toMatchObject({
+      code: PLATFORM_ERROR_CODES.STATIC_READ_ONLY,
+    });
+  });
+
   it('loads the framework-neutral HTML page catalog and resolves prototype URLs', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ projects: { demo: { admin: [] } } }));
     const client = createPlatformClient({ fetchImpl, baseUrl: '/prototype/', development: false });

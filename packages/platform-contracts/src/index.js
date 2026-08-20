@@ -143,3 +143,28 @@ export function normalizeRouteList(payload) {
     backups: Array.isArray(source.backups) ? source.backups.filter(isRecord) : [],
   };
 }
+
+export function normalizeBootstrapState(payload) {
+  const source = assertSuccessPayload(payload, '工作区状态读取失败。');
+  return {
+    runtime: isRecord(source.runtime) ? source.runtime : {},
+    workspace: isRecord(source.workspace) ? source.workspace : {},
+  };
+}
+
+export function normalizeProjectHealthReport(payload) {
+  const source = isRecord(payload) ? payload : {};
+  return {
+    generatedAt: typeof source.generatedAt === 'string' ? source.generatedAt : '',
+    summary: isRecord(source.summary) ? source.summary : {},
+    projects: Array.isArray(source.projects) ? source.projects.filter(isRecord) : [],
+  };
+}
+
+export function normalizeProjectMountsPayload(payload) {
+  const source = isRecord(payload) ? payload : {};
+  return {
+    schemaVersion: Number(source.schemaVersion) || 1,
+    projects: isRecord(source.projects) ? source.projects : {},
+  };
+}

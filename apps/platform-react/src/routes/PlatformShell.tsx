@@ -10,6 +10,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   OrderedListOutlined,
+  SafetyCertificateOutlined,
   SettingOutlined,
   UploadOutlined,
 } from '@/ui/ant/icons';
@@ -21,6 +22,7 @@ const COLLAPSED_KEY = 'product-experience-center:platform-nav-collapsed';
 const navigation = [
   { key: '/tools/console', label: '控制台', icon: <SettingOutlined /> },
   { key: '/tools/projects', label: '项目包管理', icon: <FolderOpenOutlined /> },
+  { key: '/tools/project-health', label: '项目健康检查', icon: <SafetyCertificateOutlined /> },
   { key: '/tools/project-routes', label: '路由菜单管理', icon: <OrderedListOutlined /> },
   { key: '/tools/page-transfer', label: '页面导入导出', icon: <UploadOutlined /> },
   { key: '/tools/ai-context', label: 'AI 上下文中心', icon: <DatabaseOutlined /> },

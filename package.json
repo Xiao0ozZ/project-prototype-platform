@@ -11,6 +11,7 @@
     "project:health": "node scripts/project-cli.mjs health",
     "project:serve": "node scripts/project-cli.mjs serve",
     "project:build-review": "node scripts/project-cli.mjs build-review",
+    "serve:local": "node scripts/platform-server.mjs",
     "dev": "vite --host 127.0.0.1 --port 5188",
     "dev:lan": "vite --host 0.0.0.0 --port 5188",
     "dev:react": "vite --config apps/platform-react/vite.config.ts --host 127.0.0.1 --port 5190",

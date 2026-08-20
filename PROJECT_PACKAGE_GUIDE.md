@@ -125,7 +125,7 @@ npm run generate:page -- --project sample-project --client admin --path example-
 
 ### 本地外置资料挂载
 
-项目包的配置、页面登记和 `.platform` 关联文件仍留在 `projects/{project-id}`，PRD 和 HTML 原型可以挂载到任意本机绝对目录：
+完整项目包、PRD 和 HTML 原型都可以挂载到任意本机绝对目录。完整项目可在项目包管理页使用“挂载项目”选择；只覆盖资料源时继续使用 CLI：
 
 ```powershell
 npm run project -- mount --project sample --docs D:\product\docs
@@ -134,7 +134,7 @@ npm run project -- mount --project sample --clear-docs --clear-prototype admin
 npm run project -- mounts
 ```
 
-挂载写入根目录 `project-mounts.local.json`，该文件已加入 `.gitignore`。它优先于 `project.json` 内的 `docs.root` 和对应客户端原型目录，但不会修改项目包或外部源文件。路由菜单管理、文档中心、HTML 直读、健康检查和生产构建使用同一挂载解析规则。可复制 `project-mounts.example.json` 作为手工配置参考。
+挂载写入根目录 `project-mounts.local.json`，该文件已加入 `.gitignore`。`root` 让平台直接使用外部项目文件夹；`docsRoot` 和 `prototypes` 分别覆盖 `project.json` 内的文档和客户端原型目录。平台不会复制或改写源项目；取消完整项目挂载时只删除本机挂载记录，不会删除外部文件。路由菜单管理、文档中心、HTML 直读、健康检查和生产构建使用同一挂载解析规则。可复制 `project-mounts.example.json` 作为手工配置参考。
 
 ## 6. 项目包管理
 

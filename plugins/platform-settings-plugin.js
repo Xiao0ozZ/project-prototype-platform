@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { writeJsonAtomic } from '../packages/project-core/src/index.js';
+
 const BODY_LIMIT = 16 * 1024;
 
 function sendJson(res, payload, statusCode = 200) {
@@ -53,7 +55,7 @@ async function readSettings(settingsPath) {
 }
 
 async function writeSettings(settingsPath, settings) {
-  await fs.writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+  await writeJsonAtomic(settingsPath, settings);
 }
 
 export function platformSettingsPlugin({ settingsPath }) {

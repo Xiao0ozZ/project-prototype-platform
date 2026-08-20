@@ -13,6 +13,7 @@ export {
   CodeOutlined,
   DatabaseOutlined,
   DesktopOutlined,
+  DisconnectOutlined,
   DragOutlined,
   DashboardOutlined,
   DownloadOutlined,

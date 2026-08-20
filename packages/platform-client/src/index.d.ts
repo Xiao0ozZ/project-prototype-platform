@@ -1,10 +1,13 @@
 import type {
   DocumentManifest,
+  BootstrapState,
   HtmlPageCatalog,
   PagePrdLinks,
   PlatformSettings,
   PrdBindingsPayload,
   ProjectScanResult,
+  ProjectHealthReport,
+  ProjectMountsPayload,
   RouteListResult,
 } from '../../platform-contracts/src/index.js';
 
@@ -13,8 +16,17 @@ export type RouteMutationAction =
 
 export interface PlatformClient {
   readonly development: boolean;
+  readonly apiMode: 'development' | 'local' | 'static';
   readonly baseUrl: string;
   loadProjectManifest(): Promise<ProjectScanResult>;
+  loadBootstrapState(): Promise<BootstrapState>;
+  loadProjectMounts(): Promise<ProjectMountsPayload>;
+  loadProjectHealth(): Promise<ProjectHealthReport>;
+  selectProjectDirectory(): Promise<Record<string, unknown>>;
+  inspectProjectMount(root: string): Promise<Record<string, unknown>>;
+  mountProject(root: string): Promise<Record<string, unknown>>;
+  unmountProject(projectId: string): Promise<Record<string, unknown>>;
+  installExampleProject(): Promise<Record<string, unknown>>;
   loadHtmlPageCatalog(): Promise<HtmlPageCatalog>;
   getHtmlPrototypeUrl(projectId: string, clientId: string, sourcePath: string): string;
   getHtmlPrototypeSourceDownloadUrl(projectId: string, clientId: string, sourcePath: string): string;
@@ -47,4 +59,5 @@ export function createPlatformClient(options?: {
   fetchImpl?: typeof fetch;
   baseUrl?: string;
   development?: boolean;
+  apiMode?: 'development' | 'local' | 'static';
 }): PlatformClient;

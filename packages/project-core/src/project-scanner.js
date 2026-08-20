@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
-import { fileExists, readJsonFile } from './filesystem.js';
+import { importJavaScriptFile, readJsonFile, resolveExistingPathInsideRoot } from './filesystem.js';
+import { listProjectLocations } from './project-mounts.js';
 import { validateProjectDefinitions } from './project-definitions.js';
 import {
   toPublicProjectManifest,
@@ -37,28 +37,34 @@ export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } =
   if (cache?.has(root)) return cache.get(root);
   const projects = [];
   const invalidProjects = [];
-  const entries = await fs.readdir(root, { withFileTypes: true }).catch((error) => {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  });
+  const locations = await listProjectLocations(root, mounts);
 
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    if (!entry.isDirectory()) continue;
-    const projectRoot = path.join(root, entry.name);
-    const manifestPath = path.join(projectRoot, 'project.json');
+  for (const location of locations) {
+    const projectRoot = location.root;
     try {
+      if (location.duplicateMountedRoot) {
+        throw new Error(`项目同时存在于 projects 目录和外部挂载，已拒绝重复挂载。`);
+      }
+      const manifestPath = await resolveExistingPathInsideRoot(projectRoot, 'project.json', {
+        allowedExtensions: new Set(['.json']),
+      });
+      if (!manifestPath) throw new Error('project.json 不存在、越界或不是 JSON 文件。');
       const manifest = await readJsonFile(manifestPath);
-      const errors = validateProjectManifest(manifest, entry.name, projectRoot);
-      const definitionsPath = path.resolve(projectRoot, manifest.pageDefinitions || '');
+      const errors = validateProjectManifest(manifest, location.projectId, projectRoot);
       let pageRuntime = summarizePageRuntime(manifest, {});
       if (!errors.length) {
-        if (!(await fileExists(definitionsPath))) {
+        const definitionsPath = await resolveExistingPathInsideRoot(
+          projectRoot,
+          manifest.pageDefinitions || '',
+          { allowedExtensions: new Set(['.js']) },
+        );
+        if (!definitionsPath) {
           errors.push(`找不到页面定义文件：${manifest.pageDefinitions}。`);
         } else {
           const definitionsSource = await fs.readFile(definitionsPath, 'utf8');
-          const definitionsUrl = pathToFileURL(definitionsPath);
-          definitionsUrl.searchParams.set('projectScan', `${Date.now()}-${entry.name}`);
-          const definitionsModule = await import(definitionsUrl.href);
+          const definitionsModule = await importJavaScriptFile(definitionsPath, {
+            cacheKey: `${Date.now()}-${location.projectId}`,
+          });
           const definitions = definitionsModule.clientPageDefinitions || definitionsModule.default;
           pageRuntime = summarizePageRuntime(manifest, definitions);
           errors.push(
@@ -71,15 +77,25 @@ export async function scanProjectPackages(projectsRoot, { cache, mounts = {} } =
       }
       if (errors.length) {
         invalidProjects.push({
-          folder: entry.name,
+          folder: location.projectId,
+          mounted: location.mounted,
           project: toPublicProjectManifest(manifest),
           errors,
         });
       } else {
-        projects.push({ ...toPublicProjectManifest(manifest), folder: entry.name, pageRuntime });
+        projects.push({
+          ...toPublicProjectManifest(manifest),
+          folder: location.projectId,
+          mounted: location.mounted,
+          pageRuntime,
+        });
       }
     } catch (error) {
-      invalidProjects.push({ folder: entry.name, errors: [`project.json 读取失败：${error.message}`] });
+      invalidProjects.push({
+        folder: location.projectId,
+        mounted: location.mounted,
+        errors: [`project.json 读取失败：${error.message}`],
+      });
     }
   }
 

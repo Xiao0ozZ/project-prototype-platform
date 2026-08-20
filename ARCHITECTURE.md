@@ -5,21 +5,21 @@
 工程按“领域核心、运行时适配、界面应用、独立轻量外壳”分层：
 
 ```text
-packages/project-core     项目包领域规则与纯 Node 文件能力
-          ↑
-plugins/                  Vite 开发接口、热更新与生产构建适配
-scripts/project-cli.mjs   命令行入口
-          ↑
-packages/platform-client  框架无关的浏览器请求与响应归一化
-          ↑
-apps/platform-react/      React 正式平台、Ant Design、路由和浏览器状态
+packages/project-core       项目包领域规则与纯 Node 文件能力
+       ├─ packages/platform-transfer 页面定义、导入、备份、路由与导出编排
+       ├─ packages/platform-server   独立 Node 本地服务（本机可写、局域网只读）
+       ├─ plugins/                   Vite 开发接口、热更新与生产构建适配
+       └─ scripts/project-cli.mjs    命令行入口
+
+packages/platform-client    框架无关的浏览器请求与响应归一化（共享 HTTP 契约）
+       └─ apps/platform-react/      React 正式平台、Ant Design、路由和浏览器状态
 
 src/                      观察期保留的 Vue 回退平台
 
 html-prototype-shell/     可整目录单独复制运行的独立 Node + HTML 工具
 ```
 
-`packages/project-core` 不依赖 Vue、Vite、HTTP 或浏览器 API。插件只负责运行时协议，不重复实现项目包校验、文档扫描或关联配置规范化。
+`packages/project-core` 不依赖 Vue、Vite、HTTP 或浏览器 API。`packages/platform-transfer` 负责页面定义、备份、路由、导入和导出编排；独立服务直接调用该包，Vite 插件只保留兼容入口和开发期 HTTP 适配。Vue/Vite 编译器只在导出必须编译的 Vue 页面时按需加载，服务启动、项目扫描、路由管理和 HTML 轻量导入不会加载 esbuild。独立本地服务支持平台设置、项目配置、页面级 PRD 关联、组件级 PRD 关联和路由菜单的本机写入；当服务监听局域网地址时，远程请求仍保持只读。`packages/platform-server/src/runtime.js` 负责正式 Node 启动预检、地址提示、监听错误归一化和退出生命周期，Vite 不参与正式本地运行。
 
 ## 2. 轻量外壳边界
 
@@ -51,7 +51,7 @@ html-prototype-shell/     可整目录单独复制运行的独立 Node + HTML �
 - `project-packages-plugin`：项目管理 HTTP 接口、资源读取、热更新和构建资产输出。
 - `html-prototype-plugin`：HTML 原型扫描结果转换、内容区注入、开发读取和构建复制。
 - `prd-content-plugin`：PRD HTTP 读取、变更通知和构建快照。
-- `page-transfer-plugin`：HTML/Vue 页面导入、路由编辑、备份和导出。
+- `page-transfer-plugin`：`platform-transfer` 的兼容入口与 Vite 开发中间件。
 - `platform-settings-plugin`：当前服务实例的开发模式配置。
 
 插件不得包含 Vue 界面状态，也不应再次定义项目包基础 Schema。
@@ -73,8 +73,7 @@ npm run project -- build-review --base /prototype/
 
 ## 6. 后续拆分顺序
 
-1. 将 `page-transfer-plugin` 中的页面定义读写、备份和导出编排拆成领域服务。
-2. 将 `ProjectRoutesView.vue` 的数据请求、分组排序和弹窗状态拆成 Composables。
-3. 将 `ProjectPortal.vue` 的项目选择、入口构建和首页动作拆成统一状态模块。
-4. 为 Schema v2 需求先增加迁移器和兼容测试，再修改项目包格式。
-5. MCP 或其他自动化入口只能调用核心服务，不直接解析和改写项目文件。
+1. 将 HTML 原型扫描从 Vite 插件继续下沉到 `project-core`，消除 transfer 包对插件目录的依赖。
+2. 将项目新建与编辑逻辑从 `project-packages-plugin` 下沉到领域服务。
+3. 为 Schema v2 需求先增加迁移器和兼容测试，再修改项目包格式。
+4. MCP 或其他自动化入口只能调用核心服务，不直接解析和改写项目文件。

@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildVueSource,
@@ -14,8 +14,8 @@ import {
   inspectHtml,
   listProjectRoutes,
   restoreProjectRoute,
-} from '../../plugins/page-transfer-plugin.js';
-import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../plugins/html-prototype-plugin.js';
+} from '../../packages/platform-transfer/src/index.js';
+import { applyContentOnlyMode, scanHtmlPrototypePages } from '../../packages/project-core/src/index.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const temporaryRoots = [];
@@ -284,6 +284,19 @@ describe('page transfer', () => {
       target: { projectId: 'sample-project', backupId: replacement.backupId },
     });
     expect(await fs.readFile(managedPath, 'utf8')).toBe(source);
+    const restoredMetadata = JSON.parse(
+      await fs.readFile(
+        path.join(packageRoot, '.backups', 'pages', replacement.backupId, 'metadata.json'),
+        'utf8',
+      ),
+    );
+    expect(restoredMetadata.restoredAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u);
+    await expect(
+      restoreProjectRoute({
+        projectRoot: root,
+        target: { projectId: 'sample-project', backupId: replacement.backupId },
+      }),
+    ).rejects.toThrow('该备份已经还原。');
 
     const routes = await listProjectRoutes({ projectRoot: root, projectId: 'sample-project' });
     expect(routes.clients[0].pages).toHaveLength(1);
@@ -729,12 +742,17 @@ describe('page transfer', () => {
       createLightweightHtml({ title: '详情', subtitle: '详情副标题', link: 'home.html' }),
       'utf8',
     );
+    const compilerLoader = vi.fn(async () => {
+      throw new Error('轻量 HTML 导出不应加载 Vue 编译器。');
+    });
     const exported = await createExportPackage({
       projectRoot: root,
       projectId: 'sample-project',
       selectedPaths: ['/p/sample-project/admin/home', '/p/sample-project/admin/detail'],
       packageName: '轻量 HTML 测试',
+      compilerLoader,
     });
+    expect(compilerLoader).not.toHaveBeenCalled();
     const exportDirectory = path.join(root, exported.zip.replace(/^\//, '').replace(/\.zip$/u, ''));
     const homeHtml = await fs.readFile(path.join(exportDirectory, '首页.html'), 'utf8');
     const detailHtml = await fs.readFile(path.join(exportDirectory, '详情.html'), 'utf8');
@@ -785,4 +803,38 @@ describe('page transfer', () => {
       roundTrip: true,
     });
   }, 30000);
+
+  it('reports an actionable compiler error only when a Vue page requires compilation', async () => {
+    const { root } = await createPlatformFixture();
+    await createProjectRoute({
+      projectRoot: root,
+      target: {
+        projectId: 'sample-project',
+        client: 'admin',
+        routePath: 'vue-only-page',
+        pageTitle: 'Vue 编译页面',
+        menuSection: 'workspace',
+        menuIcon: 'Document',
+      },
+    });
+    const compilerLoader = vi.fn(async () => {
+      const error = new Error('未安装测试编译器');
+      error.code = 'VUE_EXPORT_COMPILER_UNAVAILABLE';
+      throw error;
+    });
+
+    await expect(
+      createExportPackage({
+        projectRoot: root,
+        projectId: 'sample-project',
+        selectedPaths: ['/p/sample-project/admin/vue-only-page'],
+        packageName: 'Vue 编译失败测试',
+        compilerLoader,
+      }),
+    ).rejects.toMatchObject({
+      code: 'VUE_EXPORT_COMPILER_UNAVAILABLE',
+      message: expect.stringContaining('Vue 页面“Vue 编译页面”导出编译失败：未安装测试编译器'),
+    });
+    expect(compilerLoader).toHaveBeenCalledTimes(1);
+  });
 });

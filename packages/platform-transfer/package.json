@@ -1,0 +1,10 @@
+{
+  "name": "@prototype-platform/platform-transfer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./export-format": "./src/export-format.js"
+  }
+}

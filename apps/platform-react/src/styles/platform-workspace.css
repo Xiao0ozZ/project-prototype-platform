@@ -934,7 +934,6 @@
   overflow: auto;
   padding: 28px 32px 56px;
   background: var(--ant-color-bg-container, #fff);
-  scroll-behavior: smooth;
   scrollbar-gutter: stable;
 }
 
@@ -1151,7 +1150,4 @@
     animation: none;
   }
 
-  .prd-review-panel__reader {
-    scroll-behavior: auto;
-  }
 }

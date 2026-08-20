@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { Buffer } from 'node:buffer';
 
 import { DEFAULT_SCAN_IGNORES } from './constants.js';
 
@@ -26,6 +27,77 @@ export function isSafeRelativePath(value) {
   );
 }
 
+function hasAllowedExtension(filePath, allowedExtensions) {
+  if (!allowedExtensions) return true;
+  const normalized = new Set(
+    [...allowedExtensions].map((extension) =>
+      String(extension || '')
+        .trim()
+        .toLowerCase(),
+    ),
+  );
+  return normalized.has(path.extname(filePath).toLowerCase());
+}
+
+async function nearestExistingDirectory(directory, fsApi = fs) {
+  let current = path.resolve(directory);
+  while (true) {
+    try {
+      const stats = await fsApi.stat(current);
+      if (stats.isDirectory()) return current;
+      return null;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+export async function resolveExistingPathInsideRoot(
+  root,
+  relativePath,
+  { allowedExtensions = null, type = 'file', allowRoot = false, fsApi = fs } = {},
+) {
+  if (!isSafeRelativePath(relativePath)) return null;
+  const absoluteRoot = path.resolve(root);
+  const target = path.resolve(absoluteRoot, ...String(relativePath).replaceAll('\\', '/').split('/'));
+  if (!isInsideRoot(absoluteRoot, target, { allowRoot })) return null;
+  if (!hasAllowedExtension(target, allowedExtensions)) return null;
+
+  const [realRoot, realTarget] = await Promise.all([
+    fsApi.realpath(absoluteRoot).catch(() => null),
+    fsApi.realpath(target).catch(() => null),
+  ]);
+  if (!realRoot || !realTarget || !isInsideRoot(realRoot, realTarget, { allowRoot })) return null;
+  const stats = await fsApi.stat(realTarget).catch(() => null);
+  if (!stats) return null;
+  if (type === 'file' && !stats.isFile()) return null;
+  if (type === 'directory' && !stats.isDirectory()) return null;
+  return realTarget;
+}
+
+export async function resolveWritablePathInsideRoot(
+  root,
+  relativePath,
+  { allowedExtensions = null, fsApi = fs } = {},
+) {
+  if (!isSafeRelativePath(relativePath)) return null;
+  const absoluteRoot = path.resolve(root);
+  const target = path.resolve(absoluteRoot, ...String(relativePath).replaceAll('\\', '/').split('/'));
+  if (!isInsideRoot(absoluteRoot, target) || !hasAllowedExtension(target, allowedExtensions)) return null;
+
+  const [realRoot, existingParent] = await Promise.all([
+    fsApi.realpath(absoluteRoot).catch(() => null),
+    nearestExistingDirectory(path.dirname(target), fsApi),
+  ]);
+  if (!realRoot || !existingParent) return null;
+  const realParent = await fsApi.realpath(existingParent).catch(() => null);
+  if (!realParent || !isInsideRoot(realRoot, realParent, { allowRoot: true })) return null;
+  return target;
+}
+
 export async function fileExists(filePath, type = 'file') {
   return fs
     .stat(filePath)
@@ -45,15 +117,68 @@ export async function readJsonFile(filePath, { fallback, allowMissing = fallback
   }
 }
 
-export async function writeJsonAtomic(filePath, value) {
+export async function importJavaScriptFile(filePath, { cacheKey = Date.now() } = {}) {
+  const source = await fs.readFile(filePath, 'utf8');
+  const moduleSource = `${source}\n//# sourceURL=${toWebPath(filePath)}\n// cache-key:${cacheKey}\n`;
+  return import(`data:text/javascript;base64,${Buffer.from(moduleSource, 'utf8').toString('base64')}`);
+}
+
+export async function writeFileAtomic(filePath, content, options = {}) {
+  const { fsApi = fs, ...writeOptions } = options;
   const directory = path.dirname(filePath);
-  const temporaryPath = path.join(directory, `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`);
-  await fs.mkdir(directory, { recursive: true });
+  const temporaryPath = path.join(
+    directory,
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`,
+  );
+  await fsApi.mkdir(directory, { recursive: true });
   try {
-    await fs.writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
-    await fs.rename(temporaryPath, filePath);
+    await fsApi.writeFile(temporaryPath, content, writeOptions);
+    await fsApi.rename(temporaryPath, filePath);
   } catch (error) {
-    await fs.rm(temporaryPath, { force: true }).catch(() => {});
+    await fsApi.rm(temporaryPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function writeJsonAtomic(filePath, value, options = {}) {
+  return writeFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: 'utf8',
+    ...options,
+  });
+}
+
+async function snapshotFile(filePath, fsApi) {
+  try {
+    const stats = await fsApi.lstat(filePath);
+    if (stats.isSymbolicLink()) throw new Error(`事务文件不允许是符号链接：${filePath}`);
+    if (!stats.isFile()) throw new Error(`事务路径不是文件：${filePath}`);
+    return { filePath, existed: true, content: await fsApi.readFile(filePath), mode: stats.mode };
+  } catch (error) {
+    if (error.code === 'ENOENT') return { filePath, existed: false };
+    throw error;
+  }
+}
+
+export async function withFileRollback(filePaths, operation, { fsApi = fs } = {}) {
+  const normalizedPaths = [...new Set(filePaths.filter(Boolean).map((filePath) => path.resolve(filePath)))];
+  const snapshots = [];
+  for (const filePath of normalizedPaths) snapshots.push(await snapshotFile(filePath, fsApi));
+  try {
+    return await operation();
+  } catch (error) {
+    const rollbackErrors = [];
+    for (const snapshot of [...snapshots].reverse()) {
+      try {
+        if (snapshot.existed) {
+          await writeFileAtomic(snapshot.filePath, snapshot.content, { mode: snapshot.mode, fsApi });
+        } else {
+          await fsApi.rm(snapshot.filePath, { force: true });
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push({ filePath: snapshot.filePath, message: rollbackError.message });
+      }
+    }
+    error.rollback = { ok: rollbackErrors.length === 0, errors: rollbackErrors };
     throw error;
   }
 }

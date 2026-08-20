@@ -1,0 +1,10 @@
+{
+  "name": "@prototype-platform/platform-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./runtime": "./src/runtime.js"
+  }
+}

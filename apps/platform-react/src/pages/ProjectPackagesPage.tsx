@@ -5,10 +5,19 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { InvalidProject, ProjectManifest } from '../../../../packages/platform-contracts/src/index.js';
 import { platformApi } from '@/data/platform-api';
-import { platformQueryKeys, useProjectManifest } from '@/data/use-platform-data';
+import { platformQueryKeys, useBootstrapState, useProjectManifest } from '@/data/use-platform-data';
 import { ProjectConfigDialog } from '@/features/projects/ProjectConfigDialog';
-import { Alert, Button, Empty, Flex, Spin, Statistic, Table, Tag, Typography } from '@/ui/ant';
-import { EditOutlined, OrderedListOutlined, PlusOutlined, ReloadOutlined } from '@/ui/ant/icons';
+import { ProjectMountDialog } from '@/features/projects/ProjectMountDialog';
+import { Alert, Button, Empty, Flex, Modal, Space, Spin, Statistic, Table, Tag, Typography } from '@/ui/ant';
+import {
+  DisconnectOutlined,
+  EditOutlined,
+  LinkOutlined,
+  OrderedListOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SafetyCertificateOutlined,
+} from '@/ui/ant/icons';
 import { PlatformPage } from '@/ui/platform/PlatformPage';
 import { Surface } from '@/ui/platform/Surface';
 
@@ -23,13 +32,15 @@ export function ProjectPackagesPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const manifestQuery = useProjectManifest();
+  const bootstrapQuery = useBootstrapState();
   const projects = manifestQuery.data?.projects ?? [];
   const invalidProjects = manifestQuery.data?.invalidProjects ?? [];
   const [notice, setNotice] = useState('');
+  const [mountOpen, setMountOpen] = useState(false);
   const [dialog, setDialog] = useState<{ mode: 'create' | 'edit'; project: ProjectManifest | null } | null>(
     null,
   );
-  const canManageProjects = platformApi.development;
+  const canManageProjects = Boolean(platformApi.development && bootstrapQuery.data?.runtime.writeEnabled);
   const requestedProjectId = new URLSearchParams(location.search).get('project') || '';
   const requestedEdit = new URLSearchParams(location.search).get('edit') === '1';
   const selectedProject = projects.find((project) => project.id === requestedProjectId) ?? null;
@@ -43,6 +54,18 @@ export function ProjectPackagesPage() {
       setDialog(null);
       await queryClient.invalidateQueries({ queryKey: platformQueryKeys.projects });
       await queryClient.invalidateQueries({ queryKey: platformQueryKeys.htmlPages });
+    },
+  });
+  const unmountProject = useMutation({
+    mutationFn: (projectId: string) => platformApi.unmountProject(projectId),
+    onSuccess: async (result) => {
+      setNotice(String(result.message || '挂载已取消。'));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: platformQueryKeys.projects }),
+        queryClient.invalidateQueries({ queryKey: platformQueryKeys.htmlPages }),
+        queryClient.invalidateQueries({ queryKey: platformQueryKeys.mounts }),
+        queryClient.invalidateQueries({ queryKey: platformQueryKeys.health }),
+      ]);
     },
   });
 
@@ -96,22 +119,43 @@ export function ProjectPackagesPage() {
             {
               title: '操作',
               key: 'action',
-              width: 92,
+              width: 176,
               fixed: 'right' as const,
               render: (_: unknown, project: ProjectManifest) => (
-                <Button
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => setDialog({ mode: 'edit', project })}
-                >
-                  编辑
-                </Button>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => setDialog({ mode: 'edit', project })}
+                  >
+                    编辑
+                  </Button>
+                  {project.mounted ? (
+                    <Button
+                      size="small"
+                      danger
+                      icon={<DisconnectOutlined />}
+                      onClick={() => {
+                        Modal.confirm({
+                          title: `取消挂载“${project.name}”？`,
+                          content: '只移除本机挂载记录，不会删除或修改源项目文件。',
+                          okText: '取消挂载',
+                          okButtonProps: { danger: true },
+                          cancelText: '返回',
+                          onOk: () => unmountProject.mutateAsync(project.id),
+                        });
+                      }}
+                    >
+                      取消挂载
+                    </Button>
+                  ) : null}
+                </Space>
               ),
             },
           ]
         : []),
     ],
-    [canManageProjects],
+    [canManageProjects, unmountProject],
   );
 
   return (
@@ -121,6 +165,11 @@ export function ProjectPackagesPage() {
       description="查看本地项目资料状态，维护项目入口、主题和客户端配置。"
       actions={
         <>
+          {canManageProjects ? (
+            <Button icon={<SafetyCertificateOutlined />} onClick={() => navigate('/tools/project-health')}>
+              健康检查
+            </Button>
+          ) : null}
           {canManageProjects ? (
             <Button icon={<OrderedListOutlined />} onClick={() => navigate('/tools/project-routes')}>
               路由菜单
@@ -133,6 +182,11 @@ export function ProjectPackagesPage() {
           >
             重新扫描
           </Button>
+          {canManageProjects ? (
+            <Button icon={<LinkOutlined />} onClick={() => setMountOpen(true)}>
+              挂载项目
+            </Button>
+          ) : null}
           {canManageProjects ? (
             <Button
               type="primary"
@@ -159,6 +213,16 @@ export function ProjectPackagesPage() {
           message="项目配置保存失败"
           description={saveProject.error.message}
           onClose={saveProject.reset}
+        />
+      ) : null}
+      {unmountProject.isError ? (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          message="取消挂载失败"
+          description={unmountProject.error.message}
+          onClose={unmountProject.reset}
         />
       ) : null}
 
@@ -222,6 +286,19 @@ export function ProjectPackagesPage() {
           }}
         />
       ) : null}
+      <ProjectMountDialog
+        open={mountOpen}
+        onCancel={() => setMountOpen(false)}
+        onMounted={async () => {
+          setNotice('项目已挂载，源文件保持在原目录。');
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: platformQueryKeys.projects }),
+            queryClient.invalidateQueries({ queryKey: platformQueryKeys.htmlPages }),
+            queryClient.invalidateQueries({ queryKey: platformQueryKeys.mounts }),
+            queryClient.invalidateQueries({ queryKey: platformQueryKeys.health }),
+          ]);
+        }}
+      />
     </PlatformPage>
   );
 }

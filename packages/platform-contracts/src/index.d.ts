@@ -58,6 +58,7 @@ export interface ProjectManifest {
   id: string;
   name: string;
   version?: string;
+  mounted?: boolean;
   clients: ProjectClient[];
   shortName?: string;
   description?: string;
@@ -76,6 +77,7 @@ export interface ProjectManifest {
 
 export interface InvalidProject {
   folder: string;
+  mounted?: boolean;
   errors: string[];
   [key: string]: unknown;
 }
@@ -162,6 +164,44 @@ export interface RouteListResult {
   [key: string]: unknown;
 }
 
+export interface BootstrapState {
+  runtime: { local?: boolean; writeEnabled?: boolean; readOnly?: boolean; host?: string; port?: number };
+  workspace: {
+    projectsDirectoryReady?: boolean;
+    mountsConfigured?: number;
+    projects?: number;
+    invalidProjects?: number;
+    needsOnboarding?: boolean;
+  };
+}
+
+export interface ProjectMountsPayload {
+  schemaVersion: number;
+  projects: Record<string, { root?: string; docsRoot?: string; prototypes?: Record<string, string> }>;
+}
+
+export interface ProjectHealthIssue {
+  category: string;
+  severity: 'error' | 'warning';
+  code: string;
+  object: string;
+  message: string;
+  suggestion: string;
+}
+
+export interface ProjectHealthItem {
+  project: { id: string; name: string; mounted?: boolean };
+  mounts: Record<string, unknown> | null;
+  summary: Record<string, string | number> & { status: 'healthy' | 'warning' | 'error' };
+  issues: ProjectHealthIssue[];
+}
+
+export interface ProjectHealthReport {
+  generatedAt: string;
+  summary: Record<string, number>;
+  projects: ProjectHealthItem[];
+}
+
 export const PLATFORM_ERROR_CODES: Readonly<Record<PlatformErrorCode, PlatformErrorCode>>;
 export function isRecord(value: unknown): value is Record<string, unknown>;
 export function errorCodeForStatus(status: number): PlatformErrorCode;
@@ -181,3 +221,6 @@ export function normalizeProjectScanResult(payload: unknown): ProjectScanResult;
 export function normalizeHtmlPageCatalog(payload: unknown): HtmlPageCatalog;
 export function normalizePlatformSettings(payload: unknown): PlatformSettings;
 export function normalizeRouteList(payload: unknown): RouteListResult;
+export function normalizeBootstrapState(payload: unknown): BootstrapState;
+export function normalizeProjectHealthReport(payload: unknown): ProjectHealthReport;
+export function normalizeProjectMountsPayload(payload: unknown): ProjectMountsPayload;
